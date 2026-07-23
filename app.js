@@ -53,15 +53,7 @@ function kikwetuMasterHub() {
 
         // ═══════════════════════════════════════════
         // 3. ONBOARDING STATE
-        //
-document.getElementById('signupForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const { data, error } = await DB.signUpWithEmail(email, password, { full_name: name });
-  if (error) return showError(error.message);
-  // Supabase sends confirmation email by default
-}); ═══════════════════════════════════════════
+        // ═══════════════════════════════════════════
         onboardStep: 1,
 
         // ═══════════════════════════════════════════
