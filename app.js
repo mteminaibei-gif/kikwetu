@@ -30,13 +30,13 @@ function kikwetuMasterHub() {
         // ═══════════════════════════════════════════
         // 2. USER DATA STORE
         // ═══════════════════════════════════════════
-        userName: 'Samwel Nyamu',
-        userHandle: 'samwel',
+        userName: '',
+        userHandle: '',
         userCounty: 'Trans-Nzoia',
         userPhone: '',
         userRole: 'user',
         userEmail: '',
-        userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+        userAvatar: '',
         heshimaScore: 762,
         preferredLang: 'en',
         currentLang: 'en',
@@ -468,6 +468,7 @@ function kikwetuMasterHub() {
         go(newRoute) {
             if (newRoute === 'feed' && !this.isLoggedIn) newRoute = 'onboarding';
             if (newRoute === 'landing' && this.isLoggedIn) newRoute = 'feed';
+            if (newRoute === 'onboarding') this.onboardStep = 1;
             // Stop thread subscription when leaving thread view
             if (this.currentRoute === 'thread' && newRoute !== 'thread') {
                 this.stopThreadSubscription();
@@ -529,78 +530,90 @@ function kikwetuMasterHub() {
         },
 
         async loginWithEmail() {
-            if (!this.userEmail || !this.userPassword) {
-                this.showToast('Please enter email and password.');
-                return;
-            }
-            const { data, error } = await DB.signInWithEmail(this.userEmail, this.userPassword);
-            if (error) {
-                this.showToast(error.message || 'Login failed. Check your credentials.');
-                return;
-            }
-            if (data.user) {
-                currentUser = data.user;
-                await this.loadUserProfile(data.user.id);
-                this.isLoggedIn = true;
-                this.startRealtimeSubscriptions();
-                this.startOfflineSync();
-                this.saveState();
-                this.go('feed');
-                this.showToast('Karibu back! You are logged in.');
+            try {
+                if (!this.userEmail || !this.userPassword) {
+                    this.showToast('Please enter email and password.');
+                    return;
+                }
+                const { data, error } = await DB.signInWithEmail(this.userEmail, this.userPassword);
+                if (error) {
+                    this.showToast(error.message || 'Login failed. Check your credentials.');
+                    return;
+                }
+                if (data.user) {
+                    currentUser = data.user;
+                    await this.loadUserProfile(data.user.id);
+                    this.isLoggedIn = true;
+                    this.startRealtimeSubscriptions();
+                    this.startOfflineSync();
+                    this.saveState();
+                    this.go('feed');
+                    this.showToast('Karibu back! You are logged in.');
+                }
+            } catch (e) {
+                console.error('[Auth] Login error:', e);
+                this.showToast('Login failed. Please try again.');
             }
         },
 
         async completeOnboarding() {
-            if (!this.userEmail || !this.userPassword) {
-                this.showToast('Email and password are required.');
-                return;
-            }
-            if (this.userPassword.length < 6) {
-                this.showToast('Password must be at least 6 characters.');
-                return;
-            }
-            const { data, error } = await DB.signUpWithEmail(
-                this.userEmail,
-                this.userPassword,
-                {
-                    full_name: this.userName,
-                    username: this.userHandle,
-                    phone: this.userPhone,
-                    county: this.userCounty,
-                    preferred_lang: this.preferredLang,
-                    interests: this.userInterests,
-                    avatar_url: this.userAvatar
+            try {
+                if (!this.userEmail || !this.userPassword) {
+                    this.showToast('Email and password are required.');
+                    return;
                 }
-            );
-            if (error) {
-                this.showToast(error.message || 'Signup failed. Try again.');
-                return;
-            }
-            if (data.user) {
-                currentUser = data.user;
-                this.isLoggedIn = true;
-                this.heshimaScore = 100;
-                // Create profile row in profiles table
-                const profileResult = await DB.createProfile(data.user.id, {
-                    full_name: this.userName,
-                    username: this.userHandle,
-                    phone: this.userPhone,
-                    county: this.userCounty,
-                    preferred_lang: this.preferredLang,
-                    interests: this.userInterests,
-                    avatar_url: this.userAvatar
-                });
-                if (profileResult && !profileResult.error) {
-                    this.userRole = profileResult.data.role || 'user';
+                if (this.userPassword.length < 6) {
+                    this.showToast('Password must be at least 6 characters.');
+                    return;
                 }
-                this.startRealtimeSubscriptions();
-                this.startOfflineSync();
-                this.saveState();
-                this.go('feed');
-                this.showToast('Karibu KikwetuConnect! Your Heshima starts at 100.');
-            } else {
-                this.showToast('Check your email to confirm your account.');
-                this.go('landing');
+                const { data, error } = await DB.signUpWithEmail(
+                    this.userEmail,
+                    this.userPassword,
+                    {
+                        full_name: this.userName,
+                        username: this.userHandle,
+                        phone: this.userPhone,
+                        county: this.userCounty,
+                        preferred_lang: this.preferredLang,
+                        interests: this.userInterests,
+                        avatar_url: this.userAvatar
+                    }
+                );
+                if (error) {
+                    this.showToast(error.message || 'Signup failed. Try again.');
+                    return;
+                }
+                if (data.user) {
+                    currentUser = data.user;
+                    this.isLoggedIn = true;
+                    this.heshimaScore = 100;
+                    // Update profile with complete data from form
+                    const profileResult = await DB.createProfile(data.user.id, {
+                        full_name: this.userName,
+                        username: this.userHandle,
+                        phone: this.userPhone,
+                        county: this.userCounty,
+                        preferred_lang: this.preferredLang,
+                        interests: this.userInterests,
+                        avatar_url: this.userAvatar
+                    });
+                    if (profileResult && !profileResult.error) {
+                        this.userRole = profileResult.data.role || 'user';
+                    }
+                    this.onboardStep = 1;
+                    this.userPassword = '';
+                    this.startRealtimeSubscriptions();
+                    this.startOfflineSync();
+                    this.saveState();
+                    this.go('feed');
+                    this.showToast('Karibu KikwetuConnect! Your Heshima starts at 100.');
+                } else {
+                    this.showToast('Check your email to confirm your account.');
+                    this.go('landing');
+                }
+            } catch (e) {
+                console.error('[Auth] Signup error:', e);
+                this.showToast('Signup failed. Please try again.');
             }
         },
 
@@ -616,9 +629,21 @@ function kikwetuMasterHub() {
             currentUser = null;
             this.isLoggedIn = false;
             this.heshimaScore = 0;
+            this.userName = '';
+            this.userHandle = '';
+            this.userEmail = '';
+            this.userPassword = '';
+            this.userPhone = '';
+            this.userRole = 'user';
+            this.preferredLang = 'en';
+            this.userInterests = [];
+            this.userBadges = [];
+            this.userAvatar = '';
             this.notifications = [];
             this.unreadCount = 0;
             this.activeModal = null;
+            this.authMode = 'signup';
+            this.onboardStep = 1;
             this.stopRealtimeSubscriptions();
             this.stopOfflineSync();
             this.saveState();
@@ -1407,7 +1432,7 @@ function kikwetuMasterHub() {
                     if (p.author_id === currentUser.id) return;
                     // Hydrate with author profile
                     const { data: authorData } = await DB.getProfile(p.author_id);
-                    const spaceName = p.space_id ? (await DB.getSpaceBySlug(p.space_id)).data?.name : null;
+                    const spaceName = p.space_id ? (await DB.getSpaceById(p.space_id)).data?.name : null;
                     this.feedPosts.unshift({
                         id: p.id,
                         type: p.type === 'educative' ? 'qa' : p.type,

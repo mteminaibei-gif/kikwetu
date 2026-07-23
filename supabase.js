@@ -473,6 +473,13 @@ const DB = {
         return { data, error };
     },
 
+    async getSpaceById(id) {
+        if (!sb) return { data: null, error: { message: 'Not connected' } };
+        const { data, error } = await sb
+            .from('spaces').select('name').eq('id', id).single();
+        return { data, error };
+    },
+
     async joinSpace(userId, spaceId) {
         if (!sb) return sbError('Supabase not connected');
         const { error } = await sb
