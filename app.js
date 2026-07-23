@@ -52,8 +52,10 @@ function kikwetuMasterHub() {
         },
 
         // ═══════════════════════════════════════════
-        // 3. ONBOARDING STATE
+        // 3. AUTH & ONBOARDING STATE
         // ═══════════════════════════════════════════
+        authMode: 'signup',
+        userPassword: '',
         onboardStep: 1,
 
         // ═══════════════════════════════════════════
@@ -501,10 +503,40 @@ function kikwetuMasterHub() {
             else this.userInterests.push(interest);
         },
 
+        async loginWithEmail() {
+            if (!this.userEmail || !this.userPassword) {
+                this.showToast('Please enter email and password.');
+                return;
+            }
+            const { data, error } = await DB.signInWithEmail(this.userEmail, this.userPassword);
+            if (error) {
+                this.showToast(error.message || 'Login failed. Check your credentials.');
+                return;
+            }
+            if (data.user) {
+                currentUser = data.user;
+                await this.loadUserProfile(data.user.id);
+                this.isLoggedIn = true;
+                this.startRealtimeSubscriptions();
+                this.startOfflineSync();
+                this.saveState();
+                this.go('feed');
+                this.showToast('Karibu back! You are logged in.');
+            }
+        },
+
         async completeOnboarding() {
+            if (!this.userEmail || !this.userPassword) {
+                this.showToast('Email and password are required.');
+                return;
+            }
+            if (this.userPassword.length < 6) {
+                this.showToast('Password must be at least 6 characters.');
+                return;
+            }
             const { data, error } = await DB.signUpWithEmail(
-                this.userEmail || `${this.userHandle}@kikwetuconnect.com`,
-                `Kikwetu${Date.now()}!`,
+                this.userEmail,
+                this.userPassword,
                 {
                     full_name: this.userName,
                     username: this.userHandle,
@@ -516,13 +548,15 @@ function kikwetuMasterHub() {
                 }
             );
             if (error) {
-                this.isLoggedIn = true;
-                this.heshimaScore = 100;
-            } else if (data.user) {
+                this.showToast(error.message || 'Signup failed. Try again.');
+                return;
+            }
+            if (data.user) {
                 currentUser = data.user;
                 this.isLoggedIn = true;
                 this.heshimaScore = 100;
                 this.startRealtimeSubscriptions();
+                this.startOfflineSync();
             }
             this.saveState();
             this.go('feed');
