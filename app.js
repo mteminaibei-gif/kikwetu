@@ -583,7 +583,7 @@ function kikwetuMasterHub() {
                     this.showToast(error.message || 'Signup failed. Try again.');
                     return;
                 }
-                if (data.user) {
+                if (data.session) {
                     currentUser = data.user;
                     this.isLoggedIn = true;
                     this.heshimaScore = 100;
@@ -607,8 +607,8 @@ function kikwetuMasterHub() {
                     this.saveState();
                     this.go('feed');
                     this.showToast('Karibu KikwetuConnect! Your Heshima starts at 100.');
-                } else {
-                    this.showToast('Check your email to confirm your account.');
+                } else if (data.user) {
+                    this.showToast('Account created! Check your email to confirm and log in.');
                     this.go('landing');
                 }
             } catch (e) {
