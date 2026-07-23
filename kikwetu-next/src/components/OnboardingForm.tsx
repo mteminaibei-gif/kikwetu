@@ -76,7 +76,8 @@ export default function OnboardingForm() {
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-1">
+        <div className="text-center space-y-3">
+          <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-14 mx-auto" />
           <h2 className="text-2xl font-black">
             {mode === 'login' ? 'Welcome Back' : 'Join KikwetuConnect'}
           </h2>

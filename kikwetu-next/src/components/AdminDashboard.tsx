@@ -71,7 +71,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950">
       <aside className="w-full md:w-60 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
-        <div className="h-14 flex items-center px-5 border-b border-slate-800">
+        <div className="h-14 flex items-center gap-2 px-5 border-b border-slate-800">
+          <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-8 w-auto" />
           <span className="text-lg font-bold text-white">Kikwetu<span className="text-emerald-400">Admin</span></span>
         </div>
         <nav className="p-3 space-y-1">

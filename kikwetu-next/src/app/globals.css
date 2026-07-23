@@ -3,15 +3,23 @@
 @theme inline {
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-logo: var(--font-poppins), sans-serif;
-  --color-brand-green: #008751;
-  --color-brand-darkGreen: #005C36;
-  --color-brand-orange: #FF6600;
-  --color-brand-lightOrange: #FF8833;
-  --color-brand-bgLight: #F5F0E6;
-  --color-brand-bgDark: #0A0A0A;
-  --color-brand-cardDark: #1A1A1A;
+  --color-brand-green: #274E37;
+  --color-brand-darkGreen: #162F21;
+  --color-brand-orange: #D96B27;
+  --color-brand-lightOrange: #F48C4C;
+  --color-brand-bgLight: #FFF8F0;
+  --color-brand-bgDark: #121212;
+  --color-brand-cardDark: #1E1E1E;
   --color-brand-cardLight: #FFFFFF;
-  --color-brand-surface: #FBF9F5;
+  --color-brand-surface: #FFF8F0;
+  --color-savannah-sun: #E8A040;
+  --color-savannah-gold: #D4A04A;
+  --color-savannah-dust: #C4956A;
+  --color-savannah-sky: #FDE8D0;
+  --color-savannah-earth: #8B6914;
+  --color-savannah-brown: #6B4423;
+  --color-savannah-cream: #F5E6D0;
+  --color-savannah-terracotta: #C8644A;
 }
 
 @layer base {
@@ -25,21 +33,197 @@
 
 body {
   font-family: var(--font-sans);
+  scroll-behavior: smooth;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
+/* ===== VISIBLE SAVANNAH THEME STYLING ===== */
+
+/* Warm savannah background for light mode */
+.savannah-bg {
+  background-color: #FFF8F0;
+  background-image:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(217, 107, 39, 0.06) 0%, transparent 100%),
+    radial-gradient(ellipse 80% 40% at 80% 100%, rgba(200, 100, 74, 0.05) 0%, transparent 100%),
+    radial-gradient(ellipse 60% 30% at 20% 100%, rgba(232, 160, 64, 0.04) 0%, transparent 100%);
+}
+
+/* Savannah card styling with warm border */
+.savannah-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(200, 149, 106, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(139, 105, 20, 0.06), 0 4px 12px rgba(139, 105, 20, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.savannah-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #274E37, #D96B27, #E8A040);
+  opacity: 0.6;
+}
+
+.savannah-card:hover {
+  border-color: rgba(217, 107, 39, 0.3);
+  box-shadow: 0 4px 16px rgba(139, 105, 20, 0.1);
+}
+
+/* Warm button styling */
+.savannah-btn-primary {
+  background: linear-gradient(135deg, #D96B27, #C8644A);
+  color: white;
+  border: none;
+  transition: all 0.3s;
+}
+.savannah-btn-primary:hover {
+  background: linear-gradient(135deg, #F48C4C, #D96B27);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(217, 107, 39, 0.35);
+}
+
+/* Savannah pattern overlay (subtle Maasai-inspired geometric) */
+.savannah-pattern-overlay {
+  position: relative;
+}
+.savannah-pattern-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image:
+    repeating-linear-gradient(45deg, #8B6914 0px, #8B6914 1px, transparent 1px, transparent 6px),
+    repeating-linear-gradient(-45deg, #D96B27 0px, #D96B27 1px, transparent 1px, transparent 6px);
+  pointer-events: none;
+}
+
+/* Decorative acacia tree silhouette in corners */
+.savannah-acacia {
+  position: relative;
+}
+.savannah-acacia::before {
+  content: '🌳';
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+/* Maasai-inspired border pattern (bottom decorative bar) */
+.savannah-border-pattern {
+  position: relative;
+  border-bottom: none !important;
+}
+.savannah-border-pattern::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    #274E37 0px, #274E37 10px,
+    #D96B27 10px, #D96B27 14px,
+    #E8A040 14px, #E8A040 18px,
+    #C8644A 18px, #C8644A 22px,
+    transparent 22px, transparent 26px
+  );
+}
+
+/* Sunset gradient text */
+.text-savannah-sunset {
+  background: linear-gradient(135deg, #D96B27, #E8A040, #F5D6A8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-savannah-green {
+  background: linear-gradient(135deg, #274E37, #3D7A56);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Savannah divider */
+.savannah-divider {
+  border: none;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #D96B27, #E8A040, #274E37, transparent);
+  opacity: 0.3;
+}
+
+/* Earthy warm tag pill */
+.savannah-tag {
+  background: rgba(217, 107, 39, 0.08);
+  color: #C8644A;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 107, 39, 0.15);
+}
+
+/* ===== ANIMATIONS ===== */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(217, 107, 39, 0.15); }
+  50% { box-shadow: 0 0 40px rgba(217, 107, 39, 0.3); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes sunGlow {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes savannahWind {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+.animate-fadeInUp { animation: fadeInUp 0.6s ease-out forwards; }
+.animate-fadeInLeft { animation: fadeInLeft 0.6s ease-out forwards; }
+.animate-fadeInRight { animation: fadeInRight 0.6s ease-out forwards; }
+.animate-scaleIn { animation: scaleIn 0.5s ease-out forwards; }
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-pulseGlow { animation: pulseGlow 3s ease-in-out infinite; }
+.animate-sunGlow { animation: sunGlow 4s ease-in-out infinite; }
+.animate-shimmer { background-size: 200% auto; animation: shimmer 3s linear infinite; }
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+
+/* Scrollbar */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

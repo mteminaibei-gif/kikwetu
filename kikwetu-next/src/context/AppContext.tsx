@@ -14,6 +14,7 @@ interface AppState {
   unreadCount: number;
   selectedThread: Thread | null;
   loading: boolean;
+  pendingSyncCount: number;
 }
 
 interface AppContextType extends AppState {
@@ -35,7 +36,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [state, setState] = useState<AppState>({
     threads: [], replies: [], spaces: [], notifications: [],
-    unreadCount: 0, selectedThread: null, loading: true,
+    unreadCount: 0, selectedThread: null, loading: true, pendingSyncCount: 0,
   });
 
   const update = useCallback((partial: Partial<AppState>) => {
@@ -176,8 +177,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       loadNotifications();
+      (async () => {
+        const pending = await Offline.getPendingCount();
+        update({ pendingSyncCount: pending });
+      })();
     }
-  }, [user, loadNotifications]);
+  }, [user, loadNotifications, update]);
 
   return (
     <AppContext.Provider value={{

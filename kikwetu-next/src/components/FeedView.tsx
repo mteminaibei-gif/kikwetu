@@ -1,17 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import Link from 'next/link';
-import { timeAgo, formatNumber, cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase';
+import { timeAgo, formatNumber, cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import CreatePostModal from '@/components/CreatePostModal';
-import type { Thread } from '@/types';
+import type { Thread, Space } from '@/types';
 
 const TABS = [
+  { id: 'feed', label: 'Feed', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+  { id: 'spaces', label: 'Spaces', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { id: 'leaderboard', label: 'Karma', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+  { id: 'profile', label: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+];
+
+const FEED_TABS = [
   { id: 'all', label: 'Yote (All)' },
   { id: 'kilimo', label: '#KilimoSmart' },
   { id: 'tech', label: 'Tech & Biz' },
@@ -20,103 +27,332 @@ const TABS = [
   { id: 'health', label: 'Afya' },
 ];
 
-const SPACE_MAP: Record<string, string | undefined> = {
-  kilimo: 'kilimo', tech: 'tech', culture: 'culture',
-  education: 'education', health: 'health',
-};
+const SPACES_DATA = [
+  { name: 'Kilimo Smart (Rift Valley)', desc: 'Modern agronomy, soil health, and market access.', members: '14.2k', icon: '🌾', color: 'text-brand-orange' },
+  { name: 'Nairobi Tech & Startups', desc: 'Full-stack engineering, Flutter, and local software solutions.', members: '9.8k', icon: '💻', color: 'text-blue-500' },
+  { name: 'Swahili & Folklore Hub', desc: 'Preserving Kenyan storytelling, poetry, and linguistic roots.', members: '6.4k', icon: '📖', color: 'text-purple-500' },
+  { name: 'Mombasa Business & Trade', desc: 'Coastal trade, logistics, and tourism networks.', members: '5.1k', icon: '🚢', color: 'text-cyan-500' },
+];
+
+const LEADERBOARD_DATA = [
+  { name: 'Mkulima Jane', county: 'Trans-Nzoia', points: 4820, rank: 1 },
+  { name: 'Yonas Boley', county: 'Nairobi', points: 3950, rank: 2 },
+  { name: 'Amina Baraka', county: 'Mombasa', points: 3210, rank: 3 },
+];
 
 export default function FeedView() {
-  const { threads, loadThreads, loading, subscribeToFeed } = useApp();
+  const { threads, loadThreads, spaces, loadSpaces, loading, subscribeToFeed } = useApp();
   const { user } = useAuth();
   const { show } = useToast();
-  const [tab, setTab] = useState('all');
+  const [view, setView] = useState('feed');
+  const [feedTab, setFeedTab] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
+  const [lang, setLang] = useState<'en' | 'sw'>('en');
+  const [joinedSpaces, setJoinedSpaces] = useState<Record<string, boolean>>({});
+  const [quizAnswer, setQuizAnswer] = useState<string | null>(null);
 
-  const filtered = tab === 'all' ? threads : threads.filter(t => {
-    const slug = (t.space as unknown as { slug?: string })?.slug || '';
-    return slug === SPACE_MAP[tab] || t.tags?.some(tg => tg.toLowerCase().includes(tab));
-  });
+  useEffect(() => { loadThreads(); loadSpaces(); }, [loadThreads, loadSpaces]);
+
+  useEffect(() => {
+    const unsub = subscribeToFeed();
+    return () => unsub();
+  }, [subscribeToFeed]);
+
+  const filtered = feedTab === 'all' ? threads : threads.filter(t =>
+    t.tags?.some(tg => tg.toLowerCase().includes(feedTab))
+  );
 
   const handleVote = async (thread: Thread, e: React.MouseEvent) => {
     e.preventDefault();
     if (!user) { show('Please login to vote.'); return; }
     const sb = createClient();
-    await sb.rpc('toggle_vote', {
-      p_user_id: user.id, p_entity_id: thread.id,
-      p_entity_type: 'thread', p_vote_type: 'up',
-    });
+    await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: thread.id, p_entity_type: 'thread', p_vote_type: 'up' });
     loadThreads();
   };
 
+  const shareWhatsApp = (title: string, content: string) => {
+    const text = `${title}\n\n${content}\n\nShared from KikwetuConnect`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const tr = useCallback((en: string, sw: string) => lang === 'sw' ? sw : en, [lang]);
+  const toggleLang = useCallback(() => setLang(l => l === 'en' ? 'sw' : 'en'), []);
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-black">Baraza</h1>
+    <div className="max-w-7xl mx-auto flex-1 w-full grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 px-3 sm:px-6 lg:px-8 py-4 md:py-6">
+      <aside className="hidden md:block md:col-span-1 space-y-6">
+        <nav className="space-y-1">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setView(t.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all',
+                view === t.id ? 'bg-brand-green text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              )}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={t.icon} /></svg>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
         <button onClick={() => setShowCreate(true)}
-          className="bg-orange-500 hover:bg-orange-400 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md transition-all">
-          Post to Baraza
+          className="w-full bg-brand-orange hover:bg-brand-lightOrange text-white font-bold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          <span>Andika (Post)</span>
         </button>
-      </div>
 
-      <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all',
-              tab === t.id ? 'bg-orange-500/10 text-orange-500' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            )}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
-        <div className="text-center py-12 text-sm text-gray-400">
-          No posts yet. Be the first to share!
+        <div className="savannah-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Utu & Heshima</h4>
+            <span className="text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">Top 5%</span>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl font-black text-brand-orange">{user?.heshima_score || 0}</span>
+            <span className="text-[10px] text-gray-500">Trust score based on peer helpfulness.</span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+            <div className="bg-brand-orange h-full rounded-full" style={{ width: `${Math.min((user?.heshima_score || 0) / 50, 100)}%` }} />
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {filtered.map(thread => (
-            <Link key={thread.id} href={`/thread/${thread.id}`}
-              className="block p-5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
-              <div className="flex items-start gap-3">
-                <button onClick={e => handleVote(thread, e)}
-                  className="flex flex-col items-center gap-0.5 w-10 pt-1 text-gray-400 hover:text-orange-500 transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                  <span className="text-xs font-bold">{formatNumber(thread.upvotes_count)}</span>
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
-                      {thread.type === 'question' ? 'Q&A' : thread.type}
-                    </span>
-                    {(thread.space as unknown as { name?: string })?.name && (
-                      <span className="text-[10px] text-gray-400">
-                        {(thread.space as unknown as { name: string }).name}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-bold text-sm leading-snug line-clamp-2">{thread.title}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{thread.content}</p>
-                  <div className="flex items-center gap-3 mt-3 text-xs text-gray-400">
-                    <span>{thread.author?.full_name || 'Anonymous'}</span>
-                    {thread.author?.county && <span>· {thread.author.county}</span>}
-                    <span>· {timeAgo(thread.created_at)}</span>
-                    <span className="flex items-center gap-1 ml-auto">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      {thread.reply_count}
-                    </span>
-                  </div>
+      </aside>
+
+      <main className="col-span-1 md:col-span-3 lg:col-span-3 space-y-6">
+        {view === 'feed' && (
+          <div className="space-y-6">
+            <div onClick={() => setShowCreate(true)}
+              className="savannah-card p-4 cursor-pointer hover:border-brand-orange transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-bold">
+                  {user?.full_name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 bg-gray-100 dark:bg-gray-900 px-4 py-2.5 rounded-full text-sm text-gray-500">
+                  {tr('Uliza swali, toa ushauri, ama anzisha Mjadala...', 'Ask a question, give advice, or start a debate...')}
                 </div>
               </div>
-            </Link>
-          ))}
+              <div className="flex items-center justify-around pt-3 mt-3 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500">
+                <span className="flex items-center gap-1 hover:text-brand-orange"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>{tr('Swali (Q&A)', 'Question (Q&A)')}</span></span>
+                <span className="flex items-center gap-1 hover:text-green-600"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" /></svg><span>{tr('Mjadala (Audio)', 'Debate (Audio)')}</span></span>
+                <span className="flex items-center gap-1 hover:text-blue-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>{tr('Kura (Poll)', 'Poll')}</span></span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+              {FEED_TABS.map(t => (
+                <button key={t.id} onClick={() => setFeedTab(t.id)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all',
+                    feedTab === t.id ? 'bg-brand-green text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                  )}>{t.label}</button>
+              ))}
+              <button onClick={toggleLang} className="ml-auto px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-brand-orange hover:bg-brand-orange/10 transition-all">
+                {lang === 'en' ? 'Kiswahili' : 'English'}
+              </button>
+            </div>
+
+            {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
+              <div className="text-center py-12 text-sm text-gray-400">{tr('Hakuna machapisho bado. Kuwa wa kwanza kushiriki!', 'No posts yet. Be the first to share!')}</div>
+            ) : (
+              <div className="space-y-4">
+                {filtered.map(thread => (
+                  <div key={thread.id}
+                    className="savannah-card p-5 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-green/20 flex items-center justify-center text-sm font-bold text-brand-green">
+                          {thread.author?.full_name?.[0]?.toUpperCase() || 'A'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h5 className="text-sm font-bold">{thread.author?.full_name || tr('Mgeni', 'Guest')}</h5>
+                            <span className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded font-bold"><svg className="w-2.5 h-2.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg> Mtaalamu</span>
+                          </div>
+                          <span className="text-[11px] text-gray-400">{thread.author?.county || ''} &middot; {timeAgo(thread.created_at)} {thread.space && <>in <strong className="text-brand-orange">{(thread.space as unknown as { name: string })?.name}</strong></>}</span>
+                        </div>
+                      </div>
+                      <button onClick={toggleLang} className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-lg font-medium transition-colors">
+                        <svg className="w-3 h-3 inline mr-1 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                        {lang === 'en' ? 'Tafsiri' : 'Translate'}
+                      </button>
+                    </div>
+
+                    <Link href={`/thread/${thread.id}`}>
+                      <h3 className="text-base font-bold leading-snug">{thread.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">{thread.content}</p>
+                    </Link>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
+                      <div className="flex items-center gap-4">
+                        <button onClick={e => handleVote(thread, e)} className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-brand-orange hover:text-white px-3 py-1.5 rounded-full font-bold transition-all">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                          {formatNumber(thread.upvotes_count)}
+                        </button>
+                        <Link href={`/thread/${thread.id}`} className="flex items-center gap-1 text-gray-500 hover:text-brand-orange font-medium">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                          {thread.reply_count} {tr('Majibu', 'Answers')}
+                        </Link>
+                      </div>
+                      <button onClick={() => shareWhatsApp(thread.title, thread.content)}
+                        className="flex items-center gap-1 text-green-600 font-bold bg-green-50 dark:bg-green-950/40 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                        {tr('Shiriki', 'Share')}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {view === 'spaces' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-brand-darkGreen to-brand-green p-6 rounded-2xl text-white shadow-lg space-y-2">
+              <h2 className="text-2xl font-black">{tr('Mitaa & Maarifa', 'Spaces & Knowledge')}</h2>
+              <p className="text-sm text-gray-200">{tr('Jiunge na jamii maalum kwa kilimo, teknolojia, na utamaduni.', 'Join specialized communities for agriculture, tech, and culture.')}</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {SPACES_DATA.map(s => (
+                <div key={s.name} className="savannah-card p-5 flex flex-col justify-between space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center text-xl font-bold">{s.icon}</div>
+                    <div>
+                      <h4 className="text-base font-bold">{s.name}</h4>
+                      <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
+                    <span className="text-gray-400 font-medium">{s.members} {tr('Wanachama', 'Members')}</span>
+                    <button onClick={() => setJoinedSpaces(prev => ({ ...prev, [s.name]: !prev[s.name] }))}
+                      className={cn('px-4 py-1.5 rounded-full font-bold transition-colors', joinedSpaces[s.name] ? 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : 'bg-brand-orange text-white')}>
+                      {joinedSpaces[s.name] ? (tr('Umejiunga', 'Joined')) : (tr('Jiunga', 'Join'))}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === 'leaderboard' && (
+          <div className="savannah-card p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold">{tr('Nyota za Kikwetu', 'Leaderboard & Karma')}</h3>
+                <p className="text-xs text-gray-500">{tr('Wachangiaji wakuu hupata zawadi kila wiki.', 'Top contributors rewarded weekly.')}</p>
+              </div>
+              <span className="text-3xl">🏆</span>
+            </div>
+            <div className="space-y-3 pt-2">
+              {LEADERBOARD_DATA.map(l => (
+                <div key={l.rank} className={cn('flex items-center justify-between p-3 rounded-xl border', l.rank === 1 ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800')}>
+                  <div className="flex items-center gap-3">
+                    <span className={cn('w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white', l.rank === 1 ? 'bg-yellow-500' : l.rank === 2 ? 'bg-gray-400' : 'bg-brand-orange')}>{l.rank}</span>
+                    <div className="w-8 h-8 rounded-full bg-brand-green/20 flex items-center justify-center font-bold text-brand-green">{l.name[0]}</div>
+                    <div>
+                      <p className="text-xs font-bold">{l.name}</p>
+                      <span className="text-[10px] text-gray-400">{l.county}</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-brand-orange">{formatNumber(l.points)} {tr('pts', 'pts')}</span>
+                </div>
+              ))}
+              {user && (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-brand-orange/10 border border-brand-orange/30">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-brand-orange text-white font-bold text-xs flex items-center justify-center">4</span>
+                    <div className="w-8 h-8 rounded-full bg-brand-green flex items-center justify-center font-bold text-white">{user.full_name?.[0] || 'U'}</div>
+                    <div>
+                      <p className="text-xs font-bold">{user.full_name} ({tr('Wewe', 'You')})</p>
+                      <span className="text-[10px] text-gray-400">{user.county || tr('Haijulikani', 'Unknown')}</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-brand-orange">{user.heshima_score} pts</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === 'profile' && user && (
+          <div className="savannah-card rounded-2xl overflow-hidden">
+            <div className="h-32 bg-gradient-to-r from-brand-green to-brand-orange" />
+            <div className="px-6 pb-6 relative">
+              <div className="flex justify-between items-end -mt-12 mb-4">
+                <div className="w-24 h-24 rounded-full border-4 border-white dark:border-brand-cardDark bg-brand-green flex items-center justify-center text-3xl font-bold text-white shadow-xl">
+                  {user.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : user.full_name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <Link href={`/profile/${user.id}`} className="bg-gray-100 dark:bg-gray-800 text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-200 transition-colors shadow-sm">{tr('Hariri', 'Edit Profile')}</Link>
+              </div>
+              <h2 className="text-xl font-black">{user.full_name}</h2>
+              <p className="text-xs text-gray-500 mt-0.5">@{user.username} &middot; {user.county || ''}</p>
+              <div className="grid grid-cols-3 gap-4 my-6 py-4 border-y border-gray-100 dark:border-gray-800 text-center">
+                <div>
+                  <span className="block text-lg font-bold text-brand-orange">{user.heshima_score}</span>
+                  <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">{tr('Heshima', 'Karma')}</span>
+                </div>
+                <div>
+                  <span className="block text-lg font-bold">{user.answer_count}</span>
+                  <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">{tr('Majibu', 'Answers')}</span>
+                </div>
+                <div>
+                  <span className="block text-lg font-bold">{(user.badges?.length || 0)}</span>
+                  <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">{tr('Bidhaa', 'Badges')}</span>
+                </div>
+              </div>
+              {user.badges && user.badges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {user.badges.map(b => (
+                    <span key={b} className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 px-3 py-1 rounded-lg text-xs font-bold">{b}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+
+      <aside className="hidden lg:block lg:col-span-1 space-y-6">
+        <div className="savannah-card p-4 space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center justify-between">
+            <span>{tr('Inauma Kenya', 'Trending in Kenya')}</span>
+            <svg className="w-3.5 h-3.5 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+          </h4>
+          <div className="space-y-2.5">
+            {[
+              { tag: '#KilimoSmart', posts: '14.2k', desc: 'Agriculture' },
+              { tag: '#ShuleYetu', posts: '8.9k', desc: 'Education' },
+              { tag: '#NairobiTech', posts: '5.1k', desc: 'Tech & Startups' },
+            ].map(t => (
+              <div key={t.tag} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 p-2 rounded-xl transition-colors">
+                <span className="text-[10px] text-gray-400">{t.desc} &middot; {t.posts} posts</span>
+                <p className="text-xs font-bold text-brand-orange">{t.tag}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+
+        <div className="savannah-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 uppercase tracking-wide">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              <span>{tr('Mjadala Moja', 'Live Debate')}</span>
+            </span>
+            <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">Audio</span>
+          </div>
+          <h5 className="text-xs font-bold">{tr('Mustakabali wa Kazi za Digitali Afrika Mashariki', 'The Future of Digital Careers in East Africa')}</h5>
+          <p className="text-[11px] text-gray-400">{tr('Mwenyeji: NairobiTechie na 4 wengine', 'Hosted by NairobiTechie & 4 others')}</p>
+          <button className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 rounded-xl transition-all shadow-sm">
+            <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            {tr('Jiunga na Baraza', 'Join Audio Room')}
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Create FAB */}
+      <button onClick={() => setShowCreate(true)}
+        className="md:hidden fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-brand-orange hover:bg-brand-lightOrange text-white shadow-2xl flex items-center justify-center transition-all active:scale-90 hover:scale-105">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+      </button>
 
       {showCreate && <CreatePostModal onClose={() => setShowCreate(false)} />}
     </div>
