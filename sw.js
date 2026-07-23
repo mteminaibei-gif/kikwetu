@@ -3,7 +3,7 @@
    IndexedDB-backed offline cache + background sync
    ═══════════════════════════════════════════════════════════════════ */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `kc-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `kc-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE = `kc-images-${CACHE_VERSION}`;
