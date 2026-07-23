@@ -1,0 +1,19 @@
+{
+  "name": "kikwetu",
+  "version": "1.0.0",
+  "description": "KikwetuConnect - East Africa's premier knowledge platform",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "kikwetu",
+    "east-africa",
+    "knowledge-platform"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^1.3.1"
+  }
+}
