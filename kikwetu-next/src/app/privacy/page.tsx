@@ -9,32 +9,38 @@ export default function PrivacyPage() {
   const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
 
   return (
-    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark relative overflow-hidden">
+      <div className="bird-flock top-10 left-0"><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span></div>
+      <div className="sun-decorative" style={{ width: '350px', height: '350px', top: '-100px', left: '-100px' }} />
+      <div className="acacia-silhouette right">🌳</div>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-orange hover:text-brand-lightOrange mb-8 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" /></svg>
           {tr('Rudi Nyumbani', 'Back to Home')}
         </Link>
-        <img src="/logo-icon.svg" alt="" className="h-10 mb-6" />
-        <h1 className="text-4xl font-black font-logo mb-8">{tr('Sera ya Faragha', 'Privacy Policy')}</h1>
-        <p className="text-sm text-gray-500 mb-8">{tr('Ilisasishwa: Julai 2026', 'Last updated: July 2026')}</p>
 
-        <div className="prose dark:prose-invert max-w-none space-y-8 text-gray-600 dark:text-gray-300">
+        <div className="flex items-center gap-4 mb-2">
+          <img src="/logo-icon.svg" alt="" className="h-10" />
+          <h1 className="text-4xl font-black font-logo text-brand-green dark:text-white">{tr('Sera ya Faragha', 'Privacy Policy')}</h1>
+        </div>
+        <p className="text-sm text-gray-500 mb-8 ml-14">{tr('Ilisasishwa: Julai 2026', 'Last updated: July 2026')}</p>
+
+        <div className="sun-card p-8 sm:p-10 space-y-8 text-gray-700 dark:text-gray-300">
           <section>
             <h2 className="text-xl font-bold text-brand-green dark:text-white mb-3">1. {tr('Utangulizi', 'Introduction')}</h2>
             <p className="leading-relaxed">{tr(
-              'KikwetuConnect ("sisi," "yetu," au "platform") inajali faragha yako. Sera hii inaelezea jinsi tunavyokusanya, kutumia, na kulinda taarifa zako unapotumia huduma zetu.',
-              'KikwetuConnect ("we," "our," or "the platform") cares about your privacy. This policy explains how we collect, use, and protect your information when you use our services.'
+              'KikwetuConnect ("sisi," "yetu," au "platform") inajali faragha yako. Sera hii inaelezea jinsi tunavyokusanya, kutumia, na kulinda taarifa zako unapotumia huduma zetu. Hatujawahi kuuza data yako, na hatutauza kamwe.',
+              'KikwetuConnect ("we," "our," or "the platform") cares about your privacy. This policy explains how we collect, use, and protect your information when you use our services. We have never sold your data, and we never will.'
             )}</p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-brand-green dark:text-white mb-3">2. {tr('Taarifa Tunazokusanya', 'Information We Collect')}</h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li>{tr('Jina lako, barua pepe, nambari ya simu, na kaunti unakoishi', 'Your name, email, phone number, and county')}</li>
+              <li>{tr('Jina lako, barua pepe, nambari ya simu, na kaunti unakoishi — muhimu tu kwa akaunti yako', 'Your name, email, phone number, and county — only what\'s essential for your account')}</li>
               <li>{tr('Machapisho, maoni, na kura unazotoa kwenye mfumo', 'Posts, replies, and votes you make on the platform')}</li>
-              <li>{tr('Data ya matumizi kama vile ukurasa uliotembelea na muda uliotumia', 'Usage data such as pages visited and time spent')}</li>
-              <li>{tr('Taarifa za kifaa kama vile aina ya kifaa na mfumo wa uendeshaji', 'Device information such as device type and operating system')}</li>
+              <li>{tr('Data ya matumizi kama vile kurasa ulizotembelea na muda uliotumia — haitumiki kamwe kwa ufuatiliaji wa watu wengine', 'Usage data like pages visited and time spent — never used for third-party tracking')}</li>
             </ul>
           </section>
 
@@ -43,32 +49,32 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li>{tr('Kukupa huduma zetu na kuboresha uzoefu wako', 'To provide our services and improve your experience')}</li>
               <li>{tr('Kukuunganisha na jamii na kaunti zako', 'To connect you with your communities and counties')}</li>
-              <li>{tr('Kukutumia taarifa muhimu kuhusu mfumo', 'To send you important platform updates')}</li>
-              <li>{tr('Kuzuia matumizi mabaya na kuhakikisha usalama', 'To prevent abuse and ensure safety')}</li>
+              <li>{tr('Kukutumia taarifa muhimu kuhusu mfumo — kamwe si barua taka', 'To send you important platform updates — never spam')}</li>
+              <li>{tr('Kuzuia matumizi mabaya na kuhakikisha usalama wa jamii', 'To prevent abuse and ensure community safety')}</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-brand-green dark:text-white mb-3">4. {tr('Haki Zako', 'Your Rights')}</h2>
             <p className="leading-relaxed">{tr(
-              'Una haki ya kufikia, kurekebisha, au kufuta taarifa zako wakati wowote. Unaweza pia kukataa kupokea taarifa za utangazaji. Wasiliana nasi kupitia ukurasa wa Contact Us.',
-              'You have the right to access, modify, or delete your information at any time. You can also opt out of marketing communications. Contact us through our Contact Us page.'
+              'Una haki kamili ya kufikia, kurekebisha, au kufuta taarifa zako wakati wowote. Unaweza pia kukataa kupokea taarifa za utangazaji. Data yako ni yako — hatuikodi, hatuui, wala hatuishirikishi na watu wengine. Wasiliana nasi kupitia ukurasa wa Contact Us.',
+              'You have full rights to access, modify, or delete your information at any time. You can also opt out of marketing communications. Your data is yours — we do not rent, sell, or share it with third parties. Contact us through our Contact Us page.'
             )}</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-brand-green dark:text-white mb-3">5. {tr('Vidakuzi (Cookies)', 'Cookies')}</h2>
+            <h2 className="text-xl font-bold text-brand-green dark:text-white mb-3">5. {tr('Vidakuzi na Usalama', 'Cookies & Security')}</h2>
             <p className="leading-relaxed" id="cookies">{tr(
-              'Tunatumia vidakuzi muhimu kwa ajili ya kukumbuka kipindi chako na mapendeleo yako. Hatuuzi data yako kwa watu wengine. Unaweza kuzima vidakuzi kwenye kivinjari chako lakini hii inaweza kuathiri utendaji wa mfumo.',
-              'We use essential cookies to remember your session and preferences. We do not sell your data to third parties. You can disable cookies in your browser but this may affect platform functionality.'
+              'Tunatumia vidakuzi muhimu tu kwa ajili ya kukumbuka kipindi chako na mapendeleo yako. Hatuuzi data yako kwa watu wengine. Mfumo wetu unatumia usimbaji fiche wa kiwango cha juu (SSL/TLS) na kutoficha nywila zako. Tunachunguza mara kwa mara ili kuhakikisha hakuna uvujaji wa data.',
+              'We use only essential cookies to remember your session and preferences. We do not sell your data. Our platform uses enterprise-grade encryption (SSL/TLS) and never stores passwords in plain text. We conduct regular security audits to ensure no data leakage.'
             )}</p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-brand-green dark:text-white mb-3">6. {tr('Wasiliana Nasi', 'Contact Us')}</h2>
             <p className="leading-relaxed">{tr(
-              'Kwa maswali yoyote kuhusu sera hii, tafadhali tembelea ukurasa wetu wa Contact Us au tutumie barua pepe kwa privacy@kikwetucoat.com.',
-              'For any questions about this policy, please visit our Contact Us page or email us at privacy@kikwetuconnect.com.'
+              'Kwa maswali yoyote kuhusu sera hii au usalama wa data yako, tafadhali tembelea ukurasa wetu wa Contact Us au tutumie barua pepe kwa privacy@kikwetuconnect.com.',
+              'For any questions about this policy or your data security, please visit our Contact Us page or email us at privacy@kikwetuconnect.com.'
             )}</p>
           </section>
         </div>

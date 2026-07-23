@@ -35,10 +35,11 @@ export const Offline = {
   },
   async cacheReplies(threadId: string, replies: Reply[]) {
     const d = getOfflineDB();
-    const tx = d.transaction('rw', 'replies', () =>
-      replies.map(r => d.table('replies').put({ ...r, thread_id: threadId }))
-    );
-    await tx;
+    await d.transaction('rw', 'replies', async () => {
+      for (const r of replies) {
+        await d.table('replies').put({ ...r, thread_id: threadId });
+      }
+    });
   },
   async cacheProfile(profile: Profile) {
     const d = getOfflineDB();
@@ -71,5 +72,33 @@ export const Offline = {
   async getCachedThreads(): Promise<Thread[]> {
     const d = getOfflineDB();
     return d.table('threads').orderBy('created_at').reverse().toArray();
+  },
+
+  async drainSyncQueue(sb: ReturnType<typeof import('./supabase').createClient>): Promise<number> {
+    const d = getOfflineDB();
+    const pending = await d.table('syncQueue').where('synced').equals(0).toArray();
+    let drained = 0;
+    for (const action of pending) {
+      try {
+        if (action.type === 'createThread') {
+          await sb.from('threads').insert(action.payload).select().single();
+        } else if (action.type === 'createReply') {
+          await sb.from('replies').insert(action.payload).select().single();
+        } else if (action.type === 'vote') {
+          const p = action.payload as Record<string, string>;
+          await sb.rpc('toggle_vote', {
+            p_user_id: action.userId,
+            p_entity_id: p.entityId,
+            p_entity_type: p.entityType,
+            p_vote_type: p.voteType,
+          });
+        }
+        if (action.id) await d.table('syncQueue').update(action.id, { synced: true });
+        drained++;
+      } catch {
+        // Skip failed actions, will retry on next drain
+      }
+    }
+    return drained;
   },
 };

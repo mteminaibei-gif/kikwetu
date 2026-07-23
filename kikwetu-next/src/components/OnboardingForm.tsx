@@ -88,11 +88,11 @@ export default function OnboardingForm() {
 
         <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
           <button onClick={() => { setMode('signup'); setStep(1); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'signup' ? 'bg-white dark:bg-gray-700 shadow text-orange-500' : 'text-gray-500'}`}>
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'signup' ? 'bg-white dark:bg-gray-700 shadow text-brand-orange' : 'text-gray-500'}`}>
             Sign Up
           </button>
           <button onClick={() => { setMode('login'); setStep(1); }}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'login' ? 'bg-white dark:bg-gray-700 shadow text-orange-500' : 'text-gray-500'}`}>
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'login' ? 'bg-white dark:bg-gray-700 shadow text-brand-orange' : 'text-gray-500'}`}>
             Log In
           </button>
         </div>
@@ -103,16 +103,16 @@ export default function OnboardingForm() {
               <label className="text-xs font-bold text-gray-500">Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com" onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500">Password</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Your password" onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
             </div>
             <button onClick={handleLogin} disabled={loading}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all disabled:opacity-50">
+              className="w-full bg-brand-green hover:bg-brand-darkGreen text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all disabled:opacity-50">
               {loading ? 'Loading...' : 'Log In'}
             </button>
             <div className="relative my-2">
@@ -131,19 +131,19 @@ export default function OnboardingForm() {
               <label className="text-xs font-bold text-gray-500">Full Name</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}
                 placeholder="e.g. Samwel Nyamu"
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500">Email <span className="text-orange-500">*</span></label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500">Password <span className="text-orange-500">*</span></label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Min 6 characters" minLength={6}
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
@@ -151,11 +151,11 @@ export default function OnboardingForm() {
                 <span className="flex items-center px-3 bg-gray-100 dark:bg-gray-800 border border-r-0 border-gray-200 dark:border-gray-700 rounded-l-xl text-sm font-bold text-emerald-600">+254</span>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                   placeholder="712 345 678"
-                  className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                  className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
               </div>
             </div>
             <button onClick={() => setStep(2)}
-              className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all">
+              className="w-full bg-brand-orange hover:bg-brand-lightOrange text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all">
               Continue
             </button>
             <div className="relative my-2">
@@ -173,7 +173,7 @@ export default function OnboardingForm() {
             <div>
               <label className="text-xs font-bold text-gray-500">Primary County</label>
               <select value={county} onChange={e => setCounty(e.target.value)}
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50">
                 <option value="">Select your county...</option>
                 {COUNTIES.map(c => <option key={c}>{c}</option>)}
               </select>
@@ -184,7 +184,7 @@ export default function OnboardingForm() {
                 {['en', 'sw', 'both'].map(l => (
                   <button key={l} onClick={() => setPrefLang(l)}
                     className={`flex-1 py-3 border-2 rounded-xl text-sm font-bold transition-all ${
-                      prefLang === l ? 'border-orange-500 bg-orange-500/10 text-orange-500' : 'border-gray-200 dark:border-gray-700'
+                      prefLang === l ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-gray-200 dark:border-gray-700'
                     }`}>
                     {l === 'en' ? 'English' : l === 'sw' ? 'Kiswahili' : 'Both'}
                   </button>
@@ -210,7 +210,7 @@ export default function OnboardingForm() {
                 Back
               </button>
               <button onClick={() => setStep(3)}
-                className="flex-1 bg-orange-500 hover:bg-orange-400 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all">
+                className="flex-1 bg-brand-orange hover:bg-brand-lightOrange text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all">
                 Continue
               </button>
             </div>
@@ -218,7 +218,7 @@ export default function OnboardingForm() {
         ) : (
           <div className="space-y-4">
             <div className="flex flex-col items-center space-y-4">
-              <div className="w-24 h-24 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-4xl border-4 border-orange-500/30">
+              <div className="w-24 h-24 rounded-2xl bg-brand-green/10 flex items-center justify-center text-4xl border-4 border-brand-orange/30">
                 {name ? name[0].toUpperCase() : '?'}
               </div>
               <div>
@@ -228,7 +228,7 @@ export default function OnboardingForm() {
                   <input type="text" value={handle} onChange={e => setHandle(e.target.value)}
                     placeholder={name.toLowerCase().replace(/\s+/g, '')}
                     onKeyDown={e => e.key === 'Enter' && handleSignUp()}
-                    className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                    className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/50" />
                 </div>
               </div>
               <p className="text-xs text-gray-400 text-center">Your Heshima starts at 100. Earn more by helping the community!</p>
@@ -239,7 +239,7 @@ export default function OnboardingForm() {
                 Back
               </button>
               <button onClick={handleSignUp} disabled={loading}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all disabled:opacity-50">
+                className="flex-1 bg-brand-green hover:bg-brand-darkGreen text-white font-bold py-3.5 rounded-xl text-sm shadow-lg transition-all disabled:opacity-50">
                 {loading ? 'Creating...' : 'Enter Kikwetu'}
               </button>
             </div>

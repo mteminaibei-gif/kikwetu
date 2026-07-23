@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { timeAgo, formatNumber, cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -44,14 +45,20 @@ export default function FeedView() {
   const { threads, loadThreads, spaces, loadSpaces, loading, subscribeToFeed } = useApp();
   const { user } = useAuth();
   const { show } = useToast();
-  const [view, setView] = useState('feed');
+  const router = useRouter();
+  const [view, setView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get('view');
+      if (v && ['feed', 'spaces', 'leaderboard', 'profile'].includes(v)) return v;
+    }
+    return 'feed';
+  });
   const [feedTab, setFeedTab] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
   const [lang, setLang] = useState<'en' | 'sw'>('en');
   const [joinedSpaces, setJoinedSpaces] = useState<Record<string, boolean>>({});
   const [quizAnswer, setQuizAnswer] = useState<string | null>(null);
-
-  useEffect(() => { loadThreads(); loadSpaces(); }, [loadThreads, loadSpaces]);
 
   useEffect(() => {
     const unsub = subscribeToFeed();
@@ -83,7 +90,7 @@ export default function FeedView() {
       <aside className="hidden md:block md:col-span-1 space-y-6">
         <nav className="space-y-1">
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setView(t.id)}
+            <button key={t.id} onClick={() => { setView(t.id); router.replace(`/feed?view=${t.id}`, { scroll: false }); }}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all',
                 view === t.id ? 'bg-brand-green text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -100,7 +107,7 @@ export default function FeedView() {
           <span>Andika (Post)</span>
         </button>
 
-        <div className="savannah-card p-4">
+        <div className="sun-card p-4">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Utu & Heshima</h4>
             <span className="text-[10px] bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">Top 5%</span>
@@ -119,7 +126,7 @@ export default function FeedView() {
         {view === 'feed' && (
           <div className="space-y-6">
             <div onClick={() => setShowCreate(true)}
-              className="savannah-card p-4 cursor-pointer hover:border-brand-orange transition-all">
+              className="sun-card p-4 cursor-pointer hover:border-brand-orange transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-bold">
                   {user?.full_name?.[0]?.toUpperCase() || 'U'}
@@ -154,7 +161,7 @@ export default function FeedView() {
               <div className="space-y-4">
                 {filtered.map(thread => (
                   <div key={thread.id}
-                    className="savannah-card p-5 space-y-4">
+                    className="sun-card p-5 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-brand-green/20 flex items-center justify-center text-sm font-bold text-brand-green">
@@ -212,7 +219,7 @@ export default function FeedView() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {SPACES_DATA.map(s => (
-                <div key={s.name} className="savannah-card p-5 flex flex-col justify-between space-y-4">
+                <div key={s.name} className="sun-card p-5 flex flex-col justify-between space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-xl bg-brand-orange/10 flex items-center justify-center text-xl font-bold">{s.icon}</div>
                     <div>
@@ -234,7 +241,7 @@ export default function FeedView() {
         )}
 
         {view === 'leaderboard' && (
-          <div className="savannah-card p-6 space-y-4">
+          <div className="sun-card p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold">{tr('Nyota za Kikwetu', 'Leaderboard & Karma')}</h3>
@@ -274,7 +281,7 @@ export default function FeedView() {
         )}
 
         {view === 'profile' && user && (
-          <div className="savannah-card rounded-2xl overflow-hidden">
+          <div className="sun-card rounded-2xl overflow-hidden">
             <div className="h-32 bg-gradient-to-r from-brand-green to-brand-orange" />
             <div className="px-6 pb-6 relative">
               <div className="flex justify-between items-end -mt-12 mb-4">
@@ -312,7 +319,7 @@ export default function FeedView() {
       </main>
 
       <aside className="hidden lg:block lg:col-span-1 space-y-6">
-        <div className="savannah-card p-4 space-y-3">
+        <div className="sun-card p-4 space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center justify-between">
             <span>{tr('Inauma Kenya', 'Trending in Kenya')}</span>
             <svg className="w-3.5 h-3.5 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
@@ -331,7 +338,7 @@ export default function FeedView() {
           </div>
         </div>
 
-        <div className="savannah-card p-4 space-y-3">
+        <div className="sun-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 uppercase tracking-wide">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />

@@ -7,118 +7,139 @@
   --color-brand-darkGreen: #162F21;
   --color-brand-orange: #D96B27;
   --color-brand-lightOrange: #F48C4C;
-  --color-brand-bgLight: #FFF8F0;
+  --color-brand-bgLight: #FFFBF0;
   --color-brand-bgDark: #121212;
   --color-brand-cardDark: #1E1E1E;
   --color-brand-cardLight: #FFFFFF;
-  --color-brand-surface: #FFF8F0;
-  --color-savannah-sun: #E8A040;
-  --color-savannah-gold: #D4A04A;
+  --color-brand-surface: #FFFBF0;
+  --color-sun-glow: #FDE8A0;
+  --color-sun-warm: #F5D6A8;
+  --color-sun-gold: #E8A040;
+  --color-sun-amber: #C4956A;
   --color-savannah-dust: #C4956A;
   --color-savannah-sky: #FDE8D0;
   --color-savannah-earth: #8B6914;
-  --color-savannah-brown: #6B4423;
   --color-savannah-cream: #F5E6D0;
   --color-savannah-terracotta: #C8644A;
-}
-
-@layer base {
-  .dark {
-    --color-bg-primary: #0A0A0A;
-    --color-bg-card: #1A1A1A;
-    --color-text-primary: #f3f4f6;
-    --color-text-secondary: #9ca3af;
-  }
 }
 
 body {
   font-family: var(--font-sans);
   scroll-behavior: smooth;
+  color: #1F2937;
+}
+.dark body {
+  color: #E5E7EB;
 }
 
-/* ===== VISIBLE SAVANNAH THEME STYLING ===== */
+/* Headings always punchy */
+h1, h2, h3, h4, h5, h6, .font-black, .font-bold {
+  color: #274E37;
+}
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
+.dark .font-black, .dark .font-bold {
+  color: #F3F4F6;
+}
 
-/* Warm savannah background for light mode */
-.savannah-bg {
-  background-color: #FFF8F0;
+/* ===== SUN-GLOW WHITE THEME ===== */
+
+/* Sun-kissed background */
+.sun-glow-bg {
+  background-color: #FFFBF0;
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(217, 107, 39, 0.06) 0%, transparent 100%),
-    radial-gradient(ellipse 80% 40% at 80% 100%, rgba(200, 100, 74, 0.05) 0%, transparent 100%),
-    radial-gradient(ellipse 60% 30% at 20% 100%, rgba(232, 160, 64, 0.04) 0%, transparent 100%);
+    radial-gradient(ellipse 100% 50% at 50% -10%, rgba(232, 160, 64, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 40% at 80% 100%, rgba(253, 232, 160, 0.06) 0%, transparent 100%),
+    radial-gradient(ellipse 60% 30% at 20% 100%, rgba(245, 214, 168, 0.05) 0%, transparent 100%);
 }
 
-/* Savannah card styling with warm border */
-.savannah-card {
+/* Card that glows like it's catching golden hour sun */
+.sun-card {
   background: #FFFFFF;
-  border: 1px solid rgba(200, 149, 106, 0.25);
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(139, 105, 20, 0.06), 0 4px 12px rgba(139, 105, 20, 0.04);
+  border: 1px solid rgba(232, 160, 64, 0.15);
+  border-radius: 20px;
+  box-shadow:
+    0 1px 2px rgba(139, 105, 20, 0.04),
+    0 4px 12px rgba(232, 160, 64, 0.06),
+    0 0 0 1px rgba(232, 160, 64, 0.03);
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.savannah-card::before {
+.sun-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #274E37, #D96B27, #E8A040);
-  opacity: 0.6;
+  background: linear-gradient(90deg, #274E37 0%, #D96B27 40%, #E8A040 70%, rgba(232, 160, 64, 0.2) 100%);
+  opacity: 0.7;
 }
 
-.savannah-card:hover {
-  border-color: rgba(217, 107, 39, 0.3);
-  box-shadow: 0 4px 16px rgba(139, 105, 20, 0.1);
-}
-
-/* Warm button styling */
-.savannah-btn-primary {
-  background: linear-gradient(135deg, #D96B27, #C8644A);
-  color: white;
-  border: none;
-  transition: all 0.3s;
-}
-.savannah-btn-primary:hover {
-  background: linear-gradient(135deg, #F48C4C, #D96B27);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(217, 107, 39, 0.35);
-}
-
-/* Savannah pattern overlay (subtle Maasai-inspired geometric) */
-.savannah-pattern-overlay {
-  position: relative;
-}
-.savannah-pattern-overlay::after {
+.sun-card::after {
   content: '';
   position: absolute;
-  inset: 0;
-  opacity: 0.03;
-  background-image:
-    repeating-linear-gradient(45deg, #8B6914 0px, #8B6914 1px, transparent 1px, transparent 6px),
-    repeating-linear-gradient(-45deg, #D96B27 0px, #D96B27 1px, transparent 1px, transparent 6px);
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 100% 0%, rgba(232, 160, 64, 0.04) 0%, transparent 60%);
   pointer-events: none;
+  transition: opacity 0.5s;
 }
 
-/* Decorative acacia tree silhouette in corners */
-.savannah-acacia {
+.sun-card:hover {
+  border-color: rgba(232, 160, 64, 0.3);
+  box-shadow:
+    0 4px 20px rgba(232, 160, 64, 0.1),
+    0 0 0 1px rgba(232, 160, 64, 0.05),
+    0 8px 32px rgba(139, 105, 20, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Golden accent button */
+.sun-btn {
+  background: linear-gradient(135deg, #D96B27, #E8A040);
+  color: white;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  overflow: hidden;
 }
-.savannah-acacia::before {
-  content: '🌳';
-  position: absolute;
-  font-size: 3rem;
-  opacity: 0.08;
-  pointer-events: none;
+.sun-btn:hover {
+  background: linear-gradient(135deg, #F48C4C, #D96B27);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(217, 107, 39, 0.3);
+}
+.sun-btn:active {
+  transform: translateY(0);
 }
 
-/* Maasai-inspired border pattern (bottom decorative bar) */
-.savannah-border-pattern {
+/* Golden hour glow divider */
+.sun-divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(232, 160, 64, 0.2) 20%, #E8A040 50%, rgba(232, 160, 64, 0.2) 80%, transparent 100%);
+}
+
+/* Warm golden pill tag */
+.sun-tag {
+  background: linear-gradient(135deg, rgba(232, 160, 64, 0.08), rgba(217, 107, 39, 0.06));
+  color: #C8644A;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 160, 64, 0.15);
+}
+
+/* Maasai-inspired nav border */
+.sun-nav-border {
   position: relative;
   border-bottom: none !important;
 }
-.savannah-border-pattern::after {
+.sun-nav-border::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -131,91 +152,78 @@ body {
     #D96B27 10px, #D96B27 14px,
     #E8A040 14px, #E8A040 18px,
     #C8644A 18px, #C8644A 22px,
-    transparent 22px, transparent 26px
+    transparent 22px, transparent 28px
   );
 }
 
-/* Sunset gradient text */
-.text-savannah-sunset {
-  background: linear-gradient(135deg, #D96B27, #E8A040, #F5D6A8);
+/* Golden hour text gradient */
+.text-sun-glow {
+  background: linear-gradient(135deg, #D96B27, #E8A040, #FDE8A0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.text-savannah-green {
+.text-sun-green {
   background: linear-gradient(135deg, #274E37, #3D7A56);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Savannah divider */
-.savannah-divider {
-  border: none;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #D96B27, #E8A040, #274E37, transparent);
-  opacity: 0.3;
-}
-
-/* Earthy warm tag pill */
-.savannah-tag {
-  background: rgba(217, 107, 39, 0.08);
-  color: #C8644A;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid rgba(217, 107, 39, 0.15);
-}
-
 /* ===== ANIMATIONS ===== */
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes fadeInLeft {
-  from { opacity: 0; transform: translateX(-30px); }
+@keyframes fadeLeft {
+  from { opacity: 0; transform: translateX(-24px); }
   to { opacity: 1; transform: translateX(0); }
 }
-@keyframes fadeInRight {
-  from { opacity: 0; transform: translateX(30px); }
+@keyframes fadeRight {
+  from { opacity: 0; transform: translateX(24px); }
   to { opacity: 1; transform: translateX(0); }
 }
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.9); }
+@keyframes scalePop {
+  from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-8px); }
 }
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 20px rgba(217, 107, 39, 0.15); }
-  50% { box-shadow: 0 0 40px rgba(217, 107, 39, 0.3); }
+@keyframes sunPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(232, 160, 64, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(232, 160, 64, 0.25); }
 }
 @keyframes shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
-@keyframes sunGlow {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.08); opacity: 1; }
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
 }
-@keyframes savannahWind {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 200% 0%; }
+@keyframes slideReveal {
+  0% { clip-path: inset(0 100% 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-4px) rotate(0.5deg); }
+  66% { transform: translateY(-2px) rotate(-0.3deg); }
 }
 
-.animate-fadeInUp { animation: fadeInUp 0.6s ease-out forwards; }
-.animate-fadeInLeft { animation: fadeInLeft 0.6s ease-out forwards; }
-.animate-fadeInRight { animation: fadeInRight 0.6s ease-out forwards; }
-.animate-scaleIn { animation: scaleIn 0.5s ease-out forwards; }
-.animate-float { animation: float 4s ease-in-out infinite; }
-.animate-pulseGlow { animation: pulseGlow 3s ease-in-out infinite; }
-.animate-sunGlow { animation: sunGlow 4s ease-in-out infinite; }
+.animate-fadeUp { animation: fadeUp 0.6s ease-out forwards; }
+.animate-fadeLeft { animation: fadeLeft 0.6s ease-out forwards; }
+.animate-fadeRight { animation: fadeRight 0.6s ease-out forwards; }
+.animate-scalePop { animation: scalePop 0.5s ease-out forwards; }
+.animate-float { animation: float 5s ease-in-out infinite; }
+.animate-sunPulse { animation: sunPulse 3s ease-in-out infinite; }
 .animate-shimmer { background-size: 200% auto; animation: shimmer 3s linear infinite; }
+.animate-glowPulse { animation: glowPulse 4s ease-in-out infinite; }
+.animate-cardFloat { animation: cardFloat 6s ease-in-out infinite; }
 
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
@@ -223,7 +231,86 @@ body {
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
 .delay-600 { animation-delay: 600ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-800 { animation-delay: 800ms; }
 
-/* Scrollbar */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ===== DECORATIVE BIRDS & ANIMALS ===== */
+
+/* V-shaped birds flock */
+.bird-flock {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12;
+}
+.bird {
+  display: inline-block;
+  font-size: 14px;
+  animation: birdFly 18s linear infinite;
+  transform-origin: center;
+}
+.bird:nth-child(2) { animation-delay: -6s; font-size: 11px; }
+.bird:nth-child(3) { animation-delay: -12s; font-size: 9px; }
+.bird:nth-child(4) { animation-delay: -3s; font-size: 12px; }
+.bird:nth-child(5) { animation-delay: -9s; font-size: 10px; }
+.bird:nth-child(6) { animation-delay: -15s; font-size: 8px; }
+
+@keyframes birdFly {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  5% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(120vw, -20vh) scale(0.5); opacity: 0; }
+}
+
+/* Acacia tree silhouette */
+.acacia-silhouette {
+  position: absolute;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.06;
+  font-size: 120px;
+  line-height: 1;
+  user-select: none;
+  animation: acaciaSway 8s ease-in-out infinite;
+}
+.acacia-silhouette.right { right: 5%; }
+.acacia-silhouette.left { left: 5%; bottom: -10px; font-size: 80px; animation-delay: -3s; }
+
+@keyframes acaciaSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(2deg); }
+}
+
+/* Giraffe walking slowly */
+.giraffe-walk {
+  position: absolute;
+  bottom: 20px;
+  pointer-events: none;
+  z-index: 0;
+  font-size: 28px;
+  opacity: 0.07;
+  animation: giraffeWalk 30s linear infinite;
+  user-select: none;
+}
+@keyframes giraffeWalk {
+  0% { transform: translate(-100px, 0); }
+  100% { transform: translate(calc(100vw + 100px), 0); }
+}
+
+/* Sunset sun glow decorative */
+.sun-decorative {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,160,64,0.08) 0%, transparent 70%);
+  animation: sunDecorativePulse 6s ease-in-out infinite;
+}
+@keyframes sunDecorativePulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.08); opacity: 1; }
+}

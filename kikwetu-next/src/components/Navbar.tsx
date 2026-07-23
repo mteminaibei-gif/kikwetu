@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
+import { createClient } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 function BellIcon({ className }: { className?: string }) { return <svg xmlns="http://www.w3.org/2000/svg" className={cn('h-5 w-5', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>; }
@@ -24,6 +25,10 @@ export default function Navbar() {
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ id: string; title: string; author: { full_name: string } }[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchTimer = useRef<any>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -48,8 +53,14 @@ export default function Navbar() {
     return () => { window.removeEventListener('online', h); window.removeEventListener('offline', h); };
   }, []);
 
+
+
+  const toggleTheme = useCallback(() => setDark(prev => !prev), []);
+  const handleSignOut = useCallback(async () => { await signOut(); setProfileOpen(false); setMobileOpen(false); router.push('/'); }, [signOut, router]);
+
   useEffect(() => {
     const h = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
     };
@@ -57,11 +68,33 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const toggleTheme = useCallback(() => setDark(prev => !prev), []);
-  const handleSignOut = useCallback(async () => { await signOut(); setProfileOpen(false); setMobileOpen(false); router.push('/'); }, [signOut, router]);
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim() || !user) { setSearchResults([]); setSearchOpen(false); return; }
+    const sb = createClient();
+    const { data } = await sb.from('threads')
+      .select('id, title, author:profiles(full_name)')
+      .or(`title.ilike.%${q}%,content.ilike.%${q}%`)
+      .limit(8);
+    if (data) {
+      setSearchResults(data as unknown as typeof searchResults);
+      setSearchOpen(data.length > 0);
+    }
+  }, [user]);
+
+  const handleSearchChange = useCallback((val: string) => {
+    setSearchQuery(val);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => doSearch(val), 300);
+  }, [doSearch]);
+
+  const handleSearchSelect = useCallback((id: string) => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    router.push(`/thread/${id}`);
+  }, [router]);
 
   return (
-    <header className="sticky top-0 z-50 savannah-border-pattern bg-white/90 dark:bg-brand-cardDark/90 backdrop-blur-md shadow-sm border-b-0">
+    <header className="sticky top-0 z-50 sun-nav-border bg-white/90 dark:bg-brand-cardDark/90 backdrop-blur-md shadow-sm border-b-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         <Link href={user ? '/feed' : '/'} className="flex items-center gap-2 shrink-0 group">
           <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-9 w-auto group-hover:scale-105 transition-transform drop-shadow-sm" />
@@ -70,11 +103,23 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {pathname !== '/' && (
-          <div className="hidden md:flex flex-1 max-w-md relative">
+        {user && pathname !== '/' && (
+          <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span>
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." className="w-full pl-10 pr-10 py-2 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 text-sm transition-all" />
+            <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." className="w-full pl-10 pr-10 py-2 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 text-sm transition-all" />
             <button className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-brand-orange transition-colors" title="Voice Search"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" /></svg></button>
+            {searchOpen && (
+              <div className="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
+                {searchResults.map(r => (
+                  <button key={r.id} onClick={() => handleSearchSelect(r.id)}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
+                    <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <span className="truncate font-medium">{r.title}</span>
+                    <span className="text-[10px] text-gray-400 shrink-0 ml-auto">{r.author?.full_name || ''}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -13,9 +13,8 @@ export default function FeedPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!authLoading && !user) { router.push('/onboarding'); return; }
-    loadThreads();
-    loadSpaces();
+    if (!authLoading && !user) { router.push('/onboarding'); }
+    if (user) { loadThreads(); loadSpaces(); }
   }, [user, authLoading, router, loadThreads, loadSpaces]);
 
   if (authLoading) return <LoadingSpinner />;

@@ -161,16 +161,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const subscribeToFeed = useCallback(() => {
     const sb = createClient();
-    const channel = sb.channel('feed-live').on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'threads' },
-      (p) => {
-        const newThread = p.new as Thread;
-        setState(prev => {
-          if (prev.threads.find(t => t.id === newThread.id)) return prev;
-          return { ...prev, threads: [{ ...newThread, author: { full_name: 'New', avatar_url: '', verified: false, county: '' } }, ...prev.threads] };
-        });
-      }
-    ).subscribe();
+    const channel = sb.channel('feed-live')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'threads' },
+        (p) => {
+          const newThread = p.new as Thread;
+          setState(prev => {
+            if (prev.threads.find(t => t.id === newThread.id)) return prev;
+            return { ...prev, threads: [{ ...newThread, author: { full_name: 'New', avatar_url: '', verified: false, county: '' } }, ...prev.threads] };
+          });
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'threads', filter: `upvotes_count=neq.${-1}` },
+        (p) => {
+          const updated = p.new as Thread;
+          setState(prev => ({
+            ...prev,
+            threads: prev.threads.map(t => t.id === updated.id ? { ...t, upvotes_count: updated.upvotes_count, reply_count: updated.reply_count } : t),
+          }));
+        }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'replies' },
+        (p) => {
+          const newReply = p.new as Reply;
+          setState(prev => ({
+            ...prev,
+            replies: [...prev.replies, newReply],
+            threads: prev.threads.map(t => t.id === newReply.thread_id ? { ...t, reply_count: (t.reply_count || 0) + 1 } : t),
+          }));
+        }
+      )
+      .subscribe();
     return () => { sb.removeChannel(channel); };
   }, []);
 
@@ -183,6 +206,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })();
     }
   }, [user, loadNotifications, update]);
+
+  // Drain offline queue when coming back online
+  useEffect(() => {
+    const handleOnline = async () => {
+      if (!user) return;
+      const sb = createClient();
+      const drained = await Offline.drainSyncQueue(sb);
+      if (drained > 0) {
+        const pending = await Offline.getPendingCount();
+        update({ pendingSyncCount: pending });
+        loadThreads();
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user, update, loadThreads]);
+
+  // Also drain on mount if online
+  useEffect(() => {
+    if (user && navigator.onLine) {
+      (async () => {
+        const sb = createClient();
+        const drained = await Offline.drainSyncQueue(sb);
+        if (drained > 0) {
+          const pending = await Offline.getPendingCount();
+          update({ pendingSyncCount: pending });
+          loadThreads();
+        }
+      })();
+    }
+  }, [user, update, loadThreads]);
 
   return (
     <AppContext.Provider value={{
