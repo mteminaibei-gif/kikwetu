@@ -5,8 +5,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 const SUPABASE_CONFIG = {
-    url: 'https://xzfsthlurdlrnegzejeo.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6ZnN0aGx1cmRscm5lZ3plamVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3ODg2ODQsImV4cCI6MjEwMDM2NDY4NH0.HFIECpzHhgTjz_Zpi-PURoKI6EN2Eob0G0df-uGGTSM
+    url:'https://xzfsthlurdlrnegzejeo.supabase.co',
+    anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6ZnN0aGx1cmRscm5lZ3plamVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3ODg2ODQsImV4cCI6MjEwMDM2NDY4NH0.HFIECpzHhgTjz_Zpi-PURoKI6EN2Eob0G0df-uGGTSM
 '
 };
 
