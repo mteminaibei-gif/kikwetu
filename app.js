@@ -270,7 +270,7 @@ function kikwetuMasterHub() {
         // LIFECYCLE & WIRING ENGINE
         // ═══════════════════════════════════════════════════════════
 
-        init() {
+        async init() {
             this.loadStoredState();
             this.loadDarkMode();
             this.handleHash();
@@ -295,13 +295,20 @@ function kikwetuMasterHub() {
 
             // Auth state change
             DB.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_IN' && session) {
-                    currentUser = session.user;
-                    await this.loadUserProfile(session.user.id);
-                    this.isLoggedIn = true;
-                    this.saveState();
-                    this.startRealtimeSubscriptions();
-                    this.startOfflineSync();
+                console.log('[Auth] Event:', event);
+                if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    if (session && session.user) {
+                        currentUser = session.user;
+                        await this.loadUserProfile(session.user.id);
+                        this.isLoggedIn = true;
+                        this.saveState();
+                        this.startRealtimeSubscriptions();
+                        this.startOfflineSync();
+                    } else {
+                        currentUser = null;
+                        this.isLoggedIn = false;
+                        this.saveState();
+                    }
                 } else if (event === 'SIGNED_OUT') {
                     currentUser = null;
                     this.isLoggedIn = false;
@@ -312,15 +319,19 @@ function kikwetuMasterHub() {
             });
 
             // Check existing session
-            DB.getSession().then(async ({ session }) => {
-                if (session) {
-                    currentUser = session.user;
-                    await this.loadUserProfile(session.user.id);
-                    this.isLoggedIn = true;
-                    this.startRealtimeSubscriptions();
-                    this.startOfflineSync();
-                }
-            });
+            const { data: { session } } = await DB.getSession();
+            if (session && session.user) {
+                currentUser = session.user;
+                await this.loadUserProfile(session.user.id);
+                this.isLoggedIn = true;
+                this.startRealtimeSubscriptions();
+                this.startOfflineSync();
+            } else {
+                // No valid session — clear stale localStorage
+                currentUser = null;
+                this.isLoggedIn = false;
+                this.saveState();
+            }
 
             window.addEventListener('hashchange', () => this.handleHash());
             window.addEventListener('popstate', (e) => {
