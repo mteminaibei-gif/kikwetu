@@ -251,6 +251,7 @@ function kikwetuMasterHub() {
         // ═══════════════════════════════════════════
         activeModal: null,
         newPostContent: '',
+        newAnswerContent: '',
         newPostSpace: 'general',
         newPostType: 'question',
         searchQuery: '',
@@ -579,12 +580,28 @@ function kikwetuMasterHub() {
                 currentUser = data.user;
                 this.isLoggedIn = true;
                 this.heshimaScore = 100;
+                // Create profile row in profiles table
+                const profileResult = await DB.createProfile(data.user.id, {
+                    full_name: this.userName,
+                    username: this.userHandle,
+                    phone: this.userPhone,
+                    county: this.userCounty,
+                    preferred_lang: this.preferredLang,
+                    interests: this.userInterests,
+                    avatar_url: this.userAvatar
+                });
+                if (profileResult && !profileResult.error) {
+                    this.userRole = profileResult.data.role || 'user';
+                }
                 this.startRealtimeSubscriptions();
                 this.startOfflineSync();
+                this.saveState();
+                this.go('feed');
+                this.showToast('Karibu KikwetuConnect! Your Heshima starts at 100.');
+            } else {
+                this.showToast('Check your email to confirm your account.');
+                this.go('landing');
             }
-            this.saveState();
-            this.go('feed');
-            this.showToast('Karibu KikwetuConnect! Your Heshima starts at 100.');
         },
 
         async signInWithGoogle() {
@@ -821,6 +838,10 @@ function kikwetuMasterHub() {
             window.open(`https://wa.me/?text=${text}`, '_blank');
         },
 
+        selectPostType(type) {
+            this.newPostType = type;
+        },
+
         async submitPost() {
             if (this.newPostContent.trim() === '') { this.showToast('Please write something before posting.'); return; }
             if (!currentUser) { this.go('onboarding'); return; }
@@ -844,8 +865,16 @@ function kikwetuMasterHub() {
             };
             this.feedPosts.unshift(optimisticPost);
 
+            // Resolve space slug to space ID
+            let spaceId = null;
+            if (this.newPostSpace && this.newPostSpace !== 'general') {
+                const { data: spaceData } = await DB.getSpaceBySlug(this.newPostSpace);
+                if (spaceData) spaceId = spaceData.id;
+            }
+
             const { data, error } = await DB.createThread({
                 authorId: currentUser.id,
+                spaceId: spaceId,
                 type: this.newPostType === 'question' ? 'question' : 'educative',
                 title: this.newPostContent.trim().substring(0, 100),
                 content: this.newPostContent.trim(),

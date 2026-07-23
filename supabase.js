@@ -47,6 +47,26 @@ const DB = {
         return { data, error };
     },
 
+    async createProfile(userId, metadata) {
+        if (!sb) return sbError('Supabase not connected');
+        const { data, error } = await sb
+            .from('profiles')
+            .upsert({
+                id: userId,
+                full_name: metadata.full_name,
+                username: metadata.username,
+                phone: metadata.phone || null,
+                county: metadata.county || null,
+                preferred_lang: metadata.preferred_lang || 'en',
+                interests: metadata.interests || [],
+                avatar_url: metadata.avatar_url || null,
+                heshima_score: 100
+            })
+            .select()
+            .single();
+        return { data, error };
+    },
+
     async signInWithEmail(email, password) {
         if (!sb) return sbError('Supabase not connected');
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -1017,10 +1037,10 @@ const DB = {
             try {
                 let result;
                 switch (action.type) {
-                    case 'thread':
+                    case 'createThread':
                         result = await this.createThread(action.payload);
                         break;
-                    case 'reply':
+                    case 'createReply':
                         result = await this.createReply(action.payload);
                         break;
                     case 'vote':
