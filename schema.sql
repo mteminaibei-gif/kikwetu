@@ -234,13 +234,13 @@ CREATE INDEX idx_quiz_results_quiz ON quiz_results(quiz_id);
 -- Seed daily quiz
 INSERT INTO quizzes (question, options, correct_answer_index, explanation, county, is_daily) VALUES
 ('Which historical Kenyan coastal town was a major trading center with Arabia and India before the 15th century?',
- '[\"Mombasa (Gedi/Old Town)\",\"Kisumu Port\",\"Nakuru CBD\",\"Eldoret Town\"]',
+ '["Mombasa (Gedi/Old Town)","Kisumu Port","Nakuru CBD","Eldoret Town"]'::jsonb,
  0, 'Gedi and Mombasa Old Town were major Swahili coast trading hubs dating back to the 12th century.', 'Kilifi', true),
 ('What is the recommended soil pH range for growing maize in Kenya?',
- '[\"4.5 - 5.5\",\"5.5 - 7.0\",\"7.5 - 8.5\",\"8.5 - 9.5\"]',
+ '["4.5 - 5.5","5.5 - 7.0","7.5 - 8.5","8.5 - 9.5"]'::jsonb,
  1, 'Maize grows best in slightly acidic to neutral soil (pH 5.5-7.0).', 'Trans-Nzoia', true),
 ('Which programming language is primarily used for Flutter mobile app development?',
- '[\"Java\",\"Python\",\"Dart\",\"JavaScript\"]',
+ '["Java","Python","Dart","JavaScript"]'::jsonb,
  2, 'Flutter uses Dart as its primary programming language, developed by Google.', 'Nairobi', true);
 
 
