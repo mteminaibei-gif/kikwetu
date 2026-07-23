@@ -441,6 +441,10 @@ function kikwetuMasterHub() {
 
         go(newRoute) {
             if (newRoute === 'feed' && !this.isLoggedIn) newRoute = 'onboarding';
+            // Stop thread subscription when leaving thread view
+            if (this.currentRoute === 'thread' && newRoute !== 'thread') {
+                this.stopThreadSubscription();
+            }
             this.previousRoute = this.currentRoute;
             this.currentRoute = newRoute;
             window.history.pushState({ route: newRoute }, '', `#${newRoute}`);
@@ -586,6 +590,7 @@ function kikwetuMasterHub() {
                     id: p.id,
                     type: p.type === 'educative' ? 'qa' : p.type,
                     author: p.author?.full_name || 'Anonymous',
+                    authorId: p.author_id,
                     authorAvatar: p.author?.avatar_url || '',
                     verified: p.author?.verified || false,
                     county: p.author?.county || p.county || '',
@@ -607,6 +612,7 @@ function kikwetuMasterHub() {
             const { data, error } = await DB.getLeaderboard(50);
             if (data && !error) {
                 this.leaderboard = data.map((p, i) => ({
+                    id: p.id,
                     rank: i + 1,
                     name: p.full_name || 'Anonymous',
                     county: p.county || 'Kenya',
@@ -689,7 +695,19 @@ function kikwetuMasterHub() {
 
                 if (currentUser) {
                     DB.vote(currentUser.id, postId, 'thread', 'up').then(({ error }) => {
-                        if (error) this.rollbackVote(post, -1, -1);
+                        if (error) {
+                            this.rollbackVote(post, -1, -1);
+                        } else {
+                            // Notify the thread author
+                            DB.createNotification({
+                                userId: post.authorId,
+                                type: 'upvote',
+                                actorId: currentUser.id,
+                                entityType: 'thread',
+                                entityId: postId,
+                                content: `<strong>${this.userName}</strong> upvoted your post "${(post.title || '').substring(0, 50)}..."`
+                            });
+                        }
                     });
                 } else if (typeof Offline !== 'undefined') {
                     Offline.queueAction({ type: 'vote', userId: 'anonymous', payload: { userId: 'anonymous', entityId: postId, entityType: 'thread', voteType: 'up' } });
@@ -753,6 +771,7 @@ function kikwetuMasterHub() {
                 id: `temp-${Date.now()}`,
                 type: this.newPostType === 'question' ? 'qa' : this.newPostType,
                 author: this.userName,
+                authorId: currentUser.id,
                 authorAvatar: this.userAvatar,
                 verified: false,
                 county: this.userCounty,
@@ -817,6 +836,8 @@ function kikwetuMasterHub() {
         openThread(postId) {
             this.threadPostId = postId;
             this.go('thread');
+            // Subscribe to live replies for this thread
+            this.$nextTick(() => this.startThreadSubscription(postId));
         },
 
         getThreadPost() {
@@ -831,7 +852,18 @@ function kikwetuMasterHub() {
                 ans.voted = true;
                 this.heshimaScore += 1;
                 this.saveState();
-                if (currentUser) DB.vote(currentUser.id, answerId, 'reply', 'up');
+                if (currentUser) {
+                    DB.vote(currentUser.id, answerId, 'reply', 'up').then(() => {
+                        DB.createNotification({
+                            userId: ans.authorId,
+                            type: 'upvote',
+                            actorId: currentUser.id,
+                            entityType: 'reply',
+                            entityId: answerId,
+                            content: `<strong>${this.userName}</strong> upvoted your answer.`
+                        });
+                    });
+                }
             }
         },
 
@@ -843,6 +875,7 @@ function kikwetuMasterHub() {
             const optimisticAnswer = {
                 id: `temp-${Date.now()}`,
                 author: this.userName,
+                authorId: currentUser.id,
                 avatar: this.userAvatar,
                 verified: false,
                 content: content.trim(),
@@ -862,6 +895,18 @@ function kikwetuMasterHub() {
             if (!error && data) {
                 const idx = this.threadAnswers.findIndex(a => a.id === optimisticAnswer.id);
                 if (idx > -1) this.threadAnswers[idx].id = data.id;
+                // Notify the thread author
+                const threadPost = this.getThreadPost();
+                if (threadPost && threadPost.authorId !== currentUser.id) {
+                    DB.createNotification({
+                        userId: threadPost.authorId,
+                        type: 'answer',
+                        actorId: currentUser.id,
+                        entityType: 'thread',
+                        entityId: this.threadPostId,
+                        content: `<strong>${this.userName}</strong> answered your question "${(threadPost.title || '').substring(0, 50)}..."`
+                    });
+                }
             } else {
                 if (typeof Offline !== 'undefined') {
                     await Offline.queueAction({
@@ -1075,6 +1120,29 @@ function kikwetuMasterHub() {
 
         getJoinedSpaceObjects() { return this.spacesList.filter(s => s.joined); },
 
+        async followUser(targetUserId, targetUserName) {
+            if (!this.isLoggedIn) { this.go('onboarding'); return; }
+            if (!currentUser) return;
+            const { error } = await DB.followUser(currentUser.id, targetUserId);
+            if (!error) {
+                DB.createNotification({
+                    userId: targetUserId,
+                    type: 'follow',
+                    actorId: currentUser.id,
+                    entityType: 'user',
+                    entityId: currentUser.id,
+                    content: `<strong>${this.userName}</strong> started following you.`
+                });
+                this.showToast(`You are now following ${targetUserName}`);
+            }
+        },
+
+        async unfollowUser(targetUserId) {
+            if (!currentUser) return;
+            await DB.unfollowUser(currentUser.id, targetUserId);
+            this.showToast('Unfollowed.');
+        },
+
 
         // ═══════════════════════════════════════════════════════════
         // OFFLINE SYNC ENGINE
@@ -1126,41 +1194,101 @@ function kikwetuMasterHub() {
         // REAL-TIME SUPABASE SUBSCRIPTIONS
         // ═══════════════════════════════════════════════════════════
 
+        _threadReplySub: null,
+        _feedVoteSub: null,
+        _leaderboardSub: null,
+
         startRealtimeSubscriptions() {
             if (!currentUser) return;
 
-            // Feed updates
-            const feedSub = DB.subscribeToFeed((event, payload) => {
+            // ── FEED: New threads appear live with full author data ──
+            const feedSub = DB.subscribeToFeed(async (event, payload) => {
                 if (event === 'NEW_THREAD' && payload.new) {
                     const p = payload.new;
-                    if (p.author_id !== currentUser.id) {
-                        this.feedPosts.unshift({
-                            id: p.id, type: p.type === 'educative' ? 'qa' : p.type,
-                            author: 'Community Member', authorAvatar: '', verified: false,
-                            county: p.county || '', space: 'General', time: 'Just now',
-                            title: p.title, body: p.content, votes: p.upvotes_count || 0,
-                            answers: 0, voted: false
-                        });
+                    if (p.author_id === currentUser.id) return;
+                    // Hydrate with author profile
+                    const { data: authorData } = await DB.getProfile(p.author_id);
+                    const spaceName = p.space_id ? (await DB.getSpaceBySlug(p.space_id)).data?.name : null;
+                    this.feedPosts.unshift({
+                        id: p.id,
+                        type: p.type === 'educative' ? 'qa' : p.type,
+                        author: authorData?.full_name || 'Community Member',
+                        authorAvatar: authorData?.avatar_url || '',
+                        verified: authorData?.verified || false,
+                        county: authorData?.county || p.county || '',
+                        space: spaceName || 'General',
+                        time: 'Just now',
+                        title: p.title,
+                        body: p.content,
+                        votes: p.upvotes_count || 0,
+                        answers: p.reply_count || 0,
+                        voted: false,
+                        translated: false
+                    });
+                    this.showToast(`New post: "${p.title?.substring(0, 40)}..."`);
+                }
+                if (event === 'THREAD_UPDATED' && payload.new) {
+                    const p = payload.new;
+                    const post = this.feedPosts.find(x => x.id === p.id);
+                    if (post) {
+                        post.votes = p.upvotes_count ?? post.votes;
+                        post.answers = p.reply_count ?? post.answers;
                     }
                 }
             });
             subscriptions.push(feedSub);
 
-            // Notifications
+            // ── FEED: Vote counts update live on all visible posts ──
+            const voteSub = DB.subscribeToVotes('*', (event, payload) => {
+                if (event === 'VOTE_CHANGE' && payload.new) {
+                    const v = payload.new;
+                    // Update feed posts
+                    const feedPost = this.feedPosts.find(p => p.id === v.entity_id);
+                    if (feedPost) {
+                        if (v.vote_type === 'up') feedPost.votes += 1;
+                        else if (v.vote_type === 'down') feedPost.votes = Math.max(0, feedPost.votes - 1);
+                    }
+                    // Update thread answers
+                    const threadAns = this.threadAnswers.find(a => a.id === v.entity_id);
+                    if (threadAns) {
+                        if (v.vote_type === 'up') threadAns.votes += 1;
+                        else if (v.vote_type === 'down') threadAns.votes = Math.max(0, threadAns.votes - 1);
+                    }
+                }
+                // Handle DELETE (vote removed)
+                if (event === 'VOTE_CHANGE' && payload.old && !payload.new) {
+                    const v = payload.old;
+                    const feedPost = this.feedPosts.find(p => p.id === v.entity_id);
+                    if (feedPost) {
+                        if (v.vote_type === 'up') feedPost.votes = Math.max(0, feedPost.votes - 1);
+                        else feedPost.votes += 1;
+                    }
+                }
+            });
+            subscriptions.push(voteSub);
+
+            // ── NOTIFICATIONS: Appear live with badge count ──
             const notifSub = DB.subscribeToNotifications(currentUser.id, (event, payload) => {
                 if (event === 'NEW_NOTIFICATION' && payload.new) {
                     const n = payload.new;
                     this.notifications.unshift({
-                        id: n.id, icon: this.getNotificationIcon(n.type),
-                        iconBg: this.getNotificationBg(n.type), text: n.content,
-                        time: 'Just now', read: false
+                        id: n.id,
+                        icon: this.getNotificationIcon(n.type),
+                        iconBg: this.getNotificationBg(n.type),
+                        text: n.content,
+                        time: 'Just now',
+                        read: false
                     });
                     this.unreadCount += 1;
+                    // Browser notification if permitted
+                    if (Notification.permission === 'granted') {
+                        new Notification('KikwetuConnect', { body: n.content.replace(/<[^>]*>/g, ''), icon: '/icon-192.png' });
+                    }
                 }
             });
             subscriptions.push(notifSub);
 
-            // Heshima
+            // ── HESHIMA: Score updates live ──
             const heshimaSub = DB.subscribeToHeshima(currentUser.id, (event, payload) => {
                 if (event === 'HESHIMA_UPDATE' && payload.new) {
                     this.heshimaScore = payload.new.heshima_score;
@@ -1169,7 +1297,7 @@ function kikwetuMasterHub() {
             });
             subscriptions.push(heshimaSub);
 
-            // Live rooms
+            // ── LIVE ROOMS: Room list updates live ──
             const roomSub = DB.subscribeToLiveRooms((event, payload) => {
                 if (event === 'ROOM_CHANGE' && payload.new) {
                     const room = payload.new;
@@ -1189,6 +1317,26 @@ function kikwetuMasterHub() {
             });
             subscriptions.push(roomSub);
 
+            // ── LEADERBOARD: Rankings update live when profiles change ──
+            const lbSub = DB.subscribeToHeshima('*', (event, payload) => {
+                if (event === 'HESHIMA_UPDATE' && payload.new) {
+                    const updated = payload.new;
+                    const entry = this.leaderboard.find(e => e.id === updated.id);
+                    if (entry) {
+                        entry.pts = updated.heshima_score;
+                    } else {
+                        // New high scorer — reload leaderboard
+                        this.loadLeaderboard();
+                    }
+                }
+            });
+            subscriptions.push(lbSub);
+
+            // Request notification permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+
             // Load initial data
             this.loadFeedPosts();
             this.loadLeaderboard();
@@ -1198,7 +1346,55 @@ function kikwetuMasterHub() {
             console.log('[KikwetuHub] Realtime subscriptions active');
         },
 
+        // Subscribe to replies when viewing a specific thread
+        startThreadSubscription(threadId) {
+            this.stopThreadSubscription();
+            if (!threadId) return;
+
+            const sub = DB.subscribeToReplies(threadId, async (event, payload) => {
+                if (event === 'NEW_REPLY' && payload.new) {
+                    const r = payload.new;
+                    if (r.author_id === currentUser?.id) return;
+                    // Hydrate with author
+                    const { data: authorData } = await DB.getProfile(r.author_id);
+                    const newReply = {
+                        id: r.id,
+                        author: authorData?.full_name || 'Community Member',
+                        authorId: r.author_id,
+                        avatar: authorData?.avatar_url || '',
+                        verified: authorData?.verified || false,
+                        content: r.content,
+                        votes: r.upvotes_count || 0,
+                        time: 'Just now',
+                        voted: false,
+                        replies: []
+                    };
+                    this.threadAnswers.unshift(newReply);
+                    this.showToast(`New reply from ${newReply.author}`);
+                }
+                if (event === 'REPLY_UPDATED' && payload.new) {
+                    const r = payload.new;
+                    const ans = this.threadAnswers.find(a => a.id === r.id);
+                    if (ans) {
+                        ans.votes = r.upvotes_count ?? ans.votes;
+                        if (r.is_accepted) ans.accepted = true;
+                    }
+                }
+            });
+            this._threadReplySub = sub;
+            subscriptions.push(sub);
+        },
+
+        stopThreadSubscription() {
+            if (this._threadReplySub?.unsubscribe) {
+                this._threadReplySub.unsubscribe();
+                subscriptions = subscriptions.filter(s => s !== this._threadReplySub);
+                this._threadReplySub = null;
+            }
+        },
+
         stopRealtimeSubscriptions() {
+            this.stopThreadSubscription();
             subscriptions.forEach(sub => { if (sub?.unsubscribe) sub.unsubscribe(); });
             subscriptions = [];
         },

@@ -202,6 +202,31 @@ const DB = {
         return { data, error };
     },
 
+    async getThreadWithAuthor(threadId) {
+        if (!sb) return { data: null, error: { message: 'Not connected' } };
+        const { data, error } = await sb
+            .from('threads')
+            .select(`
+                *,
+                author:profiles!threads_author_id_fkey(id, full_name, username, avatar_url, county, verified, heshima_score, role),
+                space:spaces!threads_space_id_fkey(id, name, slug, icon)
+            `)
+            .eq('id', threadId).single();
+        return { data, error };
+    },
+
+    async getReplyWithAuthor(replyId) {
+        if (!sb) return { data: null, error: { message: 'Not connected' } };
+        const { data, error } = await sb
+            .from('replies')
+            .select(`
+                *,
+                author:profiles!replies_author_id_fkey(id, full_name, username, avatar_url, verified, heshima_score, role)
+            `)
+            .eq('id', replyId).single();
+        return { data, error };
+    },
+
     async getThreadById(threadId) {
         if (!sb) return { data: null, error: { message: 'Not connected' } };
         const { data, error } = await sb
@@ -1048,18 +1073,26 @@ const DB = {
 
     subscribeToVotes(entityId, callback) {
         if (!sb) return { unsubscribe: () => {} };
+        const channelName = entityId === '*' ? 'votes-global' : `votes-${entityId}`;
+        const config = entityId === '*'
+            ? { event: '*', schema: 'public', table: 'votes' }
+            : { event: '*', schema: 'public', table: 'votes', filter: `entity_id=eq.${entityId}` };
         const channel = sb
-            .channel(`votes-${entityId}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `entity_id=eq.${entityId}` }, (p) => callback('VOTE_CHANGE', p))
+            .channel(channelName)
+            .on('postgres_changes', config, (p) => callback('VOTE_CHANGE', p))
             .subscribe();
         return { unsubscribe: () => sb.removeChannel(channel) };
     },
 
     subscribeToHeshima(userId, callback) {
         if (!sb) return { unsubscribe: () => {} };
+        const channelName = userId === '*' ? 'heshima-global' : `heshima-${userId}`;
+        const config = userId === '*'
+            ? { event: 'UPDATE', schema: 'public', table: 'profiles' }
+            : { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` };
         const channel = sb
-            .channel(`heshima-${userId}`)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` }, (p) => callback('HESHIMA_UPDATE', p))
+            .channel(channelName)
+            .on('postgres_changes', config, (p) => callback('HESHIMA_UPDATE', p))
             .subscribe();
         return { unsubscribe: () => sb.removeChannel(channel) };
     },
