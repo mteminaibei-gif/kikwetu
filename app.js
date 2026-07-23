@@ -24,6 +24,8 @@ function kikwetuMasterHub() {
         initialized: false,
         isOnline: navigator.onLine,
         pendingSyncCount: 0,
+        realtimeAvailable: false,
+        _pollingIntervals: [],
 
         // ═══════════════════════════════════════════
         // 2. USER DATA STORE
@@ -1225,15 +1227,126 @@ function kikwetuMasterHub() {
 
 
         // ═══════════════════════════════════════════════════════════
-        // REAL-TIME SUPABASE SUBSCRIPTIONS
+        // POLLING ENGINE (Fallback when Realtime unavailable)
+        // ═══════════════════════════════════════════════════════════
+
+        startPolling() {
+            this.stopPolling();
+            console.log('[KikwetuHub] Starting polling fallback');
+
+            // Poll feed every 8 seconds
+            this._pollingIntervals.push(setInterval(async () => {
+                if (!this.isOnline || !currentUser) return;
+                const { data } = await DB.getFeedThreads({ limit: 30 });
+                if (data) {
+                    const newPosts = data.filter(d => !this.feedPosts.find(p => p.id === d.id));
+                    newPosts.forEach(p => {
+                        this.feedPosts.unshift({
+                            id: p.id, type: p.type === 'educative' ? 'qa' : p.type,
+                            author: p.author?.full_name || 'Anonymous',
+                            authorId: p.author_id,
+                            authorAvatar: p.author?.avatar_url || '',
+                            verified: p.author?.verified || false,
+                            county: p.author?.county || p.county || '',
+                            space: p.space?.name || 'General',
+                            time: this.timeAgo(new Date(p.created_at)),
+                            title: p.title, body: p.content,
+                            votes: p.upvotes_count || 0, answers: p.reply_count || 0,
+                            voted: false, translated: false
+                        });
+                    });
+                    // Update existing post counts
+                    data.forEach(d => {
+                        const existing = this.feedPosts.find(p => p.id === d.id);
+                        if (existing) {
+                            existing.votes = d.upvotes_count ?? existing.votes;
+                            existing.answers = d.reply_count ?? existing.answers;
+                        }
+                    });
+                }
+            }, 8000));
+
+            // Poll notifications every 10 seconds
+            this._pollingIntervals.push(setInterval(async () => {
+                if (!this.isOnline || !currentUser) return;
+                const count = await DB.getUnreadCount(currentUser.id);
+                if (count > this.unreadCount) {
+                    this.unreadCount = count;
+                    const { data } = await DB.getNotifications(currentUser.id, 5);
+                    if (data) {
+                        this.notifications = data.map(n => ({
+                            id: n.id, icon: this.getNotificationIcon(n.type),
+                            iconBg: this.getNotificationBg(n.type), text: n.content,
+                            time: this.timeAgo(new Date(n.created_at)), read: n.is_read
+                        }));
+                    }
+                }
+            }, 10000));
+
+            // Poll leaderboard every 30 seconds
+            this._pollingIntervals.push(setInterval(async () => {
+                if (!this.isOnline) return;
+                const { data } = await DB.getLeaderboard(50);
+                if (data) {
+                    this.leaderboard = data.map((p, i) => ({
+                        id: p.id, rank: i + 1, name: p.full_name || 'Anonymous',
+                        county: p.county || 'Kenya', pts: p.heshima_score || 0,
+                        avatar: p.avatar_url || '',
+                        medal: i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-300 text-gray-800' : i === 2 ? 'bg-amber-600' : 'bg-gray-400',
+                        isUser: currentUser && p.id === currentUser.id
+                    }));
+                }
+            }, 30000));
+
+            // Poll heshima every 15 seconds
+            this._pollingIntervals.push(setInterval(async () => {
+                if (!this.isOnline || !currentUser) return;
+                const { data } = await DB.getProfile(currentUser.id);
+                if (data && data.heshima_score !== this.heshimaScore) {
+                    this.heshimaScore = data.heshima_score;
+                    this.saveState();
+                }
+            }, 15000));
+        },
+
+        stopPolling() {
+            this._pollingIntervals.forEach(id => clearInterval(id));
+            this._pollingIntervals = [];
+        },
+
+        // ═══════════════════════════════════════════════════════════
+        // REAL-TIME SUBSCRIPTIONS (Hybrid: Realtime + Polling Fallback)
         // ═══════════════════════════════════════════════════════════
 
         _threadReplySub: null,
-        _feedVoteSub: null,
-        _leaderboardSub: null,
 
-        startRealtimeSubscriptions() {
+        async startRealtimeSubscriptions() {
             if (!currentUser) return;
+
+            // Check if Realtime is available
+            this.realtimeAvailable = await DB.checkRealtimeHealth();
+            console.log(`[KikwetuHub] Realtime available: ${this.realtimeAvailable}`);
+
+            if (this.realtimeAvailable) {
+                this.startRealtimeOnly();
+            } else {
+                console.log('[KikwetuHub] Realtime unavailable — using polling fallback');
+            }
+
+            // Always start polling as baseline (lightweight)
+            // Realtime adds instant updates on top; polling catches anything missed
+            this.startPolling();
+
+            // Load initial data
+            this.loadFeedPosts();
+            this.loadLeaderboard();
+            this.loadSpaces();
+            this.loadNotifications();
+
+            console.log(`[KikwetuHub] Subscriptions active (mode: ${this.realtimeAvailable ? 'realtime+polling' : 'polling-only'})`);
+        },
+
+        startRealtimeOnly() {
 
             // ── FEED: New threads appear live with full author data ──
             const feedSub = DB.subscribeToFeed(async (event, payload) => {
@@ -1370,14 +1483,6 @@ function kikwetuMasterHub() {
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
-
-            // Load initial data
-            this.loadFeedPosts();
-            this.loadLeaderboard();
-            this.loadSpaces();
-            this.loadNotifications();
-
-            console.log('[KikwetuHub] Realtime subscriptions active');
         },
 
         // Subscribe to replies when viewing a specific thread
@@ -1385,38 +1490,53 @@ function kikwetuMasterHub() {
             this.stopThreadSubscription();
             if (!threadId) return;
 
-            const sub = DB.subscribeToReplies(threadId, async (event, payload) => {
-                if (event === 'NEW_REPLY' && payload.new) {
-                    const r = payload.new;
-                    if (r.author_id === currentUser?.id) return;
-                    // Hydrate with author
-                    const { data: authorData } = await DB.getProfile(r.author_id);
-                    const newReply = {
-                        id: r.id,
-                        author: authorData?.full_name || 'Community Member',
-                        authorId: r.author_id,
-                        avatar: authorData?.avatar_url || '',
-                        verified: authorData?.verified || false,
-                        content: r.content,
-                        votes: r.upvotes_count || 0,
-                        time: 'Just now',
-                        voted: false,
-                        replies: []
-                    };
-                    this.threadAnswers.unshift(newReply);
-                    this.showToast(`New reply from ${newReply.author}`);
-                }
-                if (event === 'REPLY_UPDATED' && payload.new) {
-                    const r = payload.new;
-                    const ans = this.threadAnswers.find(a => a.id === r.id);
-                    if (ans) {
-                        ans.votes = r.upvotes_count ?? ans.votes;
-                        if (r.is_accepted) ans.accepted = true;
+            if (this.realtimeAvailable) {
+                // Realtime subscription
+                const sub = DB.subscribeToReplies(threadId, async (event, payload) => {
+                    if (event === 'NEW_REPLY' && payload.new) {
+                        const r = payload.new;
+                        if (r.author_id === currentUser?.id) return;
+                        const { data: authorData } = await DB.getProfile(r.author_id);
+                        const newReply = {
+                            id: r.id, author: authorData?.full_name || 'Community Member',
+                            authorId: r.author_id, avatar: authorData?.avatar_url || '',
+                            verified: authorData?.verified || false, content: r.content,
+                            votes: r.upvotes_count || 0, time: 'Just now', voted: false, replies: []
+                        };
+                        this.threadAnswers.unshift(newReply);
+                        this.showToast(`New reply from ${newReply.author}`);
                     }
+                    if (event === 'REPLY_UPDATED' && payload.new) {
+                        const r = payload.new;
+                        const ans = this.threadAnswers.find(a => a.id === r.id);
+                        if (ans) { ans.votes = r.upvotes_count ?? ans.votes; if (r.is_accepted) ans.accepted = true; }
+                    }
+                });
+                this._threadReplySub = sub;
+                subscriptions.push(sub);
+            }
+
+            // Polling fallback for thread replies (always runs, catches everything)
+            this._threadReplyPoll = setInterval(async () => {
+                if (!this.isOnline || this.currentRoute !== 'thread') return;
+                const { data } = await DB.getReplies(threadId, 'newest');
+                if (data) {
+                    data.forEach(r => {
+                        const exists = this.threadAnswers.find(a => a.id === r.id);
+                        if (!exists) {
+                            this.threadAnswers.unshift({
+                                id: r.id, author: r.author?.full_name || 'Anonymous',
+                                authorId: r.author_id, avatar: r.author?.avatar_url || '',
+                                verified: r.author?.verified || false, content: r.content,
+                                votes: r.upvotes_count || 0, time: this.timeAgo(new Date(r.created_at)),
+                                voted: false, replies: []
+                            });
+                        } else {
+                            exists.votes = r.upvotes_count ?? exists.votes;
+                        }
+                    });
                 }
-            });
-            this._threadReplySub = sub;
-            subscriptions.push(sub);
+            }, 5000);
         },
 
         stopThreadSubscription() {
@@ -1425,10 +1545,15 @@ function kikwetuMasterHub() {
                 subscriptions = subscriptions.filter(s => s !== this._threadReplySub);
                 this._threadReplySub = null;
             }
+            if (this._threadReplyPoll) {
+                clearInterval(this._threadReplyPoll);
+                this._threadReplyPoll = null;
+            }
         },
 
         stopRealtimeSubscriptions() {
             this.stopThreadSubscription();
+            this.stopPolling();
             subscriptions.forEach(sub => { if (sub?.unsubscribe) sub.unsubscribe(); });
             subscriptions = [];
         },

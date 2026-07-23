@@ -1043,6 +1043,28 @@ const DB = {
     // REALTIME SUBSCRIPTIONS
     // ═══════════════════════════════════════
 
+    // ═══ Realtime Health Check ═══
+    async checkRealtimeHealth() {
+        if (!sb) return false;
+        try {
+            const channel = sb.channel('health-check');
+            return new Promise((resolve) => {
+                const timeout = setTimeout(() => {
+                    sb.removeChannel(channel);
+                    resolve(false);
+                }, 5000);
+                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {})
+                    .subscribe((status) => {
+                        clearTimeout(timeout);
+                        sb.removeChannel(channel);
+                        resolve(status === 'SUBSCRIBED');
+                    });
+            });
+        } catch (e) {
+            return false;
+        }
+    },
+
     subscribeToFeed(callback) {
         if (!sb) return { unsubscribe: () => {} };
         const channel = sb
