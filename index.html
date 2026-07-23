@@ -67,7 +67,7 @@
                 <button @click="toggleVoice()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-orange transition-colors" :class="isListening ? 'text-red-500 animate-pulse' : ''"><i class="fa-solid fa-microphone text-sm"></i></button>
             </div>
             <nav class="hidden lg:flex items-center space-x-1 text-sm font-medium" x-show="!isLoggedIn">
-                <button @click="go('landing')" :class="currentRoute==='landing' ? 'text-brand-orange bg-brand-orange/10' : 'text-gray-600 dark:text-gray-300 hover:text-brand-orange'" class="px-3 py-2 rounded-lg transition-all">Home</button>
+                <button @click="go(isLoggedIn ? 'feed' : 'landing')" :class="(isLoggedIn && currentRoute==='feed') || (!isLoggedIn && currentRoute==='landing') ? 'text-brand-orange bg-brand-orange/10' : 'text-gray-600 dark:text-gray-300 hover:text-brand-orange'" class="px-3 py-2 rounded-lg transition-all" x-text="isLoggedIn ? 'Feed' : 'Home'"></button>
                 <button @click="go('howItWorks')" :class="currentRoute==='howItWorks' ? 'text-brand-orange bg-brand-orange/10' : 'text-gray-600 dark:text-gray-300 hover:text-brand-orange'" class="px-3 py-2 rounded-lg transition-all">How It Works</button>
                 <button @click="go('contact')" :class="currentRoute==='contact' ? 'text-brand-orange bg-brand-orange/10' : 'text-gray-600 dark:text-gray-300 hover:text-brand-orange'" class="px-3 py-2 rounded-lg transition-all">Contact</button>
                 <button @click="go('legal')" :class="currentRoute==='legal' ? 'text-brand-orange bg-brand-orange/10' : 'text-gray-600 dark:text-gray-300 hover:text-brand-orange'" class="px-3 py-2 rounded-lg transition-all">Legal</button>
@@ -104,6 +104,9 @@
                                 <span class="text-[10px] text-brand-orange font-semibold">Heshima: <span x-text="heshimaScore"></span></span>
                             </div>
                         </div>
+                        <a x-show="userRole === 'admin'" href="admin.html" target="_blank" class="p-2 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-gray-400 hover:text-emerald-600 transition-colors" title="Admin Dashboard">
+                            <i class="fa-solid fa-gauge-high text-sm"></i>
+                        </a>
                         <button @click="confirmLogout()" class="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors" title="Log Out">
                             <i class="fa-solid fa-right-from-bracket text-sm"></i>
                         </button>

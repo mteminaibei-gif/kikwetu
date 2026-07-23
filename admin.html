@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KikwetuConnect - Admin Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { green: '#008751', orange: '#FF6600', lightOrange: '#ff8533', bg: '#F5F0E6', cardDark: '#111111' }
+                    },
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], logo: ['Poppins', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(229, 231, 235, 0.8); }
+        .stat-card { transition: all 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeSlideUp 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased" x-data="adminDashboard()" x-init="init()">
+
+    <!-- AUTH GATE -->
+    <div x-show="!accessGranted" class="min-h-screen flex items-center justify-center bg-slate-950">
+        <div class="text-center space-y-4 animate-in">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center mx-auto">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            </div>
+            <p class="text-slate-400 font-medium" x-text="authMessage"></p>
+        </div>
+    </div>
+
+    <!-- MAIN APP (shown only after auth) -->
+    <div x-show="accessGranted" class="min-h-screen flex flex-col md:flex-row" style="display: none;">
+
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex flex-col justify-between border-r border-slate-800 md:fixed md:inset-y-0 md:left-0 z-30">
+            <div>
+                <div class="h-16 flex items-center px-6 border-b border-slate-800">
+                    <a href="index.html" class="text-xl font-bold tracking-wide text-white flex items-center gap-2 group">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Kikwetu<span class="text-emerald-400 group-hover:text-emerald-300 transition-colors">Admin</span>
+                    </a>
+                </div>
+                <nav class="p-4 space-y-1">
+                    <template x-for="tab in tabs" :key="tab.id">
+                        <button @click="activeTab = tab.id"
+                            :class="activeTab === tab.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'hover:bg-slate-800 text-slate-400 hover:text-white'"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200">
+                            <span class="material-symbols-outlined text-lg" x-text="tab.icon"></span>
+                            <span x-text="tab.name"></span>
+                            <span x-show="tab.badge" class="ml-auto bg-amber-500 text-slate-950 font-bold text-xs px-2 py-0.5 rounded-full" x-text="tab.badge"></span>
+                        </button>
+                    </template>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center border border-emerald-500/30" x-text="adminInitials"></div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-semibold text-white truncate" x-text="adminName"></p>
+                        <p class="text-xs text-emerald-400 font-medium">SuperAdmin</p>
+                    </div>
+                </div>
+                <button @click="signOut()" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs font-medium transition-all">
+                    <span class="material-symbols-outlined text-sm">logout</span> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto md:ml-64">
+            <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20">
+                <div class="flex items-center gap-4">
+                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden p-2 rounded-lg hover:bg-slate-100">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <h1 class="text-lg font-bold text-slate-900 capitalize" x-text="activeTab"></h1>
+                    <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button @click="refreshData()" class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-all border border-slate-200" title="Refresh" :class="refreshing ? 'animate-spin' : ''">
+                        <span class="material-symbols-outlined text-lg">refresh</span>
+                    </button>
+                    <div class="text-right hidden sm:block">
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Server Time (EAT)</p>
+                        <p class="text-sm font-bold text-slate-700 tabular-nums" x-text="currentTime"></p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-4 sm:p-6 space-y-6 max-w-7xl w-full mx-auto">
+
+                <!-- TAB 1: OVERVIEW -->
+                <div x-show="activeTab === 'overview'" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <template x-for="stat in stats" :key="stat.title">
+                            <div class="stat-card glass-panel p-5 rounded-2xl shadow-sm border border-slate-200/80 flex items-center justify-between">
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400" x-text="stat.title"></p>
+                                    <p class="text-2xl font-black text-slate-900 mt-1" x-text="stat.value"></p>
+                                    <p class="text-[10px] font-semibold mt-1" :class="stat.changeColor" x-text="stat.change"></p>
+                                </div>
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="stat.bgClass">
+                                    <span class="material-symbols-outlined text-xl" x-text="stat.icon"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Recent Users -->
+                        <div class="glass-panel p-6 rounded-2xl lg:col-span-2 shadow-sm">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-slate-900">Recent Registrations</h3>
+                                <button @click="loadUsers()" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold">Refresh</button>
+                            </div>
+                            <div class="divide-y divide-slate-100">
+                                <template x-for="user in recentUsers" :key="user.id">
+                                    <div class="py-3 flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs text-white" :class="avatarColor(user.full_name)" x-text="initials(user.full_name)"></div>
+                                            <div>
+                                                <p class="text-sm font-semibold text-slate-800" x-text="user.full_name || 'Unnamed'"></p>
+                                                <p class="text-xs text-slate-400" x-text="(user.county || 'Unknown') + ' County'"></p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right flex items-center gap-2">
+                                            <span class="text-xs text-slate-400" x-text="timeAgo(user.created_at)"></span>
+                                            <span class="text-xs font-bold px-2.5 py-1 rounded-full" :class="roleBadge(user.role)" x-text="user.role"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div x-show="recentUsers.length === 0" class="py-6 text-center text-sm text-slate-400">No users yet.</div>
+                            </div>
+                        </div>
+
+                        <!-- System Health -->
+                        <div class="glass-panel p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-900 mb-4">Infrastructure</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex justify-between text-xs font-semibold mb-1">
+                                            <span class="text-slate-600">Supabase Connection</span>
+                                            <span class="text-emerald-600" x-text="dbStatus"></span>
+                                        </div>
+                                        <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                            <div class="bg-emerald-500 h-full rounded-full transition-all" :style="'width:' + dbHealth + '%'"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs font-semibold mb-1">
+                                            <span class="text-slate-600">Live Realtime</span>
+                                            <span class="text-emerald-600" x-text="realtimeStatus"></span>
+                                        </div>
+                                        <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                            <div class="h-full rounded-full transition-all" :class="realtimeConnected ? 'bg-emerald-500' : 'bg-red-500'" :style="'width:' + (realtimeConnected ? '100' : '0') + '%'"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-xs font-semibold mb-1">
+                                            <span class="text-slate-600">Data Freshness</span>
+                                            <span class="text-slate-500" x-text="lastRefreshAgo"></span>
+                                        </div>
+                                        <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                            <div class="bg-blue-500 h-full rounded-full transition-all" style="width: 100%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                                <span>af-south-1 (Cape Town Edge)</span>
+                                <span class="font-bold" :class="dbHealth > 80 ? 'text-emerald-600' : 'text-amber-600'" x-text="dbHealth > 80 ? 'HEALTHY' : 'DEGRADED'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: MODERATION -->
+                <div x-show="activeTab === 'moderation'" class="space-y-6" style="display: none;">
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-lg">Content Moderation</h3>
+                                <p class="text-xs text-slate-500">Reported posts and flagged content.</p>
+                            </div>
+                            <span class="bg-rose-50 text-rose-700 text-xs font-bold px-3 py-1 rounded-lg border border-rose-200" x-text="flaggedItems.length + ' flagged'"></span>
+                        </div>
+                        <div class="space-y-3">
+                            <template x-for="item in flaggedItems" :key="item.id">
+                                <div class="p-4 rounded-xl border border-slate-200 bg-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs animate-in">
+                                    <div class="space-y-1 flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border" :class="item.reason === 'spam' ? 'bg-amber-50 text-amber-700 border-amber-200' : item.reason === 'toxic' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-orange-50 text-orange-700 border-orange-200'" x-text="item.reason || 'flagged'"></span>
+                                            <span class="text-xs text-slate-400" x-text="'Reported by: ' + (item.reporter || 'system')"></span>
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-800 truncate" x-text="item.content || item.title || 'No content'"></p>
+                                        <p class="text-xs text-slate-400" x-text="timeAgo(item.created_at)"></p>
+                                    </div>
+                                    <div class="flex items-center gap-2 self-end md:self-center shrink-0">
+                                        <button @click="resolveReport(item.id, 'dismiss')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs rounded-lg transition-all border border-emerald-200">Dismiss</button>
+                                        <button @click="resolveReport(item.id, 'remove')" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 font-semibold text-xs rounded-lg transition-all border border-rose-200">Remove</button>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="flaggedItems.length === 0" class="py-8 text-center text-sm text-slate-400">No flagged content. All clear!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: USERS -->
+                <div x-show="activeTab === 'users'" class="space-y-6" style="display: none;">
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-900 text-lg">All Users</h3>
+                            <span class="text-xs text-slate-500 font-semibold" x-text="allUsers.length + ' total'"></span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                                        <th class="pb-3 pr-4">User</th>
+                                        <th class="pb-3 pr-4">County</th>
+                                        <th class="pb-3 pr-4">Role</th>
+                                        <th class="pb-3 pr-4">Heshima</th>
+                                        <th class="pb-3">Joined</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <template x-for="user in allUsers" :key="user.id">
+                                        <tr class="hover:bg-slate-50 transition-colors">
+                                            <td class="py-3 pr-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" :class="avatarColor(user.full_name)" x-text="initials(user.full_name)"></div>
+                                                    <div>
+                                                        <p class="font-semibold text-slate-800" x-text="user.full_name || 'Unnamed'"></p>
+                                                        <p class="text-xs text-slate-400" x-text="user.email || ''"></p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 pr-4 text-slate-600" x-text="user.county || '-'"></td>
+                                            <td class="py-3 pr-4">
+                                                <span class="text-xs font-bold px-2.5 py-1 rounded-full" :class="roleBadge(user.role)" x-text="user.role"></span>
+                                            </td>
+                                            <td class="py-3 pr-4 font-bold text-slate-700" x-text="user.heshima_score || 0"></td>
+                                            <td class="py-3 text-slate-400 text-xs" x-text="timeAgo(user.created_at)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: THREADS -->
+                <div x-show="activeTab === 'threads'" class="space-y-6" style="display: none;">
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-900 text-lg">Recent Threads</h3>
+                            <span class="text-xs text-slate-500 font-semibold" x-text="allThreads.length + ' total'"></span>
+                        </div>
+                        <div class="space-y-3">
+                            <template x-for="thread in allThreads" :key="thread.id">
+                                <div class="p-4 rounded-xl border border-slate-200 bg-white hover:shadow-md transition-all">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                                <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" x-text="thread.type || 'general'"></span>
+                                                <span class="text-[10px] text-slate-400" x-text="thread.space?.name || 'General'"></span>
+                                            </div>
+                                            <p class="font-semibold text-slate-800 truncate" x-text="thread.title"></p>
+                                            <p class="text-xs text-slate-400 mt-1" x-text="timeAgo(thread.created_at) + ' · ' + (thread.author?.full_name || 'Anonymous')"></p>
+                                        </div>
+                                        <div class="flex items-center gap-4 text-xs text-slate-400 shrink-0">
+                                            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">arrow_upward</span> <span x-text="thread.upvotes_count || 0"></span></span>
+                                            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">chat_bubble</span> <span x-text="thread.reply_count || 0"></span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="allThreads.length === 0" class="py-8 text-center text-sm text-slate-400">No threads yet.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: SPACES -->
+                <div x-show="activeTab === 'spaces'" class="space-y-6" style="display: none;">
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-900 text-lg">Community Spaces</h3>
+                            <span class="text-xs text-slate-500 font-semibold" x-text="spaces.length + ' total'"></span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <template x-for="space in spaces" :key="space.id">
+                                <div class="p-5 rounded-xl border border-slate-200 bg-white hover:shadow-md transition-all">
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" :class="spaceEmoji(space.name)" x-text="space.emoji || '📚'"></div>
+                                        <div>
+                                            <p class="font-bold text-slate-800" x-text="space.name"></p>
+                                            <p class="text-xs text-slate-400" x-text="space.member_count || 0 + ' members'"></p>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-500 line-clamp-2" x-text="space.description || 'No description'"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 6: LOGS -->
+                <div x-show="activeTab === 'logs'" class="space-y-6" style="display: none;">
+                    <div class="bg-slate-900 text-slate-300 p-6 rounded-2xl font-mono text-xs shadow-lg">
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                            <span class="text-white font-bold flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live System Logs
+                            </span>
+                            <button @click="clearLogs()" class="text-slate-500 hover:text-white transition-colors text-[10px] uppercase tracking-wider font-bold">Clear</button>
+                        </div>
+                        <div class="space-y-1.5 max-h-96 overflow-y-auto" id="logContainer">
+                            <template x-for="(log, i) in logs" :key="i">
+                                <p :class="logColor(log.level)">
+                                    <span class="text-slate-500" x-text="'[' + log.time + ']'"></span>
+                                    <span class="font-bold" x-text="'[' + log.level + ']'"></span>
+                                    <span x-text="log.message"></span>
+                                </p>
+                            </template>
+                            <div x-show="logs.length === 0" class="py-4 text-center text-slate-600">No log entries yet.</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xzfsthlurdlrnegzejeo.supabase.co';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6ZnN0aGx1cmRscm5lZ3plamVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3ODg2ODQsImV4cCI6MjEwMDM2NDY4NH0.HFIECpzHhgTjz_Zpi-PURoKI6EN2Eob0G0df-uGGTSM';
+
+        let sb = null;
+
+        function adminDashboard() {
+            return {
+                activeTab: 'overview',
+                accessGranted: false,
+                authMessage: 'Checking credentials...',
+                adminName: '',
+                adminInitials: 'AD',
+                currentTime: '',
+                refreshing: false,
+                lastRefreshTime: null,
+                lastRefreshAgo: 'just now',
+                sidebarOpen: false,
+
+                tabs: [
+                    { id: 'overview', name: 'Overview', badge: null, icon: 'space_dashboard' },
+                    { id: 'moderation', name: 'Moderation', badge: null, icon: 'gpp_maybe' },
+                    { id: 'users', name: 'Users', badge: null, icon: 'group' },
+                    { id: 'threads', name: 'Threads', badge: null, icon: 'forum' },
+                    { id: 'spaces', name: 'Spaces', badge: null, icon: 'workspaces' },
+                    { id: 'logs', name: 'System Logs', badge: null, icon: 'terminal' }
+                ],
+
+                stats: [
+                    { title: 'Total Users', value: '...', change: '', changeColor: 'text-emerald-600', bgClass: 'bg-emerald-50 text-emerald-600', icon: 'group' },
+                    { title: 'Total Threads', value: '...', change: '', changeColor: 'text-emerald-600', bgClass: 'bg-blue-50 text-blue-600', icon: 'forum' },
+                    { title: 'Total Replies', value: '...', change: '', changeColor: 'text-emerald-600', bgClass: 'bg-amber-50 text-amber-600', icon: 'chat_bubble' },
+                    { title: 'Total Upvotes', value: '...', change: '', changeColor: 'text-emerald-600', bgClass: 'bg-purple-50 text-purple-600', icon: 'arrow_upward' }
+                ],
+
+                recentUsers: [],
+                allUsers: [],
+                allThreads: [],
+                flaggedItems: [],
+                spaces: [],
+                logs: [],
+
+                dbStatus: 'Connecting...',
+                dbHealth: 50,
+                realtimeConnected: false,
+                realtimeStatus: 'Connecting...',
+                channel: null,
+
+                async init() {
+                    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+                    this.addLog('INFO', 'Admin dashboard initializing...');
+
+                    // Check auth session
+                    const { data: { session } } = await sb.auth.getSession();
+                    if (!session || !session.user) {
+                        this.authMessage = 'No active session. Please log in first.';
+                        this.addLog('WARN', 'No session found — redirecting to login.');
+                        setTimeout(() => window.location.href = 'index.html', 2000);
+                        return;
+                    }
+
+                    // Check admin role
+                    const { data: profile, error } = await sb.from('profiles').select('role, full_name').eq('id', session.user.id).single();
+                    if (error || !profile || profile.role !== 'admin') {
+                        this.authMessage = 'Access denied. Admin role required.';
+                        this.addLog('ERROR', 'Non-admin user attempted access: ' + session.user.id);
+                        setTimeout(() => window.location.href = 'index.html', 2000);
+                        return;
+                    }
+
+                    this.adminName = profile.full_name || 'Admin';
+                    this.adminInitials = this.initials(this.adminName);
+                    this.accessGranted = true;
+                    this.addLog('INFO', 'Authenticated as admin: ' + this.adminName);
+
+                    // Start clock
+                    this.updateClock();
+                    setInterval(() => this.updateClock(), 1000);
+                    setInterval(() => this.updateRefreshAgo(), 5000);
+
+                    // Load all data
+                    await this.refreshData();
+
+                    // Setup realtime
+                    this.setupRealtime();
+
+                    this.addLog('INFO', 'Dashboard ready.');
+                },
+
+                async refreshData() {
+                    this.refreshing = true;
+                    this.addLog('SYNC', 'Refreshing data from Supabase...');
+                    const start = performance.now();
+
+                    try {
+                        await Promise.all([
+                            this.loadStats(),
+                            this.loadUsers(),
+                            this.loadThreads(),
+                            this.loadFlagged(),
+                            this.loadSpaces()
+                        ]);
+
+                        const elapsed = Math.round(performance.now() - start);
+                        this.dbHealth = 100;
+                        this.dbStatus = elapsed + 'ms';
+                        this.lastRefreshTime = Date.now();
+                        this.addLog('INFO', 'Data synced in ' + elapsed + 'ms');
+                    } catch (e) {
+                        this.dbHealth = 30;
+                        this.dbStatus = 'Error';
+                        this.addLog('ERROR', 'Sync failed: ' + e.message);
+                    }
+
+                    this.refreshing = false;
+                },
+
+                async loadStats() {
+                    const [users, threads, replies, votes] = await Promise.all([
+                        sb.from('profiles').select('id', { count: 'exact', head: true }),
+                        sb.from('threads').select('id', { count: 'exact', head: true }),
+                        sb.from('replies').select('id', { count: 'exact', head: true }),
+                        sb.from('votes').select('id', { count: 'exact', head: true })
+                    ]);
+                    this.stats[0].value = (users.count || 0).toLocaleString();
+                    this.stats[0].change = users.count > 0 ? '+' + users.count + ' registered' : 'No users yet';
+                    this.stats[1].value = (threads.count || 0).toLocaleString();
+                    this.stats[1].change = threads.count > 0 ? '+' + threads.count + ' created' : 'No threads yet';
+                    this.stats[2].value = (replies.count || 0).toLocaleString();
+                    this.stats[2].change = replies.count > 0 ? '+' + replies.count + ' answers' : 'No replies yet';
+                    this.stats[3].value = (votes.count || 0).toLocaleString();
+                    this.stats[3].change = votes.count > 0 ? '+' + votes.count + ' votes cast' : 'No votes yet';
+                },
+
+                async loadUsers() {
+                    const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: false }).limit(50);
+                    this.allUsers = data || [];
+                    this.recentUsers = (data || []).slice(0, 5);
+                    this.addLog('SYNC', 'Loaded ' + this.allUsers.length + ' users');
+                },
+
+                async loadThreads() {
+                    const { data } = await sb.from('threads').select('*, author:profiles(full_name), space:spaces(name)').order('created_at', { ascending: false }).limit(30);
+                    this.allThreads = data || [];
+                    this.addLog('SYNC', 'Loaded ' + this.allThreads.length + ' threads');
+                },
+
+                async loadFlagged() {
+                    const { data } = await sb.from('reports').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+                    this.flaggedItems = data || [];
+                    this.tabs.find(t => t.id === 'moderation').badge = this.flaggedItems.length > 0 ? String(this.flaggedItems.length) : null;
+                    this.addLog('SYNC', 'Loaded ' + this.flaggedItems.length + ' flagged items');
+                },
+
+                async loadSpaces() {
+                    const { data } = await sb.from('spaces').select('*').order('name');
+                    this.spaces = data || [];
+                    this.addLog('SYNC', 'Loaded ' + this.spaces.length + ' spaces');
+                },
+
+                async resolveReport(id, action) {
+                    await sb.from('reports').update({ status: action === 'remove' ? 'resolved' : 'dismissed', resolved_at: new Date().toISOString() }).eq('id', id);
+                    this.flaggedItems = this.flaggedItems.filter(i => i.id !== id);
+                    this.tabs.find(t => t.id === 'moderation').badge = this.flaggedItems.length > 0 ? String(this.flaggedItems.length) : null;
+                    this.addLog('MOD', 'Report ' + id + ' ' + action + 'd');
+                },
+
+                async signOut() {
+                    await sb.auth.signOut();
+                    window.location.href = 'index.html';
+                },
+
+                setupRealtime() {
+                    this.channel = sb.channel('admin-realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+                        this.addLog('RT', 'Profile change: ' + payload.eventType);
+                        this.loadUsers();
+                        this.loadStats();
+                    }).on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, (payload) => {
+                        this.addLog('RT', 'Thread change: ' + payload.eventType);
+                        this.loadThreads();
+                        this.loadStats();
+                    }).on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, (payload) => {
+                        this.addLog('RT', 'Report change: ' + payload.eventType);
+                        this.loadFlagged();
+                    }).subscribe((status) => {
+                        this.realtimeConnected = status === 'SUBSCRIBED';
+                        this.realtimeStatus = this.realtimeConnected ? 'Connected' : 'Reconnecting...';
+                        if (this.realtimeConnected) this.addLog('INFO', 'Realtime channel subscribed');
+                    });
+                },
+
+                addLog(level, message) {
+                    const now = new Date();
+                    const time = now.toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi', hour12: false });
+                    this.logs.unshift({ level, message, time });
+                    if (this.logs.length > 100) this.logs.pop();
+                },
+
+                logColor(level) {
+                    if (level === 'ERROR') return 'text-red-400';
+                    if (level === 'WARN') return 'text-amber-400';
+                    if (level === 'SYNC' || level === 'RT') return 'text-blue-400';
+                    if (level === 'MOD') return 'text-purple-400';
+                    return 'text-emerald-400';
+                },
+
+                clearLogs() { this.logs = []; },
+
+                updateClock() {
+                    this.currentTime = new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi', hour12: false }) + ' EAT';
+                },
+
+                updateRefreshAgo() {
+                    if (!this.lastRefreshTime) { this.lastRefreshAgo = 'never'; return; }
+                    const secs = Math.floor((Date.now() - this.lastRefreshTime) / 1000);
+                    if (secs < 60) this.lastRefreshAgo = secs + 's ago';
+                    else if (secs < 3600) this.lastRefreshAgo = Math.floor(secs / 60) + 'm ago';
+                    else this.lastRefreshAgo = Math.floor(secs / 3600) + 'h ago';
+                },
+
+                timeAgo(dateStr) {
+                    if (!dateStr) return '';
+                    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+                    const intervals = [
+                        { label: 'year', seconds: 31536000 },
+                        { label: 'month', seconds: 2592000 },
+                        { label: 'week', seconds: 604800 },
+                        { label: 'day', seconds: 86400 },
+                        { label: 'hour', seconds: 3600 },
+                        { label: 'min', seconds: 60 }
+                    ];
+                    for (const i of intervals) {
+                        const count = Math.floor(seconds / i.seconds);
+                        if (count > 0) return count + ' ' + i.label + (count > 1 ? 's' : '') + ' ago';
+                    }
+                    return 'just now';
+                },
+
+                initials(name) {
+                    if (!name) return '??';
+                    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                },
+
+                avatarColor(name) {
+                    const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500', 'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500'];
+                    let hash = 0;
+                    for (let c of (name || '')) hash = c.charCodeAt(0) + ((hash << 5) - hash);
+                    return colors[Math.abs(hash) % colors.length];
+                },
+
+                roleBadge(role) {
+                    const map = {
+                        admin: 'bg-red-100 text-red-700 border border-red-200',
+                        moderator: 'bg-amber-100 text-amber-700 border border-amber-200',
+                        expert: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+                        user: 'bg-slate-100 text-slate-600 border border-slate-200'
+                    };
+                    return map[role] || map.user;
+                },
+
+                spaceEmoji(name) {
+                    if (!name) return 'bg-slate-100 text-slate-600';
+                    if (name.toLowerCase().includes('kilimo') || name.toLowerCase().includes('agri')) return 'bg-green-100 text-green-600';
+                    if (name.toLowerCase().includes('tech')) return 'bg-blue-100 text-blue-600';
+                    if (name.toLowerCase().includes('health')) return 'bg-rose-100 text-rose-600';
+                    return 'bg-slate-100 text-slate-600';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

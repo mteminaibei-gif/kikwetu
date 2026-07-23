@@ -34,6 +34,7 @@ function kikwetuMasterHub() {
         userHandle: 'samwel',
         userCounty: 'Trans-Nzoia',
         userPhone: '',
+        userRole: 'user',
         userEmail: '',
         userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
         heshimaScore: 762,
@@ -304,6 +305,10 @@ function kikwetuMasterHub() {
                         this.saveState();
                         this.startRealtimeSubscriptions();
                         this.startOfflineSync();
+                        if (this.currentRoute === 'landing' || this.currentRoute === 'onboarding') {
+                            this.currentRoute = 'feed';
+                            window.history.replaceState({ route: 'feed' }, '', '#feed');
+                        }
                     } else {
                         currentUser = null;
                         this.isLoggedIn = false;
@@ -326,6 +331,11 @@ function kikwetuMasterHub() {
                 this.isLoggedIn = true;
                 this.startRealtimeSubscriptions();
                 this.startOfflineSync();
+                // Redirect away from landing if logged in
+                if (this.currentRoute === 'landing' || this.currentRoute === 'onboarding') {
+                    this.currentRoute = 'feed';
+                    window.history.replaceState({ route: 'feed' }, '', '#feed');
+                }
             } else {
                 // No valid session — clear stale localStorage
                 currentUser = null;
@@ -456,6 +466,7 @@ function kikwetuMasterHub() {
 
         go(newRoute) {
             if (newRoute === 'feed' && !this.isLoggedIn) newRoute = 'onboarding';
+            if (newRoute === 'landing' && this.isLoggedIn) newRoute = 'feed';
             // Stop thread subscription when leaving thread view
             if (this.currentRoute === 'thread' && newRoute !== 'thread') {
                 this.stopThreadSubscription();
@@ -615,6 +626,7 @@ function kikwetuMasterHub() {
                 this.userCounty = data.county || this.userCounty;
                 this.userEmail = data.email || this.userEmail;
                 this.userPhone = data.phone || this.userPhone;
+                this.userRole = data.role || 'user';
                 this.userAvatar = data.avatar_url || this.userAvatar;
                 this.heshimaScore = data.heshima_score || 100;
                 this.preferredLang = data.preferred_lang || 'en';
