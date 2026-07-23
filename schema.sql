@@ -34,6 +34,18 @@ CREATE TABLE profiles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, full_name, username)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'username');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 CREATE INDEX idx_profiles_username ON profiles(username);
 CREATE INDEX idx_profiles_county ON profiles(county);
