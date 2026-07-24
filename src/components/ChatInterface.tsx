@@ -17,18 +17,13 @@ export default function ChatInterface({ sessionId }: Props) {
   const { user } = useAuth();
   const { sessions, messages, loadMessages, sendMessage, subscribeToMessages, updateSessionStatus } = useApp();
   const { show } = useToast();
-  const [session, setSession] = useState<TeachingSession | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [session] = useState<TeachingSession | null>(() => sessions.find(s => s.id === sessionId) || null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(messages);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showTip, setShowTip] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const s = sessions.find(s => s.id === sessionId);
-    if (s) setSession(s);
-  }, [sessions, sessionId]);
 
   useEffect(() => {
     loadMessages(sessionId);
@@ -131,7 +126,7 @@ export default function ChatInterface({ sessionId }: Props) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4 bg-white dark:bg-brand-cardDark border-x border-gray-200 dark:border-gray-800">
-        {chatMessages.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-4xl block mb-3">💬</span>
             <p className="text-sm text-gray-400">No messages yet. Start the conversation!</p>
@@ -140,7 +135,7 @@ export default function ChatInterface({ sessionId }: Props) {
             )}
           </div>
         ) : (
-          chatMessages.map(msg => {
+          messages.map(msg => {
             const isMe = msg.sender_id === user?.id;
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>

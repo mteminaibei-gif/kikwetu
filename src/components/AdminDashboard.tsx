@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
@@ -30,17 +30,8 @@ export default function AdminDashboard() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
 
-  const sbRef = useRef(createClient());
-  const sb = sbRef.current;
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user || !isAdmin) { router.push('/feed'); return; }
-    loadData();
-  }, [user, isAdmin, authLoading, router]);
-
-  const loadData = async () => {
-    setLoading(true);
+  const fetchAllData = async () => {
+    const sb = createClient();
     const [uRes, tRes, rRes, sRes, pCount, tCount, rpCount, prRes, pRes, tipRes, rateRes, payoutRes] = await Promise.all([
       sb.from('profiles').select('*').order('created_at', { ascending: false }).limit(50),
       sb.from('threads').select('*, author:profiles(full_name), space:spaces(name)').order('created_at', { ascending: false }).limit(30),
@@ -73,10 +64,19 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user || !isAdmin) { router.push('/feed'); return; }
+    let mounted = true;
+    fetchAllData();
+    return () => { mounted = false; };
+  }, [user, isAdmin, authLoading, router]);
+
   const handleProReview = async (id: string, status: 'approved' | 'rejected') => {
     const req = proRequests.find(r => r.id === id);
     if (!req) return;
     if (status === 'rejected' && !rejectReason.trim()) return;
+    const sb = createClient();
     if (status === 'approved') {
       await sb.from('professional_requests').update({ status, reviewed_by: user!.id, reviewed_at: new Date().toISOString() }).eq('id', id);
       await sb.from('professionals').upsert({
@@ -90,16 +90,18 @@ export default function AdminDashboard() {
     }
     setRejectReason('');
     setRejectingId(null);
-    loadData();
+    await fetchAllData();
   };
 
   const handleMarkPayout = async (id: string, status: 'paid' | 'cancelled', notes?: string) => {
+    const sb = createClient();
     await sb.from('payouts').update({ status, paid_by: user!.id, paid_at: status === 'paid' ? new Date().toISOString() : undefined, notes: notes || null }).eq('id', id);
     await sb.from('tips').update({ payout_status: status }).eq('id', payouts.find(p => p.id === id)?.tip_id || '');
-    loadData();
+    await fetchAllData();
   };
 
   const createPayouts = async () => {
+    const sb = createClient();
     const pendingTips = allTips.filter(t => t.status === 'completed' && t.payout_status !== 'paid');
     for (const tip of pendingTips) {
       await sb.from('payouts').upsert({
@@ -109,10 +111,11 @@ export default function AdminDashboard() {
         status: 'pending',
       }).select().single();
     }
-    loadData();
+    await fetchAllData();
   };
 
   const resolveReport = async (id: string, action: 'dismiss' | 'remove') => {
+    const sb = createClient();
     await sb.from('reports').update({ status: action === 'remove' ? 'resolved' : 'dismissed' }).eq('id', id);
     setReports(prev => prev.filter(r => r.id !== id));
   };

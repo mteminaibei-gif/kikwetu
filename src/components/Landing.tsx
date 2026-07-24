@@ -41,6 +41,200 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
   return <div ref={ref} className={`transition-all duration-700 ${vis ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} ${className}`}>{children}</div>;
 }
 
+// Savannah Doodle Background Component
+function SavannahDoodle() {
+  const [time, setTime] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(function tick(t) {
+      setTime(t / 1000);
+      requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {/* Sun gradient glow */}
+      <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-brand-warm/20 via-brand-amber/10 to-transparent blur-3xl animate-sunPulse" />
+      <div className="absolute top-1/3 right-1/5 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-brand-terracotta/15 to-transparent blur-3xl animate-sunPulse" style={{ animationDelay: '1.5s' }} />
+      
+      {/* Acacia trees */}
+      <AcaciaTree x="8%" y="82%" scale={1.2} time={time} />
+      <AcaciaTree x="22%" y="88%" scale={0.9} time={time} delay={0.5} />
+      <AcaciaTree x="75%" y="78%" scale={1.1} time={time} delay={1} />
+      <AcaciaTree x="88%" y="85%" scale={0.8} time={time} delay={1.5} />
+      <AcaciaTree x="95%" y="92%" scale={0.6} time={time} delay={2} />
+      
+      {/* Grass blades */}
+      <GrassField time={time} />
+      
+      {/* Birds */}
+      <Birds time={time} />
+      
+      {/* Subtle mountains */}
+      <Mountains />
+      
+      {/* SVG wave bottom */}
+      <svg className="absolute bottom-0 left-0 w-full h-48" viewBox="0 0 1440 180" preserveAspectRatio="none" style={{ opacity: 0.08 }}>
+        <path fill="url(#savannahGradient)" d="M0,120L40,117.3C80,115,160,109,240,112C320,115,400,125,480,128C560,131,640,125,720,122.7C800,120,880,120,960,125.3C1040,131,1120,141,1200,144C1280,147,1360,144,1400,141.3L1440,139L1440,180L1400,180C1360,180,1280,180,1200,180C1120,180,1040,180,960,180C880,180,800,180,720,180C640,180,560,180,480,180C400,180,320,180,240,180C160,180,80,180,40,180L0,180Z"/>
+        <defs>
+          <linearGradient id="savannahGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#cc5b47" />
+            <stop offset="100%" stopColor="#d28156" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
+}
+
+function AcaciaTree({ x, y, scale = 1, time, delay = 0 }: { x: string; y: string; scale?: number; time: number; delay?: number }) {
+  const sway = Math.sin((time + delay) * 0.3) * 2 * scale;
+  return (
+    <div className="absolute" style={{ left: x, bottom: y, transform: `scale(${scale}) translateX(${sway}px)`, transformOrigin: 'bottom center' }}>
+      <svg viewBox="0 0 60 100" width={60 * scale} height={100 * scale} className="text-brand-terracotta/30 dark:text-brand-terracotta/20">
+        <defs>
+          <linearGradient id="trunkGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#3d2b1f" />
+            <stop offset="100%" stopColor="#1a1008" />
+          </linearGradient>
+        </defs>
+        {/* Trunk */}
+        <path d="M30 100 Q22 60 26 30 Q28 15 32 15 Q36 15 38 30 Q42 60 34 100 Z" fill="url(#trunkGrad)" opacity="0.4" />
+        {/* Canopy layers */}
+        <ellipse cx="30" cy="25" rx="28" ry="18" fill="#2d5a27" opacity="0.35" />
+        <ellipse cx="30" cy="18" rx="22" ry="14" fill="#3a6b2e" opacity="0.3" />
+        <ellipse cx="30" cy="12" rx="16" ry="10" fill="#4a7c3a" opacity="0.25" />
+        <ellipse cx="30" cy="8" rx="10" ry="7" fill="#5a8d45" opacity="0.2" />
+      </svg>
+    </div>
+  );
+}
+
+function GrassField({ time }: { time: number }) {
+  return (
+    <div className="absolute bottom-0 left-0 w-full h-32 pointer-events-none" style={{ opacity: 0.15 }}>
+      {[...Array(25)].map((_, i) => (
+        <GrassBlade key={i} index={i} time={time} />
+      ))}
+    </div>
+  );
+}
+
+function GrassBlade({ index, time }: { index: number; time: number }) {
+  const x = (index / 25) * 100;
+  const height = 40 + (index % 3) * 20;
+  const sway = Math.sin((time + index * 0.5) * 1.2) * 3;
+  return (
+    <div className="absolute bottom-0" style={{ 
+      left: `${x}%`, 
+      transform: `translateX(${sway}px)`,
+      transformOrigin: 'bottom center',
+      transition: 'transform 0.3s ease-out'
+    }}>
+      <svg viewBox="0 0 4 60" width={3} height={height} className="text-emerald-600/40 dark:text-emerald-500/30">
+        <path d={`M2 60 Q${2 + sway * 0.3} 30 2 0`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+function Birds({ time }: { time: number }) {
+  const birds = [
+    { x: 15, y: 18, delay: 0, speed: 0.8 },
+    { x: 35, y: 12, delay: 2, speed: 1.1 },
+    { x: 65, y: 22, delay: 4, speed: 0.9 },
+    { x: 85, y: 15, delay: 6, speed: 1.2 },
+  ];
+  return (
+    <div className="absolute top-0 left-0 w-full h-[40vh] pointer-events-none">
+      {birds.map((b, i) => (
+        <Bird key={i} {...b} time={time} />
+      ))}
+    </div>
+  );
+}
+
+function Bird({ x, y, delay, speed, time }: { x: number; y: number; delay: number; speed: number; time: number }) {
+  const tx = ((time * speed * 10 + delay * 100) % 120) - 10;
+  const ty = Math.sin((time * speed + delay) * 2) * 3;
+  return (
+    <div className="absolute" style={{ 
+      left: `${x}%`, 
+      top: `${y}%`, 
+      transform: `translate(${tx}vw, ${ty}px) scale(0.6)`,
+      opacity: 0.3 
+    }}>
+      <svg viewBox="0 0 24 12" width={24} height={12} className="text-brand-terracotta/40 dark:text-brand-terracotta/30">
+        <path d="M2 6 Q6 2 12 6 Q18 10 22 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+function Mountains() {
+  return (
+    <svg className="absolute bottom-32 left-0 w-full h-48" viewBox="0 0 1440 200" preserveAspectRatio="none" style={{ opacity: 0.05 }}>
+      <path fill="#8b7355" d="M0,160L40,154.7C80,149,160,139,240,138.7C320,139,400,149,480,154.7C560,160,640,160,720,165.3C800,171,880,181,960,176C1040,171,1120,155,1200,144C1280,133,1360,128,1400,125.3L1440,123L1440,200L1400,200C1360,200,1280,200,1200,200C1120,200,1040,200,960,200C880,200,800,200,720,200C640,200,560,200,480,200C400,200,320,200,240,200C160,200,80,200,40,200L0,200Z"/>
+    </svg>
+  );
+}
+
+// Particle system for ambient atmosphere
+function ParticleSystem({ count = 30 }: { count?: number }) {
+  const [particles, setParticles] = useState<Array<{ x: number; y: number; size: number; speed: number; opacity: number; delay: number }>>([]);
+  
+  useEffect(() => {
+    const newParticles = Array.from({ length: count }, (_, i) => ({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 2 + Math.random() * 4,
+      speed: 0.2 + Math.random() * 0.5,
+      opacity: 0.1 + Math.random() * 0.3,
+      delay: Math.random() * 5,
+    }));
+    setParticles(newParticles);
+  }, [count]);
+
+  const [time, setTime] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(function tick(t) {
+      setTime(t / 1000);
+      requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-brand-amber/50"
+          style={{
+            left: `${p.x}%`,
+            top: `${(p.y + time * p.speed * 10) % 110}%`,
+            width: p.size,
+            height: p.size,
+            opacity: p.opacity * (0.5 + Math.sin(time * 2 + p.delay) * 0.3),
+            filter: 'blur(1px)',
+            animation: `float ${3 + p.speed * 5}s ease-in-out infinite`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateX(0) translateY(0); }
+          25% { transform: translateX(10px) translateY(-5px); }
+          50% { transform: translateX(-5px) translateY(5px); }
+          75% { transform: translateX(-10px) translateY(-5px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 const FOCUS_AREAS = [
   { emoji: '🌾', label: '#KilimoSmart', desc: 'Modern agronomy, soil health, market prices — in every county' },
   { emoji: '💻', label: 'Tech & Biz', desc: 'Startups, coding, digital skills across Kenya' },
@@ -101,16 +295,10 @@ export default function Landing() {
       {/* ===== HERO ===== */}
       <section className="relative overflow-hidden min-h-[85vh] flex items-center">
         <div className="absolute inset-0 pointer-events-none">
+          <SavannahDoodle />
+          <ParticleSystem count={40} />
           <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-gradient-to-br from-brand-deep/6 to-transparent blur-3xl animate-glowPulse" />
           <div className="absolute top-1/3 right-1/4 w-64 h-64 rounded-full bg-gradient-to-br from-brand-terracotta/6 to-transparent blur-3xl animate-glowPulse" style={{ animationDelay: '2s' }} />
-          {/* Savannah sunset glow */}
-          <div className="absolute bottom-8 right-[12%] w-72 h-72 rounded-full bg-gradient-to-br from-brand-warm/8 via-brand-amber/5 to-transparent blur-2xl" />
-          {/* Acacia tree silhouette */}
-          <div className="sun-acacia" />
-          <svg className="absolute bottom-0 left-0 w-full h-auto" viewBox="0 0 1440 320" preserveAspectRatio="none">
-            <path fill="#cc5b47" opacity="0.06" d="M0,192L60,181.3C120,171,240,149,360,144C480,139,600,149,720,165.3C840,181,960,203,1080,197.3C1200,192,1320,160,1380,144L1440,128L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"/>
-            <path fill="#d28156" opacity="0.04" d="M0,256L60,245.3C120,235,240,219,360,208C480,197,600,192,720,197.3C840,203,960,219,1080,213.3C1200,208,1320,181,1380,170.7L1440,160L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"/>
-          </svg>
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">

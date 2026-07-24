@@ -70,8 +70,8 @@ export default function FeedView() {
   const [lang, setLang] = useState<'en' | 'sw'>('en');
   const [joinedSpaces, setJoinedSpaces] = useState<Record<string, boolean>>({});
   const [quizAnswer, setQuizAnswer] = useState<string | null>(null);
-  const [optimisticVotes, setOptimisticVotes] = useState<Record<string, number>>({});
-  const [optimisticDownvotes, setOptimisticDownvotes] = useState<Record<string, number>>({});
+  const [votingThread, setVotingThread] = useState<string | null>(null);
+  const [openShare, setOpenShare] = useState<string | null>(null);
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -144,12 +144,16 @@ export default function FeedView() {
   const handleVote = async (thread: Thread, voteType: 'up' | 'down', e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user) { show('Please login to vote.'); return; }
-    if (voteType === 'up') {
-      setOptimisticVotes(v => ({ ...v, [thread.id]: (v[thread.id] || 0) + 1 }));
-    } else {
-      setOptimisticDownvotes(v => ({ ...v, [thread.id]: (v[thread.id] || 0) + 1 }));
+    if (votingThread === thread.id) return;
+    setVotingThread(thread.id);
+    try {
+      await vote(thread.id, 'thread', voteType);
+      await loadThreads();
+    } catch (err: unknown) {
+      show(err instanceof Error ? err.message : 'Vote failed');
+    } finally {
+      setVotingThread(null);
     }
-    await vote(thread.id, 'thread', voteType);
   };
 
   const toggleSave = (threadId: string) => {
@@ -159,11 +163,25 @@ export default function FeedView() {
     show(savedThreads[threadId] ? 'Removed from saved' : 'Saved for later!');
   };
 
-  const addEmoji = (threadId: string, emoji: string) => {
+  const addEmoji = async (threadId: string, emoji: string) => {
     const current = emojiReactions[threadId];
     const next = { ...emojiReactions, [threadId]: current === emoji ? '' : emoji };
     setEmojiReactions(next);
     localStorage.setItem('kikwetu_reactions', JSON.stringify(next));
+    if (!user) return;
+    const sb = createClient();
+    try {
+      const { data: thread } = await sb.from('threads').select('author_id').eq('id', threadId).single();
+      if (thread?.author_id && thread.author_id !== user.id) {
+        await sb.from('notifications').insert({
+          user_id: thread.author_id,
+          actor_id: user.id,
+          type: 'emoji',
+          entity_type: 'thread',
+          entity_id: threadId,
+        });
+      }
+    } catch {}
   };
 
   const shareToSocial = (platform: string, threadId: string, title: string, content: string) => {
@@ -317,23 +335,24 @@ export default function FeedView() {
             ) : (
               <div className="space-y-4">
                 {displayedThreads.map((thread, idx) => (
-                  <div key={thread.id} className="sun-card p-4 sm:p-5 space-y-3 sm:space-y-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
+                  <div key={thread.id} className="sun-card p-4 sm:p-5 space-y-3 sm:space-y-4 hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 border border-transparent hover:border-brand-terracotta/20 group relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-brand-terracotta/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="relative flex items-start justify-between z-10">
                       <div className="flex items-center gap-3">
-                        <Link href={`/profile/${thread.author_id}`} className="shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-sm font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta transition-all">
+                        <Link href={`/profile/${thread.author_id}`} className="shrink-0 group">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-sm font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta hover:ring-offset-2 hover:ring-offset-white dark:hover:ring-offset-brand-cardDark transition-all duration-300 group-hover:scale-110">
                             {thread.author?.full_name?.[0]?.toUpperCase() || 'A'}
                           </div>
                         </Link>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <h5 className="text-sm font-bold">{thread.author?.full_name || tr('Mgeni', 'Guest')}</h5>
+                            <h5 className="text-sm font-bold group-hover:text-brand-red transition-colors">{thread.author?.full_name || tr('Mgeni', 'Guest')}</h5>
                             <span className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded font-bold"><svg className="w-2.5 h-2.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg> Mtaalamu</span>
                           </div>
                           <span className="text-[11px] text-gray-400">{thread.author?.county || ''} &middot; {timeAgo(thread.created_at)} {thread.space && <>in <strong className="text-brand-red">{(thread.space as unknown as { name: string })?.name}</strong></>}</span>
                         </div>
                       </div>
-                      <button onClick={toggleLang} className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg font-medium transition-colors">
+                      <button onClick={toggleLang} className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg font-medium transition-colors opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all">
                         <svg className="w-3 h-3 inline mr-1 text-brand-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
                         {lang === 'en' ? 'Tafsiri' : 'Translate'}
                       </button>
@@ -349,9 +368,9 @@ export default function FeedView() {
                       {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
                         <button key={emoji} onClick={() => addEmoji(thread.id, emoji)}
                           className={cn(
-                            'text-sm px-2 py-0.5 rounded-full border transition-all active:scale-90',
+                            'text-sm px-2 py-0.5 rounded-full border transition-all duration-200 active:scale-90 hover:scale-105',
                             emojiReactions[thread.id] === emoji
-                              ? 'bg-brand-terracotta/15 border-brand-terracotta/40 scale-110'
+                              ? 'bg-brand-terracotta/15 border-brand-terracotta/40 scale-110 shadow-sm'
                               : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 opacity-60 hover:opacity-100'
                           )}>{emoji}</button>
                       ))}
@@ -360,16 +379,21 @@ export default function FeedView() {
                     <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800 text-xs">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={e => handleVote(thread, 'up', e)} className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-2.5 py-1.5 rounded-l-full font-bold transition-all active:scale-95">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                            {formatNumber(thread.upvotes_count + (optimisticVotes[thread.id] || 0))}
+                          <button onClick={e => handleVote(thread, 'up', e)} disabled={votingThread === thread.id}
+                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-2.5 py-1.5 rounded-l-full font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 hover:shadow-lg hover:shadow-emerald-500/25">
+                            {votingThread === thread.id ? (
+                              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                            )}
+                            {formatNumber(thread.upvotes_count)}
                           </button>
-                          <button onClick={e => handleVote(thread, 'down', e)} className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full font-bold transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700">
+                          <button onClick={e => handleVote(thread, 'down', e)} disabled={votingThread === thread.id}
+                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full font-bold transition-all duration-200 active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50 hover:shadow-lg hover:shadow-red-500/25">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                            {formatNumber(optimisticDownvotes[thread.id] || 0)}
                           </button>
                         </div>
-                        <Link href={`/thread/${thread.id}`} className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-brand-red font-medium transition-colors">
+                        <Link href={`/thread/${thread.id}`} className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-brand-red font-medium transition-colors hover:gap-2">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                           {thread.reply_count}
                         </Link>
@@ -379,45 +403,48 @@ export default function FeedView() {
                           className={cn('p-1.5 rounded-full transition-all', savedThreads[thread.id] ? 'text-amber-500' : 'text-gray-400 hover:text-amber-500')}>
                           <svg className="w-4 h-4" fill={savedThreads[thread.id] ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                         </button>
-                        <div className="relative group/share">
-                          <button className="flex items-center gap-1.5 text-green-600 font-bold bg-green-50 dark:bg-green-950/40 px-2.5 py-1.5 rounded-full hover:bg-green-100 dark:hover:bg-green-950/60 transition-all whitespace-nowrap">
+                        <div className="relative">
+                          <button onClick={() => setOpenShare(openShare === thread.id ? null : thread.id)}
+                            className="flex items-center gap-1.5 text-green-600 font-bold bg-green-50 dark:bg-green-950/40 px-2.5 py-1.5 rounded-full hover:bg-green-100 dark:hover:bg-green-950/60 transition-all whitespace-nowrap">
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
                             {tr('Shiriki', 'Share')}
                           </button>
-                          <div className="absolute right-0 bottom-full mb-2 hidden group-hover/share:flex flex-col bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl py-1 z-10 min-w-[180px]">
-                            <button onClick={() => shareToSocial('whatsapp', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg> WhatsApp
-                            </button>
-                            <button onClick={() => shareToSocial('telegram', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg> Telegram
-                            </button>
-                            <button onClick={() => shareToSocial('facebook', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> Facebook
-                            </button>
-                            <button onClick={() => shareToSocial('twitter', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> X
-                            </button>
-                            <button onClick={() => shareToSocial('linkedin', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn
-                            </button>
-                            <button onClick={() => shareToSocial('instagram', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg> Instagram
-                            </button>
-                            <button onClick={() => shareToSocial('email', thread.id, thread.title, thread.content)}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Email
-                            </button>
-                            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/thread/${thread.id}`); show('Link copied!'); }}
-                              className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800">
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg> Copy Link
-                            </button>
-                          </div>
+                          {openShare === thread.id && (
+                            <div className="absolute right-0 bottom-full mb-2 flex flex-col bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl py-1 z-10 min-w-[180px]">
+                              <button onClick={() => { shareToSocial('whatsapp', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg> WhatsApp
+                              </button>
+                              <button onClick={() => { shareToSocial('telegram', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg> Telegram
+                              </button>
+                              <button onClick={() => { shareToSocial('facebook', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> Facebook
+                              </button>
+                              <button onClick={() => { shareToSocial('twitter', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> X
+                              </button>
+                              <button onClick={() => { shareToSocial('linkedin', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn
+                              </button>
+                              <button onClick={() => { shareToSocial('instagram', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg> Instagram
+                              </button>
+                              <button onClick={() => { shareToSocial('email', thread.id, thread.title, thread.content); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Email
+                              </button>
+                              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/thread/${thread.id}`); show('Link copied!'); setOpenShare(null); }}
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg> Copy Link
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

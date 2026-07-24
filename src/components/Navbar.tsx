@@ -27,6 +27,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; title: string; author: { full_name: string } }[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -51,6 +52,12 @@ export default function Navbar() {
     const h = () => setOnline(navigator.onLine);
     window.addEventListener('online', h); window.addEventListener('offline', h);
     return () => { window.removeEventListener('online', h); window.removeEventListener('offline', h); };
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   const toggleTheme = useCallback(() => setDark(prev => !prev), []);
@@ -92,7 +99,10 @@ export default function Navbar() {
   }, [router]);
 
   return (
-    <header className="sticky top-0 z-50 sun-nav-border bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg shadow-sm border-b-0">
+    <header className={cn(
+      'sticky top-0 z-50 sun-nav-border bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg border-b-0 transition-all duration-300',
+      scrolled && 'shadow-md bg-white/98 dark:bg-brand-cardDark/98'
+    )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         <Link href={user ? '/feed' : '/'} className="flex items-center gap-2.5 shrink-0 group">
           <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-9 w-auto group-hover:scale-105 transition-transform drop-shadow-sm" />

@@ -39,14 +39,21 @@ const COUNTY_LIST = [
   'Kakamega', 'Siaya', 'Homa Bay', 'Migori', 'Kisii', 'Nyamira', 'Kericho',
 ];
 
+// Deterministic pseudo-random for stable renders
+const pseudoRandom = (seed: string) => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) { hash = ((hash << 5) - hash) + seed.charCodeAt(i); hash |= 0; }
+  return (Math.abs(hash) % 1000) / 1000;
+};
+
 const DEFAULT_COMMUNITIES: Community[] = COUNTY_LIST.map((county, i) => ({
   id: `community-${i}`,
   name: `${county} Usalama`,
   county,
   description: `${county} neighborhood security watch & community updates`,
-  memberCount: Math.floor(Math.random() * 500) + 50,
+  memberCount: Math.floor(pseudoRandom(county + '-members') * 500) + 50,
   emergencyContacts: ['112', '999', ''],
-  created_at: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+  created_at: new Date(Date.now() - pseudoRandom(county + '-date') * 365 * 24 * 60 * 60 * 1000).toISOString(),
 }));
 
 const WHATSAPP_GROUPS: Record<string, { name: string; link: string }[]> = {
@@ -83,8 +90,17 @@ export default function NyumbaKumiPage() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [lang, setLang] = useState<'en' | 'sw'>('en');
-  const [joinedComms, setJoinedComms] = useState<Set<string>>(new Set());
-  const [communities, setCommunities] = useState<Community[]>(DEFAULT_COMMUNITIES);
+  const [joinedComms, setJoinedComms] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem('nyumba_kumi_joined') || '[]')); } catch { return new Set(); }
+  });
+  const [communities, setCommunities] = useState<Community[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_COMMUNITIES;
+    try {
+      const stored = localStorage.getItem('nyumba_kumi_communities');
+      return stored ? [...DEFAULT_COMMUNITIES, ...JSON.parse(stored)] : DEFAULT_COMMUNITIES;
+    } catch { return DEFAULT_COMMUNITIES; }
+  });
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
@@ -93,17 +109,6 @@ export default function NyumbaKumiPage() {
   const [newCommDesc, setNewCommDesc] = useState('');
 
   const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
-
-  useEffect(() => {
-    const stored = localStorage.getItem('nyumba_kumi_joined');
-    if (stored) {
-      try { setJoinedComms(new Set(JSON.parse(stored))); } catch {}
-    }
-    const storedComms = localStorage.getItem('nyumba_kumi_communities');
-    if (storedComms) {
-      try { setCommunities(prev => [...DEFAULT_COMMUNITIES, ...JSON.parse(storedComms)]); } catch {}
-    }
-  }, []);
 
   const loadPosts = useCallback(async () => {
     const { data } = await sb.from('nyumba_kumi_posts')
@@ -207,7 +212,7 @@ export default function NyumbaKumiPage() {
   };
 
   const nearbyCounties = userLocation
-    ? COUNTY_LIST.filter(() => Math.random() > 0.5).slice(0, 5)
+    ? COUNTY_LIST.filter(c => pseudoRandom(c + '-nearby-' + (userLocation.lat.toFixed(2) + userLocation.lng.toFixed(2))) > 0.5).slice(0, 5)
     : [];
 
   return (
@@ -542,7 +547,7 @@ export default function NyumbaKumiPage() {
                           </div>
                         </div>
                         <span className="text-[10px] text-amber-600 font-bold px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                          {Math.floor(Math.random() * 10) + 1}km
+                          {Math.floor(pseudoRandom(comm.id + '-distance') * 10) + 1}km
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{comm.description}</p>

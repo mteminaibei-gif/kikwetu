@@ -129,12 +129,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createReply = useCallback(async (threadId: string, content: string): Promise<{ error?: string }> => {
     if (!user) return { error: 'Not logged in' };
     const sb = createClient();
-    const { error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
+    const { data: reply, error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
     if (error) {
       if (!navigator.onLine) { await Offline.queueAction({ type: 'createReply', userId: user.id, payload: { thread_id: threadId, content } }); return {}; }
       return { error: error.message };
     }
     await loadReplies(threadId);
+    // Notify thread author
+    try {
+      const { data: thread } = await sb.from('threads').select('author_id').eq('id', threadId).single();
+      if (thread?.author_id && thread.author_id !== user.id) {
+        await sb.from('notifications').insert({
+          user_id: thread.author_id,
+          actor_id: user.id,
+          type: 'reply',
+          entity_type: 'thread',
+          entity_id: threadId,
+        });
+      }
+    } catch {}
     return {};
   }, [user, loadReplies]);
 
@@ -143,6 +156,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const sb = createClient();
     const { error } = await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
     if (error && !navigator.onLine) { await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } }); }
+    // Insert notification for the content author (if not self)
+    try {
+      let authorId: string | null = null;
+      if (entityType === 'thread') {
+        const { data: thread } = await sb.from('threads').select('author_id').eq('id', entityId).single();
+        authorId = thread?.author_id ?? null;
+      } else {
+        const { data: reply } = await sb.from('replies').select('author_id').eq('id', entityId).single();
+        authorId = reply?.author_id ?? null;
+      }
+      if (authorId && authorId !== user.id) {
+        await sb.from('notifications').insert({
+          user_id: authorId,
+          actor_id: user.id,
+          type: 'vote',
+          entity_type: entityType,
+          entity_id: entityId,
+        });
+      }
+    } catch {}
   }, [user]);
 
   const subscribeToFeed = useCallback(() => {

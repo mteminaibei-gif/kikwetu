@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AppProvider } from '@/context/AppContext';
@@ -14,17 +14,12 @@ import { createClient } from '@/lib/supabase';
 
 function TutorialGate() {
   const { user } = useAuth();
-  if (!user || user.heshima_score > 100) return null;
   const [show, setShow] = useState(false);
+  const shouldShow = user && user.heshima_score === 100 && !show;
 
-  useEffect(() => {
-    if (user && user.heshima_score === 100) {
-      setShow(true);
-    }
-  }, [user]);
+  if (!user || user.heshima_score > 100 || (!shouldShow && !show)) return null;
 
-  if (!show) return null;
-
+  // Show tutorial when user reaches exactly 100 heshima_score and hasn't completed it
   return (
     <InteractiveTutorial onComplete={async () => {
       setShow(false);
