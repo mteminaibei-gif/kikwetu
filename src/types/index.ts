@@ -19,6 +19,7 @@ export interface Profile {
   following_count: number;
   parent_id?: string;
   is_minor?: boolean;
+  tutorial_completed?: boolean;
   created_at: string;
 }
 

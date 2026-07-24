@@ -56,7 +56,14 @@ export default function InteractiveTutorial({ onComplete }: { onComplete: () => 
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      <div className="absolute inset-0" onClick={onComplete} />
+      <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+        <button onClick={onComplete}
+          className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+          aria-label="Close tutorial">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
         <div className="p-8 text-center space-y-4">
           <div className="text-7xl mb-4 animate-bounce">{current.icon}</div>
           <h2 className="text-2xl font-black text-brand-deep dark:text-white">
@@ -79,12 +86,10 @@ export default function InteractiveTutorial({ onComplete }: { onComplete: () => 
               {contentLang === 'en' ? 'Kiswahili' : 'English'}
             </button>
             <div className="flex gap-2">
-              {step < STEPS.length - 1 && (
-                <button onClick={onComplete}
-                  className="px-4 py-2 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
-                  Skip
-                </button>
-              )}
+              <button onClick={onComplete}
+                className="px-4 py-2 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                {contentLang === 'en' ? 'Skip All' : 'Ruka Zote'}
+              </button>
               <button onClick={handleNext}
                 className="sun-btn px-6 py-2.5 rounded-full text-xs font-bold shadow-md transition-all active:scale-95">
                 {step < STEPS.length - 1 ? (contentLang === 'en' ? 'Next' : 'Inayofuata') : (contentLang === 'en' ? 'Get Started!' : 'Anza!')}
