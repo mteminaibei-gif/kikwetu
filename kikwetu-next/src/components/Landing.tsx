@@ -74,12 +74,20 @@ const REVIEWS = [
 export default function Landing() {
   const [lang, setLang] = useState<'en' | 'sw'>('en');
   const [activeStep, setActiveStep] = useState(0);
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [featurePaused, setFeaturePaused] = useState(false);
   const tr = (e: string, s: string) => lang === 'sw' ? s : e;
 
   useEffect(() => {
     const interval = setInterval(() => setActiveStep(p => (p + 1) % HOW.length), 4500);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (featurePaused) return;
+    const interval = setInterval(() => setActiveFeature(p => (p + 1) % 4), 4000);
+    return () => clearInterval(interval);
+  }, [featurePaused]);
 
   return (
     <div className="min-h-screen">
@@ -106,11 +114,11 @@ export default function Landing() {
                 {tr('Kaunti Zote 47 — Jumuiya Moja', 'All 47 Counties — One Community')}
               </div>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black font-logo tracking-tight leading-[1.05] animate-fadeUp delay-100">
-                <span className="text-brand-deep dark:text-white">{tr('Kikwetu', 'Kikwetu')}</span>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-logo tracking-tight leading-[1.05] animate-fadeUp delay-100">
+                <span className="text-gray-900 dark:text-white">{tr('Kikwetu', 'Kikwetu')}</span>
                 <span className="text-brand-red">Connect</span>
                 <br />
-                <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-200">
+                <span className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-700 dark:text-gray-300">
                   {tr('Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu', 'Our Knowledge, Our Stories, Our Future')}
                 </span>
               </h1>
@@ -157,34 +165,51 @@ export default function Landing() {
             <div className="hidden lg:block animate-scalePop delay-300">
               <div className="relative max-w-md mx-auto">
                 <div className="absolute -inset-4 bg-gradient-to-br from-brand-deep/10 via-brand-terracotta/6 to-brand-deep/8 rounded-[48px] blur-xl animate-sunPulse" />
-                <div className="relative sun-card p-0 overflow-hidden">
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center gap-3 pb-4 border-b border-black/5 dark:border-brand-terracotta/30">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center text-white font-bold shadow-md">K</div>
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-brand-deep dark:text-white">Baraza la Leo</p>
-                        <p className="text-xs text-gray-400">{tr('Majadiliano kutoka kaunti zote', 'Discussions from all counties')}</p>
-                      </div>
-                      <span className="text-[10px] font-bold text-brand-red bg-brand-terracotta/10 dark:bg-brand-terracotta/20 px-2 py-1 rounded-full">{tr('Moja kwa Moja', 'Live')}</span>
-                    </div>
-                    <div className="space-y-2.5">
-                      {[
-                        { emoji: '🌾', text: tr('Mbinu bora za kilimo kavu, Trans-Nzoia', 'Dry farming best practices, Trans-Nzoia'), tag: '#KilimoSmart' },
-                        { emoji: '💻', text: tr('Jenga SaaS yako kwa Next.js — Nairobi', 'Build your SaaS with Next.js — Nairobi'), tag: 'Tech' },
-                        { emoji: '📖', text: tr('Ngombo za Kale — Mombasa', 'Ancient Swahili poetry — Mombasa'), tag: 'Utamaduni' },
-                        { emoji: '🏥', text: tr('Afya ya akili vijijini — Kisumu', 'Mental health in rural areas — Kisumu'), tag: 'Afya' },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-black/[0.02] dark:bg-brand-terracotta/10 border border-black/[0.04] dark:border-brand-terracotta/20">
-                          <span className="text-lg">{item.emoji}</span>
-                          <span className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{item.text}</span>
-                          <span className="text-[10px] font-bold text-brand-red bg-brand-terracotta/10 dark:bg-brand-terracotta/20 px-1.5 py-0.5 rounded">{item.tag}</span>
+                <div className="relative sun-card p-6 space-y-5 overflow-hidden">
+                  <div className="flex items-center gap-2 sun-tag w-fit">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-terracotta animate-pulse" />
+                    {tr('Dira Yetu', 'Our Purpose')}
+                  </div>
+
+                  <div className="relative min-h-[280px]">
+                    {[
+                      {
+                        emoji: '🌱', title: tr('Jifunze', 'Learn'), desc: tr('Pata maarifa ya kilimo, tech, afya na elimu kutoka kwa Wakenya wenzako.', 'Get knowledge on farming, tech, health and education from fellow Kenyans.'),
+                        color: 'from-emerald-500/20 to-emerald-600/10', border: 'border-emerald-500/30'
+                      },
+                      {
+                        emoji: '💬', title: tr('Shiriki', 'Share'), desc: tr('Uliza maswali, jibu, na jenga Heshima kwa kusaidia jamii yako.', 'Ask questions, answer, and earn Heshima by helping your community.'),
+                        color: 'from-brand-terracotta/20 to-brand-red/10', border: 'border-brand-terracotta/30'
+                      },
+                      {
+                        emoji: '🌍', title: tr('Unganisha', 'Connect'), desc: tr('Kaunti zote 47 zimeunganishwa. Kutoka Kilifi hadi Kisumu, tuko pamoja.', 'All 47 counties connected. From Kilifi to Kisumu, we are together.'),
+                        color: 'from-blue-500/20 to-cyan-500/10', border: 'border-blue-500/30'
+                      },
+                      {
+                        emoji: '🚀', title: tr('Kua', 'Grow'), desc: tr('Jenga ujuzi, pata soko, na uwe mtaalamu katika jamii yako.', 'Build skills, find markets, and become an expert in your community.'),
+                        color: 'from-purple-500/20 to-pink-500/10', border: 'border-purple-500/30'
+                      },
+                    ].map((item, i) => (
+                      <div key={i}
+                        className={`absolute inset-0 transition-all duration-700 ease-in-out p-5 rounded-2xl border bg-gradient-to-br ${item.color} ${item.border} ${activeFeature === i ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-8 scale-95 pointer-events-none'}`}
+                        onMouseEnter={() => setFeaturePaused(true)}
+                        onMouseLeave={() => setFeaturePaused(false)}>
+                        <span className="text-4xl block mb-3">{item.emoji}</span>
+                        <h4 className="text-lg font-black text-brand-deep dark:text-white mb-2">{item.title}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{item.desc}</p>
+                        <div className="mt-4 flex items-center gap-2 text-xs text-brand-red font-semibold">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                          {tr('Jifunze Zaidi', 'Learn More')}
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-black/5 dark:border-brand-terracotta/30">
-                      <span className="text-xs font-bold text-brand-red">{tr('Inauma Kenya', 'Trending across Kenya')}</span>
-                      <span className="text-xs text-gray-400">12.4k {tr('machapisho', 'posts')}</span>
-                    </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    {[0, 1, 2, 3].map(i => (
+                      <button key={i} onClick={() => { setActiveFeature(i); setFeaturePaused(true); setTimeout(() => setFeaturePaused(false), 4000); }}
+                        className={`h-1.5 rounded-full transition-all duration-500 ${activeFeature === i ? 'w-8 bg-brand-terracotta' : 'w-1.5 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400'}`} />
+                    ))}
                   </div>
                 </div>
               </div>
