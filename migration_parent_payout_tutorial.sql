@@ -75,3 +75,92 @@ UPDATE tips SET
   professional_amount = ROUND(amount * 0.7),
   platform_amount = amount - ROUND(amount * 0.7)
 WHERE professional_amount IS NULL OR professional_amount = 0;
+
+-- 7. NYUMBA KUMI (neighborhood security community)
+CREATE TABLE IF NOT EXISTS nyumba_kumi_posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  author_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  content TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general' CHECK (category IN ('general', 'alert', 'question', 'info')),
+  county TEXT NOT NULL DEFAULT 'Nairobi',
+  location TEXT,
+  urgent BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE nyumba_kumi_posts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read nyumba_kumi posts"
+  ON nyumba_kumi_posts FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can insert posts"
+  ON nyumba_kumi_posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Authors can update own posts"
+  ON nyumba_kumi_posts FOR UPDATE USING (author_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS nyumba_kumi_replies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES nyumba_kumi_posts(id) ON DELETE CASCADE NOT NULL,
+  author_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE nyumba_kumi_replies ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read replies"
+  ON nyumba_kumi_replies FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can insert replies"
+  ON nyumba_kumi_replies FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+ALTER publication supabase_realtime ADD TABLE nyumba_kumi_posts;
+ALTER publication supabase_realtime ADD TABLE nyumba_kumi_replies;
+
+-- 8. AUTO-CREATE TRIGGER: Profile on user signup (runs when auth.users row created)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, username, heshima_score, role, interests, preferred_lang)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'),
+    COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || substr(NEW.id::text, 1, 8)),
+    100,
+    'user',
+    '{}',
+    COALESCE(NEW.raw_user_meta_data->>'preferred_lang', 'en')
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 9. AUTO-CREATE TRIGGER: Professional entry when request approved
+CREATE OR REPLACE FUNCTION public.handle_professional_approved()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'approved' AND OLD.status != 'approved' THEN
+    INSERT INTO public.professionals (profile_id, title, bio, qualifications, qualifications_doc_url, expertise, verification_status, verified_by, verified_at)
+    VALUES (NEW.profile_id, NEW.title, NEW.bio, NEW.qualifications, NEW.qualifications_doc_url, NEW.expertise, 'approved', NEW.reviewed_by, NEW.reviewed_at)
+    ON CONFLICT (profile_id) DO UPDATE SET
+      title = EXCLUDED.title, bio = EXCLUDED.bio, qualifications = EXCLUDED.qualifications,
+      verification_status = 'approved', verified_by = EXCLUDED.verified_by, verified_at = EXCLUDED.verified_at;
+    UPDATE public.profiles SET role = 'expert' WHERE id = NEW.profile_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_professional_request_approved ON public.professional_requests;
+CREATE TRIGGER on_professional_request_approved
+  AFTER UPDATE OF status ON public.professional_requests
+  FOR EACH ROW
+  WHEN (NEW.status = 'approved')
+  EXECUTE FUNCTION public.handle_professional_approved();
