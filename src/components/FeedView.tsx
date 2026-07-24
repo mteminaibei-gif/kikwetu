@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { timeAgo, formatNumber, cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import CreatePostModal from '@/components/CreatePostModal';
@@ -53,6 +53,7 @@ export default function FeedView() {
   const { user } = useAuth();
   const { show } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
   const sbRef = useRef(createClient());
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState(() => {
@@ -160,11 +161,12 @@ export default function FeedView() {
   }, [loadThreads]);
 
   return (
-    <div className="max-w-7xl mx-auto flex-1 w-full grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 px-3 sm:px-6 lg:px-8 py-4 md:py-6">
+    <div className="max-w-7xl mx-auto flex-1 w-full grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 px-2 sm:px-6 lg:px-8 py-3 sm:py-4 md:py-6">
       {/* LEFT SIDEBAR — sticky */}
       <aside className="hidden md:block md:col-span-1">
         <div className="sticky top-20 space-y-6">
           <nav className="sun-card p-2 space-y-1">
+            {/* Feed tabs (view controls) */}
             {TABS.map(t => (
               <button key={t.id} onClick={() => { setView(t.id); router.replace(`/feed?view=${t.id}`, { scroll: false }); }}
                 className={cn(
@@ -175,6 +177,32 @@ export default function FeedView() {
                 {t.label}
               </button>
             ))}
+            {/* Main navigation links */}
+            <div className="border-t border-gray-100 dark:border-gray-800 my-2" />
+            <Link href="/students"
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all',
+                pathname === '/students' ? 'bg-brand-deep text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              )}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              Students
+            </Link>
+            <Link href="/nyumba-kumi"
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all',
+                pathname === '/nyumba-kumi' ? 'bg-brand-deep text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              )}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+              Nyumba Kumi
+            </Link>
+            <Link href="/professionals/request"
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all',
+                pathname === '/professionals/request' ? 'bg-brand-deep text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+              )}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              Understand
+            </Link>
           </nav>
 
           <button onClick={() => setShowCreate(true)}
@@ -204,7 +232,7 @@ export default function FeedView() {
         {view === 'feed' && (
           <div className="space-y-6">
             <div onClick={() => setShowCreate(true)}
-              className="sun-card p-4 cursor-pointer hover:border-brand-terracotta transition-all">
+              className="sun-card p-3 sm:p-4 cursor-pointer hover:border-brand-terracotta transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center text-white font-bold shadow-sm">
                   {user?.full_name?.[0]?.toUpperCase() || 'U'}
@@ -243,7 +271,7 @@ export default function FeedView() {
             ) : (
               <div className="space-y-4">
                 {displayedThreads.map((thread, idx) => (
-                  <div key={thread.id} className="sun-card p-5 space-y-4 hover:shadow-md transition-shadow">
+                  <div key={thread.id} className="sun-card p-4 sm:p-5 space-y-3 sm:space-y-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-sm font-bold text-white shadow-sm">
