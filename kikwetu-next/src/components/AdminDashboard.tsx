@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { timeAgo, getInitials, getAvatarColor, roleBadge } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import type { Profile, Thread, Report, Space } from '@/types';
+import type { Profile, Thread, Report, Space, ProfessionalRequest, Professional, Tip, ServiceRating } from '@/types';
 
 interface Stat {
   title: string; value: string; icon: string; color: string;
@@ -21,7 +21,13 @@ export default function AdminDashboard() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [proRequests, setProRequests] = useState<ProfessionalRequest[]>([]);
+  const [pros, setPros] = useState<Professional[]>([]);
+  const [allTips, setAllTips] = useState<Tip[]>([]);
+  const [allRatings, setAllRatings] = useState<ServiceRating[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
   const sb = createClient();
 
@@ -33,7 +39,7 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true);
-    const [uRes, tRes, rRes, sRes, pCount, tCount, rpCount] = await Promise.all([
+    const [uRes, tRes, rRes, sRes, pCount, tCount, rpCount, prRes, pRes, tipRes, rateRes] = await Promise.all([
       sb.from('profiles').select('*').order('created_at', { ascending: false }).limit(50),
       sb.from('threads').select('*, author:profiles(full_name), space:spaces(name)').order('created_at', { ascending: false }).limit(30),
       sb.from('reports').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
@@ -41,11 +47,19 @@ export default function AdminDashboard() {
       sb.from('profiles').select('id', { count: 'exact', head: true }),
       sb.from('threads').select('id', { count: 'exact', head: true }),
       sb.from('replies').select('id', { count: 'exact', head: true }),
+      sb.from('professional_requests').select('*, profile:profiles(full_name, avatar_url, county, email)').order('created_at', { ascending: false }),
+      sb.from('professionals').select('*, profile:profiles(full_name, avatar_url, county)').order('created_at', { ascending: false }),
+      sb.from('tips').select('*, student:profiles!tips_student_id_fkey(full_name), professional:profiles!tips_professional_id_fkey(full_name)').order('created_at', { ascending: false }).limit(30),
+      sb.from('service_ratings').select('*, student:profiles(full_name, avatar_url)').order('created_at', { ascending: false }).limit(30),
     ]);
     if (uRes.data) setUsers(uRes.data as Profile[]);
     if (tRes.data) setThreads(tRes.data as Thread[]);
     if (rRes.data) setReports(rRes.data as Report[]);
     if (sRes.data) setSpaces(sRes.data as Space[]);
+    if (prRes.data) setProRequests(prRes.data as ProfessionalRequest[]);
+    if (pRes.data) setPros(pRes.data as Professional[]);
+    if (tipRes.data) setAllTips(tipRes.data as Tip[]);
+    if (rateRes.data) setAllRatings(rateRes.data as ServiceRating[]);
     setStats([
       { title: 'Total Users', value: String(pCount.count || 0), icon: 'group', color: 'bg-brand-deep' },
       { title: 'Total Threads', value: String(tCount.count || 0), icon: 'forum', color: 'bg-brand-terracotta' },
@@ -53,6 +67,26 @@ export default function AdminDashboard() {
       { title: 'Flagged Items', value: String(rRes.data?.length || 0), icon: 'warning', color: 'bg-rose-500' },
     ]);
     setLoading(false);
+  };
+
+  const handleProReview = async (id: string, status: 'approved' | 'rejected') => {
+    const req = proRequests.find(r => r.id === id);
+    if (!req) return;
+    if (status === 'rejected' && !rejectReason.trim() && rejectingId === id) return;
+    if (status === 'approved') {
+      await sb.from('professional_requests').update({ status, reviewed_by: user!.id, reviewed_at: new Date().toISOString() }).eq('id', id);
+      await sb.from('professionals').upsert({
+        profile_id: req.profile_id, title: req.title, bio: req.bio,
+        qualifications: req.qualifications, qualifications_doc_url: req.qualifications_doc_url,
+        expertise: req.expertise, verification_status: 'approved', verified_by: user!.id, verified_at: new Date().toISOString(),
+      }).select().single();
+      await sb.from('profiles').update({ role: 'expert' }).eq('id', req.profile_id);
+    } else {
+      await sb.from('professional_requests').update({ status, reviewed_by: user!.id, reviewed_at: new Date().toISOString(), rejection_reason: rejectReason || null }).eq('id', id);
+    }
+    setRejectReason('');
+    setRejectingId(null);
+    loadData();
   };
 
   const resolveReport = async (id: string, action: 'dismiss' | 'remove') => {
@@ -85,6 +119,7 @@ export default function AdminDashboard() {
             { id: 'threads', label: 'Threads', icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
             { id: 'moderation', label: `Moderation${reports.length ? ` (${reports.length})` : ''}`, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z' },
             { id: 'spaces', label: 'Spaces', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+            { id: 'professionals', label: `Professionals${proRequests.filter(r => r.status === 'pending').length ? ` (${proRequests.filter(r => r.status === 'pending').length})` : ''}`, icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} className={sidebarClasses(t.id)}>
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={t.icon} /></svg>
@@ -233,6 +268,155 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'professionals' && (
+          <div className="space-y-6">
+            {/* Pending Requests */}
+            <div className="sun-card p-5">
+              <h3 className="font-bold mb-4 flex items-center justify-between">
+                <span>Pending Verification Requests ({proRequests.filter(r => r.status === 'pending').length})</span>
+              </h3>
+              {proRequests.filter(r => r.status === 'pending').length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No pending requests.</p>
+              ) : (
+                <div className="space-y-3">
+                  {proRequests.filter(r => r.status === 'pending').map(req => (
+                    <div key={req.id} className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white font-bold text-sm">
+                            {req.profile?.full_name?.[0]?.toUpperCase() || '?'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{req.profile?.full_name || 'Unknown'}</p>
+                            <p className="text-xs text-brand-red font-semibold">{req.title}</p>
+                            <p className="text-[10px] text-gray-400">{req.profile?.county} · {req.profile?.email}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-bold">Pending</span>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                        <p><span className="font-bold text-gray-700 dark:text-gray-300">Bio:</span> {req.bio}</p>
+                        <p><span className="font-bold text-gray-700 dark:text-gray-300">Qualifications:</span> {req.qualifications}</p>
+                        {req.qualifications_doc_url && (
+                          <a href={req.qualifications_doc_url} target="_blank" className="text-brand-red font-semibold hover:underline inline-flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            View Credentials
+                          </a>
+                        )}
+                        <p><span className="font-bold text-gray-700 dark:text-gray-300">Expertise:</span> {(req.expertise || []).join(', ')}</p>
+                      </div>
+                      {rejectingId === req.id ? (
+                        <div className="space-y-2">
+                          <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={2}
+                            placeholder="Reason for rejection (required)..."
+                            className="w-full p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 resize-none" />
+                          <div className="flex gap-2">
+                            <button onClick={() => { setRejectingId(null); setRejectReason(''); }}
+                              className="px-3 py-1.5 text-xs font-bold border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+                            <button onClick={() => handleProReview(req.id, 'rejected')}
+                              className="px-3 py-1.5 text-xs font-bold bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">Confirm Reject</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={() => handleProReview(req.id, 'approved')}
+                            className="px-4 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all active:scale-95">
+                            <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            Approve
+                          </button>
+                          <button onClick={() => setRejectingId(req.id)}
+                            className="px-4 py-1.5 text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 rounded-lg transition-colors">
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* All Verified Professionals */}
+            <div className="sun-card p-5">
+              <h3 className="font-bold mb-4">All Verified Professionals ({pros.filter(p => p.verification_status === 'approved').length})</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[10px] font-bold text-gray-400 uppercase border-b border-gray-200 dark:border-gray-700">
+                      <th className="pb-3 pr-4">Professional</th>
+                      <th className="pb-3 pr-4">Title</th>
+                      <th className="pb-3 pr-4">Rating</th>
+                      <th className="pb-3 pr-4">Sessions</th>
+                      <th className="pb-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {pros.filter(p => p.verification_status === 'approved').map(p => (
+                      <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                              {p.profile?.full_name?.[0]?.toUpperCase() || 'P'}
+                            </div>
+                            <span className="font-semibold text-sm">{p.profile?.full_name || 'Unknown'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4 text-xs text-gray-500 dark:text-gray-400">{p.title}</td>
+                        <td className="py-3 pr-4 text-xs font-bold text-amber-500">{p.avg_rating > 0 ? p.avg_rating.toFixed(1) : '-'}</td>
+                        <td className="py-3 pr-4 text-xs">{p.total_sessions}</td>
+                        <td className="py-3"><span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold">Active</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Tips & Ratings */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="sun-card p-5">
+                <h3 className="font-bold mb-3">Recent Tips</h3>
+                {allTips.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">No tips yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {allTips.slice(0, 10).map(t => (
+                      <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <div>
+                          <p className="text-xs font-semibold">{t.student?.full_name || 'Student'} → {t.professional?.full_name || 'Pro'}</p>
+                          <p className="text-[10px] text-gray-400">{timeAgo(t.created_at)} · {t.mpesa_ref ? `Ref: ${t.mpesa_ref}` : 'Pending'}</p>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-600">KES {t.amount}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="sun-card p-5">
+                <h3 className="font-bold mb-3">Recent Ratings</h3>
+                {allRatings.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">No ratings yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {allRatings.slice(0, 10).map(r => (
+                      <div key={r.id} className="py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-semibold">{r.student?.full_name || 'Student'}</span>
+                          <span className="flex gap-0.5">
+                            {[1,2,3,4,5].map(s => <span key={s} className={`text-[10px] ${s <= r.score ? 'text-amber-400' : 'text-gray-300 dark:text-gray-600'}`}>★</span>)}
+                          </span>
+                          <span className="text-gray-400">{timeAgo(r.created_at)}</span>
+                        </div>
+                        {r.review && <p className="text-xs text-gray-500 mt-0.5">&ldquo;{r.review}&rdquo;</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

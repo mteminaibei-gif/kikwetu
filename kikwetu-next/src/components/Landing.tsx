@@ -78,6 +78,13 @@ export default function Landing() {
   const [featurePaused, setFeaturePaused] = useState(false);
   const tr = (e: string, s: string) => lang === 'sw' ? s : e;
 
+  const EDU_FEATURES = [
+    { emoji: '🎓', title: tr('Uliza Mwalimu', 'Ask a Teacher'), desc: tr('Pata mwongozo kutoka kwa wataalamu walio thibitishwa. Maswali yako yanajibiwa na walimu wenye sifa.', 'Get guidance from verified professionals. Your questions answered by qualified teachers.'), color: 'from-brand-deep/10 to-brand-deep/5', border: 'border-brand-deep/30' },
+    { emoji: '💬', title: tr('Somo Moja kwa Moja', 'One-on-One Learning'), desc: tr('Jiandikie kikao cha kibinafsi na mtaalamu. Jifunze kwa chat kwa wakati halisi.', 'Book a private session with an expert. Learn through real-time chat.'), color: 'from-brand-terracotta/10 to-brand-red/5', border: 'border-brand-terracotta/30' },
+    { emoji: '⭐', title: tr('Kadiria na Tuma Bahshishi', 'Rate & Tip'), desc: tr('Baada ya somo, kadiria huduma na tuma bahshishi kwa M-Pesa kwa mwalimu aliyekusaidia.', 'After a session, rate the service and send a tip via M-Pesa to the teacher who helped you.'), color: 'from-amber-500/10 to-yellow-500/5', border: 'border-amber-500/30' },
+    { emoji: '🛡️', title: tr('Walimu Walio Thibitishwa', 'Verified Professionals'), desc: tr('Wataalamu wote wanapaswa kuthibitisha sifa zao. Wanafunzi wanajua wanapata mwongozo wa uhakika.', 'All professionals must prove their qualifications. Students get trusted guidance.'), color: 'from-emerald-500/10 to-green-500/5', border: 'border-emerald-500/30' },
+  ];
+
   useEffect(() => {
     const interval = setInterval(() => setActiveStep(p => (p + 1) % HOW.length), 4500);
     return () => clearInterval(interval);
@@ -114,12 +121,14 @@ export default function Landing() {
                 {tr('Kaunti Zote 47 — Jumuiya Moja', 'All 47 Counties — One Community')}
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-logo tracking-tight leading-[1.05] animate-fadeUp delay-100">
-                <span className="text-gray-900 dark:text-white">{tr('Kikwetu', 'Kikwetu')}</span>
-                <span className="text-brand-red">Connect</span>
+              <h1 className="font-logo tracking-tight leading-[1.05] animate-fadeUp delay-100">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white">
+                  {tr('Kikwetu', 'Kikwetu')}
+                </span>
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black text-brand-red">Connect</span>
                 <br />
-                <span className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-700 dark:text-gray-300">
-                  {tr('Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu', 'Our Knowledge, Our Stories, Our Future')}
+                <span className="text-base sm:text-lg lg:text-xl font-bold text-brand-terracotta dark:text-amber-400">
+                  {tr('Jifunze, Shiriki, Kua — Kwa Mwongozo wa Wataalamu Walio Thibitishwa', 'Learn, Share, Grow — Guided by Verified Professionals')}
                 </span>
               </h1>
 
@@ -145,9 +154,13 @@ export default function Landing() {
                   <span>{tr('Anza Bure', 'Get Started Free')}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                 </Link>
-                <Link href="/feed" className="inline-flex items-center gap-2 border-2 border-gray-300 dark:border-gray-600 hover:border-brand-terracotta text-gray-900 dark:text-gray-200 hover:text-brand-red px-8 py-4 rounded-full text-sm font-bold transition-all group">
+                <Link href="/students" className="inline-flex items-center gap-2 border-2 border-brand-terracotta hover:bg-brand-terracotta hover:text-white text-brand-red px-6 py-4 rounded-full text-sm font-bold transition-all group">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  {tr('Tafuta Mwalimu', 'Find a Teacher')}
+                </Link>
+                <Link href="/feed" className="inline-flex items-center gap-2 border-2 border-gray-300 dark:border-gray-600 hover:border-brand-terracotta text-gray-900 dark:text-gray-200 hover:text-brand-red px-6 py-4 rounded-full text-sm font-bold transition-all group">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-                  {tr('Chunguza Baraza', 'Explore Baraza')}
+                  {tr('Baraza', 'Baraza')}
                 </Link>
                 <button onClick={() => setLang(l => l === 'en' ? 'sw' : 'en')} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold bg-white/80 dark:bg-brand-cardDark/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-300 hover:border-brand-terracotta transition-all">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
@@ -279,6 +292,48 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+      </Reveal>
+
+      {/* ===== STUDENT & PROFESSIONAL AREA ===== */}
+      <Reveal>
+        <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+          <div className="text-center space-y-4 mb-16">
+            <div className="inline-flex items-center gap-2 sun-tag">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-terracotta" />
+              {tr('Jifunze na Wataalamu', 'Learn from Professionals')}
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-black font-logo">
+              {tr('Pata Mwongozo wa Mtaalamu', 'Get Expert Guidance')}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+              {tr(
+                'Una swali? Tafuta mwalimu aliye thibitishwa, panga kikao cha kibinafsi, na jifunze kupitia chat. Baada ya somo, kadiria na tuma bahshishi kwa M-Pesa.',
+                'Have a question? Find a verified teacher, book a private session, and learn through chat. After the lesson, rate and send a tip via M-Pesa.'
+              )}
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {EDU_FEATURES.map((f, i) => (
+              <div key={i} className={`group p-6 rounded-2xl border bg-gradient-to-br ${f.color} ${f.border} transition-all duration-300 hover:-translate-y-1 hover:shadow-md cursor-default`}>
+                <span className="text-3xl block mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 inline-block">{f.emoji}</span>
+                <h3 className="text-base font-bold mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-4 mt-10">
+            <Link href="/students" className="sun-btn inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-bold shadow-lg active:scale-95">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              {tr('Tafuta Mwalimu', 'Find a Teacher')}
+            </Link>
+            <Link href="/professionals/request" className="inline-flex items-center gap-2 border-2 border-brand-terracotta/50 hover:border-brand-terracotta text-brand-red hover:bg-brand-terracotta/5 px-6 py-3.5 rounded-full text-sm font-bold transition-all active:scale-95">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              {tr('Kuwa Mwalimu (Mtaalamu)', 'Become a Teacher (Pro)')}
+            </Link>
           </div>
         </section>
       </Reveal>

@@ -133,3 +133,85 @@ export interface QuizResult {
   answers: number[];
   completed_at: string;
 }
+
+export interface Professional {
+  id: string;
+  profile_id: string;
+  title: string;
+  bio: string;
+  qualifications: string;
+  qualifications_doc_url?: string;
+  expertise: string[];
+  hourly_rate?: number;
+  verification_status: 'pending' | 'approved' | 'rejected';
+  verified_by?: string;
+  verified_at?: string;
+  rejection_reason?: string;
+  avg_rating: number;
+  total_sessions: number;
+  total_tips: number;
+  created_at: string;
+  profile?: Pick<Profile, 'full_name' | 'avatar_url' | 'county' | 'verified' | 'heshima_score' | 'role'>;
+}
+
+export interface ProfessionalRequest {
+  id: string;
+  profile_id: string;
+  title: string;
+  bio: string;
+  qualifications: string;
+  qualifications_doc_url?: string;
+  expertise: string[];
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by?: string;
+  reviewed_at?: string;
+  rejection_reason?: string;
+  created_at: string;
+  profile?: Pick<Profile, 'full_name' | 'avatar_url' | 'county' | 'email'>;
+}
+
+export interface TeachingSession {
+  id: string;
+  student_id: string;
+  professional_id: string;
+  topic: string;
+  description?: string;
+  status: 'requested' | 'active' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at?: string;
+  student?: Pick<Profile, 'full_name' | 'avatar_url' | 'county'>;
+  professional?: Pick<Profile, 'full_name' | 'avatar_url' | 'county'> & { title?: string };
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  sender?: Pick<Profile, 'full_name' | 'avatar_url'>;
+}
+
+export interface ServiceRating {
+  id: string;
+  session_id: string;
+  student_id: string;
+  professional_id: string;
+  score: number;
+  review?: string;
+  created_at: string;
+  student?: Pick<Profile, 'full_name' | 'avatar_url'>;
+}
+
+export interface Tip {
+  id: string;
+  session_id: string;
+  student_id: string;
+  professional_id: string;
+  amount: number;
+  mpesa_ref?: string;
+  status: 'pending' | 'completed' | 'failed';
+  created_at: string;
+  student?: Pick<Profile, 'full_name'>;
+  professional?: Pick<Profile, 'full_name'>;
+}
