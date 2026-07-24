@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/Toast';
 import InteractiveTutorial from '@/components/InteractiveTutorial';
 import Navbar from '@/components/Navbar';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import ConsentBanner from '@/components/ConsentBanner';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
@@ -41,6 +42,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {!isAdmin && <Navbar />}
       <TutorialGate />
+      <ConsentBanner />
       <main className={cn('flex-1', !isLanding && 'pb-20 md:pb-0')}>{children}</main>
       <MobileBottomNav />
     </>

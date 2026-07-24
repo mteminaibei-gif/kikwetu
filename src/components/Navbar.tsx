@@ -197,6 +197,7 @@ export default function Navbar() {
               <Link href="/students" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">🎓 Students</Link>
               <Link href="/nyumba-kumi" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg">🏘️ Nyumba Kumi</Link>
               <Link href="/professionals/request" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-brand-red hover:bg-brand-terracotta/5 rounded-lg">Understand</Link>
+              <Link href="/radio" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">📻 Radio</Link>
               <Link href="/feed?view=spaces" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Spaces</Link>
               <Link href="/feed?view=leaderboard" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Karma</Link>
               <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Profile</Link>
