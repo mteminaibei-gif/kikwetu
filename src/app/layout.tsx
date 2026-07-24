@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import SavannahBackground from "@/components/SavannahBackground";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const poppins = Poppins({ weight: ["600", "700", "800", "900"], subsets: ["latin"], variable: "--font-poppins" });
@@ -65,9 +66,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }} />
       </head>
       <body className="font-sans min-h-screen flex flex-col text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-brand-red selection:text-white touch-manipulation antialiased">
+        <SavannahBackground />
         <Providers>
-          <div className="sun-birds" />
-          <div className="sun-tracks" />
           {children}
         </Providers>
       </body>

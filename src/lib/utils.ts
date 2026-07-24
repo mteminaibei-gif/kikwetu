@@ -32,12 +32,12 @@ export function getAvatarColor(name?: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export function heshimaLevel(score: number): { name: string; color: string } {
-  if (score >= 5000) return { name: 'Mwalimu Mkuu', color: 'text-yellow-500' };
-  if (score >= 2000) return { name: 'Mtaalamu', color: 'text-orange-500' };
-  if (score >= 500) return { name: 'Mwalimu', color: 'text-emerald-500' };
-  if (score >= 100) return { name: 'Mwananchi', color: 'text-blue-500' };
-  return { name: 'Mgeni', color: 'text-gray-400' };
+export function heshimaLevel(score: number): { name: string; color: string; icon: string } {
+  if (score >= 5000) return { name: 'Mwalimu Mkuu', color: 'text-yellow-500', icon: '🌟' };
+  if (score >= 2000) return { name: 'Mtaalamu', color: 'text-orange-500', icon: '🏆' };
+  if (score >= 500) return { name: 'Mwalimu', color: 'text-emerald-500', icon: '🎓' };
+  if (score >= 100) return { name: 'Mwananchi', color: 'text-blue-500', icon: '🇰🇪' };
+  return { name: 'Mgeni', color: 'text-gray-400', icon: '🌱' };
 }
 
 export function roleBadge(role?: string): string {

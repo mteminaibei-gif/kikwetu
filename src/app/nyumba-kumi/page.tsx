@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
 import { cn, timeAgo } from '@/lib/utils';
@@ -29,6 +30,9 @@ interface Community {
   memberCount: number;
   emergencyContacts: string[];
   created_at: string;
+  isPrivate?: boolean;
+  inviteCode?: string;
+  region?: string;
 }
 
 const CATEGORIES = ['general', 'alert', 'question', 'info'] as const;
@@ -71,6 +75,7 @@ const EMERGENCY_CONTACTS = [
 
 export default function NyumbaKumiPage() {
   const { user } = useAuth();
+  const { tr, contentLang } = useLanguage();
   const { show } = useToast();
   const sbRef = useRef(createClient());
   const sb = sbRef.current;
@@ -89,7 +94,6 @@ export default function NyumbaKumiPage() {
   const [posting, setPosting] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
   const [joinedComms, setJoinedComms] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
     try { return new Set(JSON.parse(localStorage.getItem('nyumba_kumi_joined') || '[]')); } catch { return new Set(); }
@@ -107,8 +111,9 @@ export default function NyumbaKumiPage() {
   const [newCommCounty, setNewCommCounty] = useState('');
   const [newCommName, setNewCommName] = useState('');
   const [newCommDesc, setNewCommDesc] = useState('');
-
-  const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
+  const [newCommPrivate, setNewCommPrivate] = useState(false);
+  const [inviteModal, setInviteModal] = useState<string | null>(null);
+  const [inviteInput, setInviteInput] = useState('');
 
   const loadPosts = useCallback(async () => {
     const { data } = await sb.from('nyumba_kumi_posts')
@@ -154,6 +159,7 @@ export default function NyumbaKumiPage() {
 
   const createCommunity = () => {
     if (!newCommCounty || !newCommName.trim()) { show('Please enter community name and county.'); return; }
+    const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const newComm: Community = {
       id: `community-custom-${Date.now()}`,
       name: newCommName.trim(),
@@ -162,6 +168,8 @@ export default function NyumbaKumiPage() {
       memberCount: 1,
       emergencyContacts: ['112', '999'],
       created_at: new Date().toISOString(),
+      isPrivate: newCommPrivate,
+      inviteCode: newCommPrivate ? inviteCode : undefined,
     };
     setCommunities(prev => [newComm, ...prev]);
     const stored = localStorage.getItem('nyumba_kumi_communities');
@@ -170,8 +178,28 @@ export default function NyumbaKumiPage() {
     setNewCommCounty('');
     setNewCommName('');
     setNewCommDesc('');
+    setNewCommPrivate(false);
     setShowCreateCommunity(false);
-    show('Community created!');
+    if (newCommPrivate) {
+      setInviteModal(newComm.id);
+    }
+    show(newCommPrivate ? 'Private community created! Share the invite code.' : 'Community created!');
+  };
+
+  const joinByInviteCode = () => {
+    if (!inviteInput.trim()) { show('Please enter an invite code.'); return; }
+    const found = communities.find(c => c.inviteCode?.toUpperCase() === inviteInput.trim().toUpperCase());
+    if (!found) { show('Invalid invite code.'); return; }
+    if (joinedComms.has(found.id)) { show('You are already a member.'); return; }
+    joinCommunity(found.id);
+    setInviteInput('');
+    setInviteModal(null);
+    show(`Joined ${found.name}!`);
+  };
+
+  const copyInviteLink = (comm: Community) => {
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/nyumba-kumi?invite=${comm.inviteCode}`;
+    navigator.clipboard.writeText(url).then(() => show('Invite link copied!'));
   };
 
   const filtered = posts.filter(p => {
@@ -248,9 +276,9 @@ export default function NyumbaKumiPage() {
                 {tr('Chapisha', 'Post Update')}
               </button>
             )}
-            <button onClick={() => setLang(l => l === 'en' ? 'sw' : 'en')}
+            <button onClick={() => {}} 
               className="px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-xs font-bold text-amber-200 hover:bg-white/20 transition-colors">
-              {lang === 'en' ? 'Kiswahili' : 'English'}
+              {contentLang === 'en' ? 'Kiswahili' : 'English'}
             </button>
             <button onClick={requestLocation} disabled={locating}
               className="bg-white/10 hover:bg-white/20 backdrop-blur-sm px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50">
@@ -457,6 +485,14 @@ export default function NyumbaKumiPage() {
               <textarea value={newCommDesc} onChange={e => setNewCommDesc(e.target.value)}
                 rows={2} placeholder={tr('Maelezo (si lazima)', 'Description (optional)')}
                 className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none" />
+              <label className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 cursor-pointer">
+                <input type="checkbox" checked={newCommPrivate} onChange={e => setNewCommPrivate(e.target.checked)}
+                  className="w-4 h-4 rounded accent-amber-600" />
+                <div>
+                  <p className="text-xs font-bold">{tr('Nyumba Kumi Binafsi', 'Private Nyumba Kumi')}</p>
+                  <p className="text-[10px] text-gray-400">{tr('Wanachama wanahitaji msimbo wa邀请', 'Members need an invite code to join')}</p>
+                </div>
+              </label>
               <div className="flex gap-2">
                 <button onClick={createCommunity}
                   className="sun-btn px-5 py-2 rounded-xl text-xs font-bold">{tr('Unda', 'Create')}</button>
@@ -471,21 +507,29 @@ export default function NyumbaKumiPage() {
               <div key={comm.id} className="sun-card p-4 space-y-3 hover:shadow-md transition-all">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-lg">🏘️</div>
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-lg">{comm.isPrivate ? '🔒' : '🏘️'}</div>
                     <div>
                       <h4 className="text-sm font-bold">{comm.name}</h4>
-                      <p className="text-[10px] text-gray-400">{comm.county}</p>
+                      <p className="text-[10px] text-gray-400">{comm.county}{comm.isPrivate ? ` · ${tr('Binafsi', 'Private')}` : ''}</p>
                     </div>
                   </div>
-                  <button onClick={() => joinCommunity(comm.id)}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-[10px] font-bold transition-all',
-                      joinedComms.has(comm.id)
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                        : 'bg-amber-600 text-white hover:bg-amber-700'
-                    )}>
-                    {joinedComms.has(comm.id) ? tr('Umejiunga', 'Joined') : tr('Jiunga', 'Join')}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {comm.isPrivate && joinedComms.has(comm.id) && (
+                      <button onClick={() => copyInviteLink(comm)} title="Copy invite link"
+                        className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                      </button>
+                    )}
+                    <button onClick={() => joinCommunity(comm.id)}
+                      className={cn(
+                        'px-3 py-1 rounded-full text-[10px] font-bold transition-all',
+                        joinedComms.has(comm.id)
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-amber-600 text-white hover:bg-amber-700'
+                      )}>
+                      {joinedComms.has(comm.id) ? tr('Umejiunga', 'Joined') : (comm.isPrivate ? tr('Omba Kujiunga', 'Request Join') : tr('Jiunga', 'Join'))}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{comm.description}</p>
                 <div className="flex items-center justify-between text-[10px] text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
@@ -532,7 +576,20 @@ export default function NyumbaKumiPage() {
                   </div>
                 </div>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {user && (
+            <div className="sun-card p-4">
+              <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{tr('Jiunge na Nyumba Kumi Binafsi', 'Join Private Nyumba Kumi')}</h4>
+              <div className="flex gap-2">
+                <input value={inviteInput} onChange={e => setInviteInput(e.target.value)}
+                  placeholder={tr('Weka msimbo wa邀请', 'Enter invite code')}
+                  className="flex-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-amber-500/50" />
+                <button onClick={joinByInviteCode}
+                  className="sun-btn px-5 py-2.5 rounded-xl text-xs font-bold">{tr('Jiunga', 'Join')}</button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {nearbyCounties.map(countyName => {
                   const comm = communities.find(c => c.county === countyName);
                   if (!comm) return null;
@@ -569,6 +626,42 @@ export default function NyumbaKumiPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Invite Code Modal */}
+      {inviteModal && (() => {
+        const comm = communities.find(c => c.id === inviteModal);
+        if (!comm) return null;
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setInviteModal(null)} />
+            <div className="relative bg-white dark:bg-brand-cardDark rounded-2xl shadow-2xl p-6 w-full max-w-md space-y-4">
+              <h3 className="text-lg font-black">{tr('Invite Members', 'Walungisha Wanachama')}</h3>
+              <p className="text-sm text-gray-500">{tr('Share this code with neighbors to join your private Nyumba Kumi:', 'Shiriki msimbo huu na majirani kujiunga na Nyumba Kumi yako binafsi:')}</p>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 text-center">
+                <span className="text-3xl font-black tracking-widest text-amber-600">{comm.inviteCode}</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => copyInviteLink(comm)} className="flex-1 sun-btn py-2.5 rounded-xl text-xs font-bold">{tr('Nakili Kiungo', 'Copy Link')}</button>
+                <button onClick={() => setInviteModal(null)} className="flex-1 bg-gray-100 dark:bg-gray-800 py-2.5 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">{tr('Funga', 'Close')}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Join by Invite Code (accessible via ?invite= parameter) */}
+      {tab === 'communities' && !user && (
+        <div className="sun-card p-5">
+          <h4 className="text-sm font-bold mb-3">{tr('Jiunge na msimbo', 'Join by Invite Code')}</h4>
+          <div className="flex gap-2">
+            <input value={inviteInput} onChange={e => setInviteInput(e.target.value)}
+              placeholder={tr('Weka msimbo wa邀请', 'Enter invite code')}
+              className="flex-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-amber-500/50" />
+            <button onClick={joinByInviteCode}
+              className="sun-btn px-5 py-2.5 rounded-xl text-xs font-bold">{tr('Jiunga', 'Join')}</button>
+          </div>
         </div>
       )}
     </div>

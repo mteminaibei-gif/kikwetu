@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useLanguage } from '@/context/LanguageContext';
 
 const STEPS = [
   {
@@ -42,7 +43,7 @@ const STEPS = [
 
 export default function InteractiveTutorial({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
+  const { contentLang, setContentLang } = useLanguage();
   const current = STEPS[step];
 
   const handleNext = () => {
@@ -59,10 +60,10 @@ export default function InteractiveTutorial({ onComplete }: { onComplete: () => 
         <div className="p-8 text-center space-y-4">
           <div className="text-7xl mb-4 animate-bounce">{current.icon}</div>
           <h2 className="text-2xl font-black text-brand-deep dark:text-white">
-            {lang === 'en' ? current.title : current.titleSw}
+            {contentLang === 'en' ? current.title : current.titleSw}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-sm mx-auto">
-            {lang === 'en' ? current.desc : current.descSw}
+            {contentLang === 'en' ? current.desc : current.descSw}
           </p>
 
           {/* Progress dots */}
@@ -73,9 +74,9 @@ export default function InteractiveTutorial({ onComplete }: { onComplete: () => 
           </div>
 
           <div className="flex items-center justify-between pt-4">
-            <button onClick={() => setLang(l => l === 'en' ? 'sw' : 'en')}
+            <button onClick={() => setContentLang(contentLang === 'en' ? 'sw' : 'en')}
               className="text-xs font-bold text-gray-400 hover:text-brand-red px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-brand-red/30 transition-all">
-              {lang === 'en' ? 'Kiswahili' : 'English'}
+              {contentLang === 'en' ? 'Kiswahili' : 'English'}
             </button>
             <div className="flex gap-2">
               {step < STEPS.length - 1 && (
@@ -86,7 +87,7 @@ export default function InteractiveTutorial({ onComplete }: { onComplete: () => 
               )}
               <button onClick={handleNext}
                 className="sun-btn px-6 py-2.5 rounded-full text-xs font-bold shadow-md transition-all active:scale-95">
-                {step < STEPS.length - 1 ? (lang === 'en' ? 'Next' : 'Inayofuata') : (lang === 'en' ? 'Get Started!' : 'Anza!')}
+                {step < STEPS.length - 1 ? (contentLang === 'en' ? 'Next' : 'Inayofuata') : (contentLang === 'en' ? 'Get Started!' : 'Anza!')}
               </button>
             </div>
           </div>

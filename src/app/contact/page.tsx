@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import AppFooter from '@/components/AppFooter';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ContactPage() {
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
+  const { contentLang, setContentLang, tr } = useLanguage();
   const [submitted, setSubmitted] = useState(false);
-  const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +84,7 @@ export default function ContactPage() {
           ))}
         </div>
       </div>
-      <AppFooter lang={lang} setLang={setLang} />
+      <AppFooter />
     </div>
   );
 }

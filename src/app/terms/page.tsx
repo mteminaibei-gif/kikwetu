@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import AppFooter from '@/components/AppFooter';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function TermsPage() {
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
-  const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
+  const { contentLang, setContentLang, tr } = useLanguage();
 
   return (
     <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
@@ -80,7 +79,7 @@ export default function TermsPage() {
           </section>
         </div>
       </div>
-      <AppFooter lang={lang} setLang={setLang} />
+      <AppFooter />
     </div>
   );
 }

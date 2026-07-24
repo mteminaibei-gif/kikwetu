@@ -187,10 +187,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (prev.threads.find(t => t.id === newThread.id)) return prev;
           return prev;
         });
-        const { data: authorProfile } = await sb.from('profiles').select('full_name, avatar_url, verified, county').eq('id', newThread.author_id).single();
+        const { data: authorProfile } = await sb.from('profiles').select('full_name, avatar_url, verified, county, username').eq('id', newThread.author_id).single();
         setState(prev => {
           if (prev.threads.find(t => t.id === newThread.id)) return prev;
-          return { ...prev, threads: [{ ...newThread, author: authorProfile || { full_name: 'New', avatar_url: '', verified: false, county: '' } }, ...prev.threads] };
+          return { ...prev, threads: [{ ...newThread, author: authorProfile || { full_name: 'New', avatar_url: '', verified: false, county: '', username: 'user' } }, ...prev.threads] };
         });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'threads', filter: `upvotes_count=neq.${-1}` }, (p) => {

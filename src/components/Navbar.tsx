@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { createClient } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +18,7 @@ function XIcon() { return <svg xmlns="http://www.w3.org/2000/svg" className="h-6
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth();
   const { unreadCount, pendingSyncCount } = useApp();
+  const { uiLang, setUiLang } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -38,7 +40,8 @@ export default function Navbar() {
     setMounted(true);
     setOnline(navigator.onLine);
     const stored = localStorage.getItem('theme');
-    setDark(stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches));
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setDark(stored === 'dark' || (!stored && prefersDark));
   }, []);
 
   useEffect(() => {
@@ -224,5 +227,3 @@ export default function Navbar() {
     </header>
   );
 }
-
-

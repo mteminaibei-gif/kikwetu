@@ -1,5 +1,5 @@
-import StudentArea from '@/components/StudentArea';
+import StudentPlatform from '@/components/StudentPlatform';
 
 export default function StudentsPage() {
-  return <StudentArea />;
+  return <StudentPlatform />;
 }

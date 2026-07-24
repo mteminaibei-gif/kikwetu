@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
 import Link from 'next/link';
@@ -67,7 +68,7 @@ export default function FeedView() {
   const [feedTab, setFeedTab] = useState('all');
   const [showSaved, setShowSaved] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
+  const { contentLang, setContentLang, tr } = useLanguage();
   const [joinedSpaces, setJoinedSpaces] = useState<Record<string, boolean>>({});
   const [quizAnswer, setQuizAnswer] = useState<string | null>(null);
   const [votingThread, setVotingThread] = useState<string | null>(null);
@@ -116,7 +117,7 @@ export default function FeedView() {
     const sb = sbRef.current;
     setLoadingMore(true);
     const { data } = await sb.from('threads')
-      .select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)')
+      .select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)')
       .order('created_at', { ascending: false })
       .range(threads.length, threads.length + PAGE_SIZE - 1);
     if (data && data.length > 0) {
@@ -203,8 +204,7 @@ export default function FeedView() {
   };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const tr = useCallback((en: string, sw: string) => lang === 'sw' ? sw : en, [lang]);
-  const toggleLang = useCallback(() => setLang(l => l === 'en' ? 'sw' : 'en'), []);
+  const toggleLang = useCallback(() => setContentLang(contentLang === 'en' ? 'sw' : 'en'), [contentLang, setContentLang]);
 
   useEffect(() => {
     const interval = setInterval(() => { loadThreads(); }, 30000);
@@ -321,7 +321,7 @@ export default function FeedView() {
                 {tr('Imehifadhiwa', 'Saved')}
               </button>
               <button onClick={toggleLang} className="ml-1 px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-brand-red hover:bg-brand-terracotta/10 transition-all">
-                {lang === 'en' ? 'Kiswahili' : 'English'}
+                {contentLang === 'en' ? 'Kiswahili' : 'English'}
               </button>
             </div>
 
@@ -347,6 +347,7 @@ export default function FeedView() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <h5 className="text-sm font-bold group-hover:text-brand-red transition-colors">{thread.author?.full_name || tr('Mgeni', 'Guest')}</h5>
+                            {thread.author?.username && <span className="text-[11px] text-gray-400">@{thread.author.username}</span>}
                             <span className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded font-bold"><svg className="w-2.5 h-2.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg> Mtaalamu</span>
                           </div>
                           <span className="text-[11px] text-gray-400">{thread.author?.county || ''} &middot; {timeAgo(thread.created_at)} {thread.space && <>in <strong className="text-brand-red">{(thread.space as unknown as { name: string })?.name}</strong></>}</span>
@@ -354,7 +355,7 @@ export default function FeedView() {
                       </div>
                       <button onClick={toggleLang} className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg font-medium transition-colors opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all">
                         <svg className="w-3 h-3 inline mr-1 text-brand-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
-                        {lang === 'en' ? 'Tafsiri' : 'Translate'}
+                        {contentLang === 'en' ? 'Tafsiri' : 'Translate'}
                       </button>
                     </div>
 

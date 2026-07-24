@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import AppFooter from '@/components/AppFooter';
+import { useLanguage } from '@/context/LanguageContext';
 
 function CountUp({ end, duration = 2000, suffix = '' }: { end: number; duration?: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -266,11 +267,10 @@ const REVIEWS = [
 ];
 
 export default function Landing() {
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
+  const { contentLang, setContentLang, tr } = useLanguage();
   const [activeStep, setActiveStep] = useState(0);
   const [activeFeature, setActiveFeature] = useState(0);
   const [featurePaused, setFeaturePaused] = useState(false);
-  const tr = (e: string, s: string) => lang === 'sw' ? s : e;
 
   const EDU_FEATURES = [
     { emoji: '🎓', title: tr('Uliza Mwalimu', 'Ask a Teacher'), desc: tr('Pata mwongozo kutoka kwa wataalamu walio thibitishwa. Maswali yako yanajibiwa na walimu wenye sifa.', 'Get guidance from verified professionals. Your questions answered by qualified teachers.'), color: 'from-brand-deep/10 to-brand-deep/5', border: 'border-brand-deep/30' },
@@ -350,9 +350,9 @@ export default function Landing() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
                   {tr('Baraza', 'Baraza')}
                 </Link>
-                <button onClick={() => setLang(l => l === 'en' ? 'sw' : 'en')} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold bg-white/80 dark:bg-brand-cardDark/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-300 hover:border-brand-terracotta transition-all">
+                <button onClick={() => setContentLang(contentLang === 'en' ? 'sw' : 'en')} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold bg-white/80 dark:bg-brand-cardDark/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-300 hover:border-brand-terracotta transition-all">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
-                  {lang === 'en' ? 'Kiswahili' : 'English'}
+                  {contentLang === 'en' ? 'Kiswahili' : 'English'}
                 </button>
               </div>
 
@@ -656,7 +656,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed italic">
-                  &ldquo;{lang === 'sw' ? t.text : t.textEn}&rdquo;
+                  &ldquo;{contentLang === 'sw' ? t.text : t.textEn}&rdquo;
                 </p>
                 <div className="flex gap-0.5 mt-3">
                   {[1,2,3,4,5].map(s => <span key={s} className="text-brand-red text-sm">★</span>)}
@@ -699,7 +699,7 @@ export default function Landing() {
         </section>
       </Reveal>
 
-      <AppFooter lang={lang} setLang={setLang} />
+      <AppFooter />
     </div>
   );
 }

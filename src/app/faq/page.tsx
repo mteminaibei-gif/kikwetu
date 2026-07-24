@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import AppFooter from '@/components/AppFooter';
+import { useLanguage } from '@/context/LanguageContext';
 
 const FAQS = [
   {
@@ -44,9 +45,8 @@ const FAQS = [
 ];
 
 export default function FAQPage() {
-  const [lang, setLang] = useState<'en' | 'sw'>('en');
   const [open, setOpen] = useState<number | null>(null);
-  const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
+  const { contentLang, setContentLang, tr } = useLanguage();
 
   return (
     <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
@@ -69,19 +69,19 @@ export default function FAQPage() {
           {FAQS.map((faq, i) => (
             <div key={i} className="sun-card overflow-hidden transition-all">
               <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between p-5 text-left">
-                <span className="text-sm font-bold text-gray-800 dark:text-gray-200 pr-4">{lang === 'sw' ? faq.qs : faq.q}</span>
+                <span className="text-sm font-bold text-gray-800 dark:text-gray-200 pr-4">{contentLang === 'sw' ? faq.qs : faq.q}</span>
                 <svg className={`w-4 h-4 shrink-0 text-brand-red transition-transform ${open === i ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {open === i && (
                 <div className="px-5 pb-5 text-sm text-gray-700 dark:text-gray-300 leading-relaxed border-t border-black/5 dark:border-gray-700 pt-4">
-                  {lang === 'sw' ? faq.as : faq.a}
+                  {contentLang === 'sw' ? faq.as : faq.a}
                 </div>
               )}
             </div>
           ))}
         </div>
       </div>
-      <AppFooter lang={lang} setLang={setLang} />
+      <AppFooter />
     </div>
   );
 }

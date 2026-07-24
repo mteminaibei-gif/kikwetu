@@ -2,6 +2,7 @@ export interface Profile {
   id: string;
   full_name: string;
   username: string;
+  bio?: string;
   phone?: string;
   email?: string;
   county?: string;
@@ -63,7 +64,7 @@ export interface Thread {
   upvotes_count: number;
   reply_count: number;
   created_at: string;
-  author?: Pick<Profile, 'full_name' | 'avatar_url' | 'verified' | 'county'>;
+  author?: Pick<Profile, 'full_name' | 'avatar_url' | 'verified' | 'county' | 'username'>;
   space?: { name: string };
 }
 
@@ -77,7 +78,7 @@ export interface Reply {
   is_accepted: boolean;
   upvotes_count: number;
   created_at: string;
-  author?: Pick<Profile, 'full_name' | 'avatar_url' | 'verified'>;
+  author?: Pick<Profile, 'full_name' | 'avatar_url' | 'verified' | 'username'>;
 }
 
 export interface Space {

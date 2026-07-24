@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { AppProvider } from '@/context/AppContext';
 import { ToastProvider } from '@/components/Toast';
 import InteractiveTutorial from '@/components/InteractiveTutorial';
@@ -19,7 +20,6 @@ function TutorialGate() {
 
   if (!user || user.heshima_score > 100 || (!shouldShow && !show)) return null;
 
-  // Show tutorial when user reaches exactly 100 heshima_score and hasn't completed it
   return (
     <InteractiveTutorial onComplete={async () => {
       setShow(false);
@@ -48,9 +48,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <AuthProvider>
-        <AppProvider>
-          <AppShell>{children}</AppShell>
-        </AppProvider>
+        <LanguageProvider>
+          <AppProvider>
+            <AppShell>{children}</AppShell>
+          </AppProvider>
+        </LanguageProvider>
       </AuthProvider>
     </ToastProvider>
   );

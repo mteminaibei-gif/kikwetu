@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useLanguage } from '@/context/LanguageContext';
 
 const footerLinks = {
   platform: [
@@ -29,12 +30,13 @@ const socials = [
   { icon: 'M12 2C6.477 2 2 6.477 2 12c0 4.237 2.636 7.855 6.356 9.312-.088-.791-.167-2.005.035-2.868.182-.78 1.172-4.97 1.172-4.97s-.299-.6-.299-1.486c0-1.39.806-2.428 1.81-2.428.852 0 1.264.64 1.264 1.408 0 .858-.546 2.14-.828 3.33-.236.995.5 1.807 1.48 1.807 1.778 0 3.144-1.874 3.144-4.579 0-2.394-1.72-4.068-4.177-4.068-2.845 0-4.515 2.135-4.515 4.34 0 .859.331 1.78.744 2.282a.3.3 0 01.069.288l-.278 1.133c-.044.183-.145.223-.335.134-1.249-.581-2.03-2.407-2.03-3.874 0-3.154 2.292-6.052 6.608-6.052 3.469 0 6.165 2.473 6.165 5.776 0 3.447-2.173 6.22-5.19 6.22-1.013 0-1.965-.527-2.29-1.148l-.623 2.378c-.226.869-.835 1.958-1.244 2.622.937.29 1.931.446 2.96.446 5.523 0 10-4.477 10-10S17.523 2 12 2z', href: '#', label: 'Instagram' },
 ];
 
-export default function AppFooter({ lang, setLang }: { lang: 'en' | 'sw'; setLang: (l: 'en' | 'sw') => void }) {
-  const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
+export default function AppFooter() {
+  const { contentLang, setContentLang, tr } = useLanguage();
 
   return (
-    <footer className="bg-white dark:bg-brand-cardDark border-t border-gray-200 dark:border-gray-800">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <footer className="bg-white dark:bg-brand-cardDark border-t border-gray-200 dark:border-gray-800 relative">
+      <div className="absolute inset-0 bg-gradient-to-t from-brand-terracotta/5 via-transparent to-transparent pointer-events-none" />
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1 space-y-4">
             <Link href="/" className="flex items-center gap-2.5 group">
@@ -47,9 +49,9 @@ export default function AppFooter({ lang, setLang }: { lang: 'en' | 'sw'; setLan
                 'Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu. Jukwaa la Afrika Mashariki kwa maarifa, jamii, na ukuaji.'
               )}
             </p>
-            <button onClick={() => setLang(lang === 'en' ? 'sw' : 'en')} className="flex items-center gap-2 text-xs font-semibold text-brand-red hover:text-brand-red/80 transition-colors bg-brand-terracotta/10 hover:bg-brand-terracotta/20 px-3 py-1.5 rounded-full">
+            <button onClick={() => setContentLang(contentLang === 'en' ? 'sw' : 'en')} className="flex items-center gap-2 text-xs font-semibold text-brand-red hover:text-brand-red/80 transition-colors bg-brand-terracotta/10 hover:bg-brand-terracotta/20 px-3 py-1.5 rounded-full">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
-              {lang === 'en' ? 'Switch to Kiswahili' : 'Badilisha kwa English'}
+              {contentLang === 'en' ? 'Switch to Kiswahili' : 'Badilisha kwa English'}
             </button>
           </div>
 
