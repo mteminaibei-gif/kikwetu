@@ -297,7 +297,7 @@ export default function FeedView() {
                 <div className="w-24 h-24 rounded-full border-4 border-white dark:border-brand-cardDark bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center text-3xl font-bold text-white shadow-xl">
                   {user.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" /> : user.full_name?.[0]?.toUpperCase() || 'U'}
                 </div>
-                <Link href={`/profile/${user.id}`} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-xs font-bold px-4 py-2 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm">{tr('Hariri', 'Edit Profile')}</Link>
+                <Link href="/settings" className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-xs font-bold px-4 py-2 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm">{tr('Hariri', 'Edit Profile')}</Link>
               </div>
               <h2 className="text-xl font-black">{user.full_name}</h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">@{user.username} &middot; {user.county || ''}</p>

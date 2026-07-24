@@ -18,6 +18,7 @@ interface AuthContextType extends AuthState {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -125,8 +126,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile(state.supabase, state.user.id);
   };
 
+  const updateProfile = async (updates: Partial<Profile>): Promise<{ error?: string }> => {
+    const sb = state.supabase || createClient();
+    if (!state.user) return { error: 'Not authenticated' };
+    const { error } = await sb.from('profiles').update(updates).eq('id', state.user.id);
+    if (error) return { error: error.message };
+    await refreshProfile();
+    return {};
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, signUp, signIn, signInWithGoogle, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ ...state, signUp, signIn, signInWithGoogle, signOut, refreshProfile, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

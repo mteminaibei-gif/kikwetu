@@ -176,6 +176,7 @@ export default function Navbar() {
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username}</p>
                     </div>
                     <Link href={`/profile/${user.id}`} onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
+                    <Link href="/settings" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Settings</Link>
                     {isAdmin && <Link href="/admin" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800">Admin</Link>}
                     <button onClick={handleSignOut} className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800">Sign Out</button>
                   </div>
@@ -209,6 +210,7 @@ export default function Navbar() {
               <Link href="/feed?view=spaces" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Spaces</Link>
               <Link href="/feed?view=leaderboard" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Karma</Link>
               <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Profile</Link>
+              <Link href="/settings" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Settings</Link>
               {isAdmin && <Link href="/admin" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-red-500 dark:text-red-400">Admin</Link>}
               <button onClick={handleSignOut} className="block w-full text-left py-2 text-sm font-medium text-red-600 dark:text-red-400">Sign Out</button>
             </>
