@@ -103,8 +103,10 @@ export default function Navbar() {
 
   return (
     <header className={cn(
-      'sticky top-0 z-50 sun-nav-border bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg border-b-0 transition-all duration-300',
-      scrolled && 'shadow-md bg-white/98 dark:bg-brand-cardDark/98'
+      'sticky top-0 z-[9999] sun-nav-border backdrop-blur-xl border-b-0 transition-all duration-300',
+      scrolled
+        ? 'bg-white dark:bg-brand-cardDark shadow-[0_2px_20px_rgba(204,91,71,0.12)]'
+        : 'bg-white/80 dark:bg-brand-cardDark/80'
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         <Link href={user ? '/feed' : '/'} className="flex items-center gap-2.5 shrink-0 group">
@@ -197,7 +199,7 @@ export default function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg px-4 py-4 space-y-3 shadow-lg">
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-brand-cardDark shadow-xl px-4 py-4 space-y-3">
           {user ? (
             <>
               <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">

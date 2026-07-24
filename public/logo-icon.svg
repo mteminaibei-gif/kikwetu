@@ -1,26 +1,91 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="sunset" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#f4b553"/>
-      <stop offset="50%" stop-color="#d28156"/>
+      <stop offset="40%" stop-color="#d28156"/>
       <stop offset="100%" stop-color="#bd3b3b"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.8" r="0.6">
-      <stop offset="0%" stop-color="#ffd835" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#ffd835" stop-opacity="0"/>
+    <linearGradient id="sunGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd835"/>
+      <stop offset="100%" stop-color="#f4b553"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="0.5" cy="0.45" r="0.5">
+      <stop offset="0%" stop-color="#ffd835" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#f4b553" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#f4b553" stop-opacity="0"/>
     </radialGradient>
+    <clipPath id="shieldClip">
+      <path d="M32 2 C46 2 58 8 60 14 C62 20 62 30 58 38 C54 46 46 54 32 62 C18 54 10 46 6 38 C2 30 2 20 4 14 C6 8 18 2 32 2Z"/>
+    </clipPath>
+    <linearGradient id="earthGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5C3A1E"/>
+      <stop offset="100%" stop-color="#3D2B1F"/>
+    </linearGradient>
   </defs>
-  <rect x="1" y="1" width="62" height="62" rx="16" fill="#2A1A18"/>
-  <rect x="1" y="1" width="62" height="62" rx="16" fill="url(#glow)"/>
-  <circle cx="32" cy="42" r="16" fill="url(#sunset)" opacity="0.25"/>
-  <circle cx="32" cy="42" r="10" fill="url(#sunset)" opacity="0.40"/>
-  <circle cx="32" cy="42" r="6" fill="url(#sunset)" opacity="0.70"/>
-  <path d="M20 22 Q26 14 32 22 Q32 14 32 22 Q38 14 44 22" stroke="#f4b553" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.6"/>
-  <path d="M16 28 Q24 18 32 28 Q32 18 32 28 Q40 18 48 28" stroke="#d28156" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.5"/>
-  <line x1="32" y1="14" x2="32" y2="22" stroke="#f4b553" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
-  <line x1="24" y1="16" x2="26" y2="22" stroke="#f4b553" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
-  <line x1="40" y1="16" x2="38" y2="22" stroke="#f4b553" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
-  <path d="M26 44 Q32 36 38 44" stroke="white" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.15"/>
-  <path d="M24 47 Q32 40 40 47" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.12"/>
-  <text x="32" y="38" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="22" fill="white" letter-spacing="-1">K</text>
+
+  <!-- Shield shape background -->
+  <path d="M32 2 C46 2 58 8 60 14 C62 20 62 30 58 38 C54 46 46 54 32 62 C18 54 10 46 6 38 C2 30 2 20 4 14 C6 8 18 2 32 2Z" fill="#2A1A18"/>
+
+  <g clip-path="url(#shieldClip)">
+    <!-- Sky gradient -->
+    <rect x="0" y="0" width="64" height="64" fill="url(#skyGrad)" opacity="0.35"/>
+
+    <!-- Sun glow -->
+    <circle cx="32" cy="32" r="22" fill="url(#sunGlow)"/>
+
+    <!-- Setting sun -->
+    <circle cx="32" cy="36" r="10" fill="url(#sunGrad)" opacity="0.9"/>
+    <circle cx="32" cy="36" r="7" fill="#ffd835" opacity="0.7"/>
+    <circle cx="32" cy="36" r="4" fill="#fff4cc" opacity="0.5"/>
+
+    <!-- Sun rays -->
+    <g opacity="0.2" stroke="#ffd835" stroke-width="0.8" stroke-linecap="round">
+      <line x1="32" y1="20" x2="32" y2="16"/>
+      <line x1="22" y1="24" x2="19" y2="21"/>
+      <line x1="42" y1="24" x2="45" y2="21"/>
+      <line x1="18" y1="32" x2="14" y2="32"/>
+      <line x1="46" y1="32" x2="50" y2="32"/>
+    </g>
+
+    <!-- Horizon line -->
+    <path d="M0 42 Q16 40 32 42 Q48 44 64 42" fill="none" stroke="#d28156" stroke-width="0.5" opacity="0.4"/>
+
+    <!-- Ground -->
+    <path d="M0 44 Q16 42 32 44 Q48 46 64 44 L64 64 L0 64Z" fill="url(#earthGrad)" opacity="0.6"/>
+
+    <!-- Acacia tree — flat-top silhouette -->
+    <!-- Trunk -->
+    <path d="M31 58 Q30 50 30 42 L34 42 Q34 50 33 58Z" fill="#1a1008" opacity="0.85"/>
+    <!-- Branch left -->
+    <path d="M30 46 Q22 40 16 39" fill="none" stroke="#1a1008" strokeWidth="1.5" strokeLinecap="round" opacity="0.8"/>
+    <!-- Branch right -->
+    <path d="M34 44 Q42 38 48 37" fill="none" stroke="#1a1008" strokeWidth="1.2" strokeLinecap="round" opacity="0.8"/>
+    <!-- Canopy — flat umbrella top -->
+    <ellipse cx="32" cy="36" rx="24" ry="5" fill="#2D5A27" opacity="0.75"/>
+    <ellipse cx="31" cy="34" rx="19" ry="4" fill="#3A6B2E" opacity="0.65"/>
+    <ellipse cx="33" cy="32" rx="14" ry="3" fill="#4A7C3A" opacity="0.5"/>
+    <!-- Leaf clusters on branches -->
+    <ellipse cx="16" cy="38" rx="6" ry="3.5" fill="#2D5A27" opacity="0.6"/>
+    <ellipse cx="48" cy="36" rx="5" ry="3" fill="#2D5A27" opacity="0.6"/>
+
+    <!-- Giraffe silhouette (small, in distance) -->
+    <g opacity="0.5" fill="#1a1008">
+      <ellipse cx="48" cy="49" rx="3" ry="2.2"/>
+      <line x1="46" y1="51" x2="45.5" y2="55" stroke="#1a1008" stroke-width="1" stroke-linecap="round"/>
+      <line x1="50" y1="51" x2="50.5" y2="55" stroke="#1a1008" stroke-width="1" stroke-linecap="round"/>
+      <path d="M47 47 Q46 43 47 39" fill="none" stroke="#1a1008" strokeWidth="1.2" stroke-linecap="round"/>
+      <ellipse cx="47" cy="38" rx="1.2" ry="0.8"/>
+    </g>
+
+    <!-- Birds -->
+    <g opacity="0.3" stroke="#1a1008" stroke-width="0.7" stroke-linecap="round" fill="none">
+      <path d="M14 16 Q17 13 20 16"/>
+      <path d="M22 12 Q24 10 26 12"/>
+      <path d="M18 20 Q20 18 22 20"/>
+    </g>
+  </g>
+
+  <!-- Shield border — Maasai-inspired ring -->
+  <path d="M32 2 C46 2 58 8 60 14 C62 20 62 30 58 38 C54 46 46 54 32 62 C18 54 10 46 6 38 C2 30 2 20 4 14 C6 8 18 2 32 2Z" fill="none" stroke="#d28156" stroke-width="1.5" opacity="0.6"/>
+  <path d="M32 4 C45 4 56 9 58 14 C60 19 60 29 56 36 C52 44 44 52 32 60 C20 52 12 44 8 36 C4 29 4 19 6 14 C8 9 20 4 32 4Z" fill="none" stroke="#f4b553" stroke-width="0.5" opacity="0.3"/>
 </svg>
