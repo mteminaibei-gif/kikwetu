@@ -112,6 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, update]);
 
   const createThreadFn = useCallback(async (data: Partial<Thread>): Promise<{ error?: string }> => {
+    if (!data.author_id) return { error: 'Missing author_id' };
     const sb = createClient();
     const { error } = await sb.from('threads').insert({
       author_id: data.author_id, space_id: data.space_id || null, type: data.type || 'question',
@@ -119,7 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tags: data.tags || [], county: data.county || '',
     }).select().single();
     if (error) {
-      if (!navigator.onLine) { await Offline.queueAction({ type: 'createThread', userId: data.author_id!, payload: data }); return {}; }
+      if (!navigator.onLine) { await Offline.queueAction({ type: 'createThread', userId: data.author_id, payload: data }); return {}; }
       return { error: error.message };
     }
     return {};
@@ -147,11 +148,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const subscribeToFeed = useCallback(() => {
     const sb = createClient();
     const channel = sb.channel('feed-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, (p) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, async (p) => {
         const newThread = p.new as Thread;
         setState(prev => {
           if (prev.threads.find(t => t.id === newThread.id)) return prev;
-          return { ...prev, threads: [{ ...newThread, author: { full_name: 'New', avatar_url: '', verified: false, county: '' } }, ...prev.threads] };
+          return prev;
+        });
+        const { data: authorProfile } = await sb.from('profiles').select('full_name, avatar_url, verified, county').eq('id', newThread.author_id).single();
+        setState(prev => {
+          if (prev.threads.find(t => t.id === newThread.id)) return prev;
+          return { ...prev, threads: [{ ...newThread, author: authorProfile || { full_name: 'New', avatar_url: '', verified: false, county: '' } }, ...prev.threads] };
         });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'threads', filter: `upvotes_count=neq.${-1}` }, (p) => {
@@ -272,7 +278,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       professional_id: rData.professional_id, score: rData.score, review: rData.review || null,
     }).select().single();
     if (error) return { error: error.message };
-    const { data: avg } = await sb.rpc('update_professional_rating', { p_professional_id: rData.professional_id });
+    const { error: rpcError } = await sb.rpc('update_professional_rating', { p_professional_id: rData.professional_id });
+    if (rpcError) console.error('[Rating] RPC error:', rpcError);
     return {};
   }, [user]);
 
@@ -284,10 +291,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const submitTip = useCallback(async (tData: Partial<Tip>): Promise<{ error?: string }> => {
     if (!user) return { error: 'Not logged in' };
+    const amt = tData.amount || 0;
+    const professionalAmount = Math.round(amt * 0.7);
+    const platformAmount = amt - professionalAmount;
     const sb = createClient();
     const { error } = await sb.from('tips').insert({
       session_id: tData.session_id, student_id: user.id,
-      professional_id: tData.professional_id, amount: tData.amount,
+      professional_id: tData.professional_id, amount: amt,
+      platform_amount: platformAmount, professional_amount: professionalAmount,
       mpesa_ref: tData.mpesa_ref, status: 'pending',
     }).select().single();
     if (error) return { error: error.message };

@@ -32,14 +32,17 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
 
   const handleSubmit = async () => {
     if (!mpesaRef.trim()) { show('Please enter the M-Pesa transaction code.'); return; }
+    const amt = getSelectedAmount();
+    const proAmount = Math.round(amt * 0.7);
+    const platAmount = amt - proAmount;
     setLoading(true);
     const { error } = await submitTip({
       session_id: sessionId, professional_id: professionalId,
-      amount: getSelectedAmount(), mpesa_ref: mpesaRef.trim(),
+      amount: amt, mpesa_ref: mpesaRef.trim(),
     });
     setLoading(false);
     if (error) { show(error); return; }
-    show(`Tip of KES ${getSelectedAmount()} sent! Asante!`);
+    show(`Tip of KES ${amt} sent! KES ${proAmount} (70%) goes to the professional, KES ${platAmount} (30%) supports the platform. Asante!`);
     onClose();
   };
 
@@ -87,7 +90,9 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
         ) : (
           <>
             <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Amount</span><span className="font-bold">KES {getSelectedAmount()}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Total Tip</span><span className="font-bold">KES {getSelectedAmount()}</span></div>
+              <div className="flex justify-between text-emerald-600 font-semibold"><span>Professional (70%)</span><span>KES {Math.round(getSelectedAmount() * 0.7)}</span></div>
+              <div className="flex justify-between text-brand-red font-semibold"><span>Platform (30%)</span><span>KES {getSelectedAmount() - Math.round(getSelectedAmount() * 0.7)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">To</span><span className="font-bold">{professionalName}</span></div>
             </div>
 

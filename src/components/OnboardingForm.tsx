@@ -175,7 +175,7 @@ export default function OnboardingForm() {
               <select value={county} onChange={e => setCounty(e.target.value)}
                 className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 transition-shadow">
                 <option value="">Select your county...</option>
-                {COUNTIES.map(c => <option key={c}>{c}</option>)}
+                {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>

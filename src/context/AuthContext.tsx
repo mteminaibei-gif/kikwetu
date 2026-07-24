@@ -89,9 +89,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar_url: metadata.avatar_url,
         heshima_score: 100,
       }).select().single();
-      if (profileError) console.error('[Auth] Profile upsert error:', profileError);
+      if (profileError) return { error: profileError.message };
       if (data.session) {
         await loadProfile(sb, data.user.id);
+      } else {
+        setState(prev => ({ ...prev, loading: false }));
       }
     }
     return {};

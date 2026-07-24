@@ -95,8 +95,8 @@ export const Offline = {
         }
         if (action.id) await d.table('syncQueue').update(action.id, { synced: true });
         drained++;
-      } catch {
-        // Skip failed actions, will retry on next drain
+      } catch (err) {
+        console.error('[Offline] Sync failed for action', action.id, action.type, err);
       }
     }
     return drained;

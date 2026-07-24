@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { timeAgo, getInitials, getAvatarColor, roleBadge } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import type { Profile, Thread, Report, Space, ProfessionalRequest, Professional, Tip, ServiceRating } from '@/types';
+import type { Profile, Thread, Report, Space, ProfessionalRequest, Professional, Tip, ServiceRating, Payout } from '@/types';
 
 interface Stat {
   title: string; value: string; icon: string; color: string;
@@ -25,11 +25,13 @@ export default function AdminDashboard() {
   const [pros, setPros] = useState<Professional[]>([]);
   const [allTips, setAllTips] = useState<Tip[]>([]);
   const [allRatings, setAllRatings] = useState<ServiceRating[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
 
-  const sb = createClient();
+  const sbRef = useRef(createClient());
+  const sb = sbRef.current;
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,7 +41,7 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true);
-    const [uRes, tRes, rRes, sRes, pCount, tCount, rpCount, prRes, pRes, tipRes, rateRes] = await Promise.all([
+    const [uRes, tRes, rRes, sRes, pCount, tCount, rpCount, prRes, pRes, tipRes, rateRes, payoutRes] = await Promise.all([
       sb.from('profiles').select('*').order('created_at', { ascending: false }).limit(50),
       sb.from('threads').select('*, author:profiles(full_name), space:spaces(name)').order('created_at', { ascending: false }).limit(30),
       sb.from('reports').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
@@ -51,6 +53,7 @@ export default function AdminDashboard() {
       sb.from('professionals').select('*, profile:profiles(full_name, avatar_url, county)').order('created_at', { ascending: false }),
       sb.from('tips').select('*, student:profiles!tips_student_id_fkey(full_name), professional:profiles!tips_professional_id_fkey(full_name)').order('created_at', { ascending: false }).limit(30),
       sb.from('service_ratings').select('*, student:profiles(full_name, avatar_url)').order('created_at', { ascending: false }).limit(30),
+      sb.from('payouts').select('*, professional:profiles!payouts_professional_id_fkey(full_name, avatar_url), tip:tips!payouts_tip_id_fkey(amount, mpesa_ref, created_at, student:profiles!tips_student_id_fkey(full_name))').order('created_at', { ascending: false }).limit(50),
     ]);
     if (uRes.data) setUsers(uRes.data as Profile[]);
     if (tRes.data) setThreads(tRes.data as Thread[]);
@@ -60,6 +63,7 @@ export default function AdminDashboard() {
     if (pRes.data) setPros(pRes.data as Professional[]);
     if (tipRes.data) setAllTips(tipRes.data as Tip[]);
     if (rateRes.data) setAllRatings(rateRes.data as ServiceRating[]);
+    if (payoutRes.data) setPayouts(payoutRes.data as Payout[]);
     setStats([
       { title: 'Total Users', value: String(pCount.count || 0), icon: 'group', color: 'bg-brand-deep' },
       { title: 'Total Threads', value: String(tCount.count || 0), icon: 'forum', color: 'bg-brand-terracotta' },
@@ -72,7 +76,7 @@ export default function AdminDashboard() {
   const handleProReview = async (id: string, status: 'approved' | 'rejected') => {
     const req = proRequests.find(r => r.id === id);
     if (!req) return;
-    if (status === 'rejected' && !rejectReason.trim() && rejectingId === id) return;
+    if (status === 'rejected' && !rejectReason.trim()) return;
     if (status === 'approved') {
       await sb.from('professional_requests').update({ status, reviewed_by: user!.id, reviewed_at: new Date().toISOString() }).eq('id', id);
       await sb.from('professionals').upsert({
@@ -86,6 +90,25 @@ export default function AdminDashboard() {
     }
     setRejectReason('');
     setRejectingId(null);
+    loadData();
+  };
+
+  const handleMarkPayout = async (id: string, status: 'paid' | 'cancelled', notes?: string) => {
+    await sb.from('payouts').update({ status, paid_by: user!.id, paid_at: status === 'paid' ? new Date().toISOString() : undefined, notes: notes || null }).eq('id', id);
+    await sb.from('tips').update({ payout_status: status }).eq('id', payouts.find(p => p.id === id)?.tip_id || '');
+    loadData();
+  };
+
+  const createPayouts = async () => {
+    const pendingTips = allTips.filter(t => t.status === 'completed' && t.payout_status !== 'paid');
+    for (const tip of pendingTips) {
+      await sb.from('payouts').upsert({
+        professional_id: tip.professional_id, tip_id: tip.id,
+        amount_professional: tip.professional_amount || Math.round(tip.amount * 0.7),
+        amount_platform: tip.platform_amount || (tip.amount - Math.round(tip.amount * 0.7)),
+        status: 'pending',
+      }).select().single();
+    }
     loadData();
   };
 
@@ -120,6 +143,7 @@ export default function AdminDashboard() {
             { id: 'moderation', label: `Moderation${reports.length ? ` (${reports.length})` : ''}`, icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z' },
             { id: 'spaces', label: 'Spaces', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
             { id: 'professionals', label: `Professionals${proRequests.filter(r => r.status === 'pending').length ? ` (${proRequests.filter(r => r.status === 'pending').length})` : ''}`, icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+            { id: 'payouts', label: `Payouts${payouts.filter(p => p.status === 'pending').length ? ` (${payouts.filter(p => p.status === 'pending').length})` : ''}`, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} className={sidebarClasses(t.id)}>
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={t.icon} /></svg>
@@ -415,6 +439,89 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'payouts' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold">Payout Management</h3>
+              <button onClick={createPayouts}
+                className="px-4 py-2 bg-brand-deep text-white rounded-xl text-xs font-bold hover:bg-brand-deep/90 transition-colors">
+                Generate Payouts from Tips
+              </button>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="sun-card p-4 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Pending</p>
+                <p className="text-2xl font-black text-amber-500">{payouts.filter(p => p.status === 'pending').length}</p>
+              </div>
+              <div className="sun-card p-4 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Paid</p>
+                <p className="text-2xl font-black text-emerald-600">{payouts.filter(p => p.status === 'paid').length}</p>
+              </div>
+              <div className="sun-card p-4 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Total Platform</p>
+                <p className="text-2xl font-black text-brand-red">KES {payouts.filter(p => p.status === 'paid').reduce((sum, p) => sum + (p.amount_platform || 0), 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="sun-card p-5">
+              <h3 className="font-bold mb-4">All Payouts</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[10px] font-bold text-gray-400 uppercase border-b border-gray-200 dark:border-gray-700">
+                      <th className="pb-3 pr-4">Professional</th>
+                      <th className="pb-3 pr-4">Tip Amount</th>
+                      <th className="pb-3 pr-4">Professional (70%)</th>
+                      <th className="pb-3 pr-4">Platform (30%)</th>
+                      <th className="pb-3 pr-4">Status</th>
+                      <th className="pb-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {payouts.map(p => (
+                      <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                              {p.professional?.full_name?.[0] || 'P'}
+                            </div>
+                            <span className="font-semibold text-xs">{p.professional?.full_name || 'Unknown'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4 font-bold text-xs">KES {p.tip?.amount || 0}</td>
+                        <td className="py-3 pr-4 text-xs text-emerald-600 font-semibold">KES {p.amount_professional}</td>
+                        <td className="py-3 pr-4 text-xs text-brand-red font-semibold">KES {p.amount_platform}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                            p.status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                            p.status === 'cancelled' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          }`}>{p.status}</span>
+                        </td>
+                        <td className="py-3">
+                          {p.status === 'pending' && (
+                            <div className="flex gap-1.5">
+                              <button onClick={() => handleMarkPayout(p.id, 'paid')}
+                                className="px-2.5 py-1 text-[10px] font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">Mark Paid</button>
+                              <button onClick={() => handleMarkPayout(p.id, 'cancelled')}
+                                className="px-2.5 py-1 text-[10px] font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Cancel</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {payouts.length === 0 && (
+                      <tr><td colSpan={6} className="py-8 text-center text-xs text-gray-400">No payouts yet. Complete tips first.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

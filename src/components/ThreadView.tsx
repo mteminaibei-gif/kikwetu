@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
@@ -21,30 +21,39 @@ export default function ThreadView({ threadId }: Props) {
   const [replyContent, setReplyContent] = useState('');
   const [replying, setReplying] = useState(false);
 
-  const sb = createClient();
+  const sbRef = useRef(createClient());
+  const sb = sbRef.current;
 
   useEffect(() => {
     const load = async () => {
-      const [tRes, rRes] = await Promise.all([
-        sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').eq('id', threadId).single(),
-        sb.from('replies').select('*, author:profiles(full_name, avatar_url, verified)').eq('thread_id', threadId).order('created_at', { ascending: true }),
-      ]);
-      if (tRes.data) setThread(tRes.data as Thread);
-      if (rRes.data) setReplies(rRes.data as Reply[]);
+      try {
+        const [tRes, rRes] = await Promise.all([
+          sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').eq('id', threadId).single(),
+          sb.from('replies').select('*, author:profiles(full_name, avatar_url, verified)').eq('thread_id', threadId).order('created_at', { ascending: true }),
+        ]);
+        if (tRes.data) setThread(tRes.data as Thread);
+        if (rRes.data) setReplies(rRes.data as Reply[]);
+      } catch (e) {
+        console.error('[ThreadView] load error:', e);
+      }
       setLoading(false);
     };
     load();
-  }, [threadId, sb]);
+  }, [threadId]);
 
   const handleVote = async (entityId: string, entityType: 'thread' | 'reply') => {
     if (!user) { show('Please login to vote.'); return; }
     await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: 'up' });
-    if (entityType === 'thread') {
-      const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
-      if (data) setThread(prev => prev ? { ...prev, upvotes_count: data.upvotes_count } : prev);
-    } else {
-      const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
-      if (data) setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: data.upvotes_count } : r));
+    try {
+      if (entityType === 'thread') {
+        const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
+        if (data) setThread(prev => prev ? { ...prev, upvotes_count: data.upvotes_count } : prev);
+      } else {
+        const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
+        if (data) setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: data.upvotes_count } : r));
+      }
+    } catch (e) {
+      console.error('[ThreadView] vote refresh error:', e);
     }
   };
 

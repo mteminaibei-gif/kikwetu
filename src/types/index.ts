@@ -8,7 +8,7 @@ export interface Profile {
   preferred_lang?: string;
   avatar_url?: string;
   heshima_score: number;
-  role: 'user' | 'expert' | 'moderator' | 'admin';
+  role: 'user' | 'expert' | 'moderator' | 'admin' | 'parent';
   interests: string[];
   badges?: string[];
   verified: boolean;
@@ -16,7 +16,36 @@ export interface Profile {
   answer_count: number;
   follower_count: number;
   following_count: number;
+  parent_id?: string;
+  is_minor?: boolean;
   created_at: string;
+}
+
+export interface ParentLink {
+  id: string;
+  parent_id: string;
+  child_name: string;
+  child_age?: number;
+  child_grade?: string;
+  notes?: string;
+  approved_professional_ids: string[];
+  created_at: string;
+  parent?: Pick<Profile, 'full_name' | 'avatar_url'>;
+}
+
+export interface Payout {
+  id: string;
+  professional_id: string;
+  tip_id: string;
+  amount_professional: number;
+  amount_platform: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  paid_at?: string;
+  paid_by?: string;
+  notes?: string;
+  created_at: string;
+  professional?: Pick<Profile, 'full_name' | 'avatar_url'> & { title?: string };
+  tip?: Pick<Tip, 'amount' | 'mpesa_ref' | 'created_at'> & { student?: Pick<Profile, 'full_name'> };
 }
 
 export interface Thread {
@@ -209,8 +238,11 @@ export interface Tip {
   student_id: string;
   professional_id: string;
   amount: number;
+  platform_amount?: number;
+  professional_amount?: number;
   mpesa_ref?: string;
   status: 'pending' | 'completed' | 'failed';
+  payout_status?: 'pending' | 'paid' | 'cancelled';
   created_at: string;
   student?: Pick<Profile, 'full_name'>;
   professional?: Pick<Profile, 'full_name'>;

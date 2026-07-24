@@ -272,10 +272,13 @@ export default function FeedView() {
                   <span className="text-xs font-black text-brand-red">{formatNumber(l.points)} pts</span>
                 </div>
               ))}
-              {user && (
+              {user && (() => {
+                const userRank = user.heshima_score > (LEADERBOARD_DATA[0]?.points || 0) ? 1 :
+                  LEADERBOARD_DATA.reduce((rank, l) => user.heshima_score >= l.points ? Math.min(rank, l.rank) : rank, LEADERBOARD_DATA.length + 1);
+                return (
                 <div className="flex items-center justify-between p-3 rounded-xl bg-brand-terracotta/10 border border-brand-terracotta/30">
                   <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-brand-red text-white font-bold text-xs flex items-center justify-center shadow-sm">4</span>
+                    <span className="w-6 h-6 rounded-full bg-brand-red text-white font-bold text-xs flex items-center justify-center shadow-sm">{userRank}</span>
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center font-bold text-white">{user.full_name?.[0] || 'U'}</div>
                     <div>
                       <p className="text-xs font-bold">{user.full_name} ({tr('Wewe', 'You')})</p>
@@ -283,8 +286,8 @@ export default function FeedView() {
                     </div>
                   </div>
                   <span className="text-xs font-black text-brand-red">{user.heshima_score} pts</span>
-                </div>
-              )}
+                </div>);
+              })()}
             </div>
           </div>
         )}

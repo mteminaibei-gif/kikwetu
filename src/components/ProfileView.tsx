@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase';
 import { timeAgo, formatNumber, getInitials, getAvatarColor, heshimaLevel, roleBadge } from '@/lib/utils';
@@ -22,28 +22,39 @@ export default function ProfileView({ profileId }: Props) {
   const [lang, setLang] = useState<'en' | 'sw'>('en');
   const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
 
-  const sb = createClient();
+  const sbRef = useRef(createClient());
+  const sb = sbRef.current;
 
   useEffect(() => {
     const load = async () => {
-      const [pRes, tRes] = await Promise.all([
-        sb.from('profiles').select('*').eq('id', profileId).single(),
-        sb.from('threads').select('*, space:spaces(name)').eq('author_id', profileId).order('created_at', { ascending: false }).limit(20),
-      ]);
-      if (pRes.data) {
-        setProfile(pRes.data as Profile);
-        setIsOwnProfile(currentUser?.id === profileId);
+      try {
+        const [pRes, tRes] = await Promise.all([
+          sb.from('profiles').select('*').eq('id', profileId).single(),
+          sb.from('threads').select('*, space:spaces(name)').eq('author_id', profileId).order('created_at', { ascending: false }).limit(20),
+        ]);
+        if (pRes.data) {
+          setProfile(pRes.data as Profile);
+          setIsOwnProfile(currentUser?.id === profileId);
+        }
+        if (tRes.data) setThreads(tRes.data as Thread[]);
+      } catch (e) {
+        console.error('[ProfileView] load error:', e);
       }
-      if (tRes.data) setThreads(tRes.data as Thread[]);
       setLoading(false);
     };
     load();
 
     if (currentUser && currentUser.id !== profileId) {
-      sb.from('follows').select('id').eq('follower_id', currentUser.id).eq('following_id', profileId).single()
-        .then(({ data }) => setFollowing(!!data));
+      (async () => {
+        try {
+          const { data } = await sb.from('follows').select('id').eq('follower_id', currentUser.id).eq('following_id', profileId).maybeSingle();
+          setFollowing(!!data);
+        } catch {
+          setFollowing(false);
+        }
+      })();
     }
-  }, [profileId, currentUser, sb]);
+  }, [profileId, currentUser]);
 
   const handleFollow = async () => {
     if (!currentUser || !profile) return;

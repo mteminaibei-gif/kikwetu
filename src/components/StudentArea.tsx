@@ -8,11 +8,17 @@ import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import type { Professional } from '@/types';
 
-export default function StudentArea() {
+interface Props {
+  mode?: 'student' | 'professional';
+}
+
+export default function StudentArea({ mode = 'student' }: Props) {
   const { user } = useAuth();
   const { professionals, loadProfessionals, loading } = useApp();
   const [search, setSearch] = useState('');
   const [filterExpertise, setFilterExpertise] = useState<string | null>(null);
+
+  const isStudentMode = mode === 'student';
 
   useEffect(() => {
     loadProfessionals();
@@ -31,10 +37,10 @@ export default function StudentArea() {
       {/* Header */}
       <div className="bg-gradient-to-br from-brand-deep via-brand-deep to-brand-red p-8 rounded-2xl text-white shadow-lg">
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-3xl">🎓</span>
+          <span className="text-3xl">{isStudentMode ? '🎓' : '👨‍🏫'}</span>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black">Student Area</h1>
-            <p className="text-sm text-gray-200">Find verified teachers and book 1-on-1 learning sessions</p>
+            <h1 className="text-2xl sm:text-3xl font-black">{isStudentMode ? 'Student Area' : 'Verified Professionals'}</h1>
+            <p className="text-sm text-gray-200">{isStudentMode ? 'Find verified teachers and book 1-on-1 learning sessions' : 'Browse our verified teachers and experts'}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3 mt-4">
