@@ -29,7 +29,7 @@ export default function MobileBottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-800 saf-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-800 pb-[env(safe-area-inset-bottom,0px)]">
       <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
         {NAV_ITEMS.map(item => (
           <Link key={item.href} href={item.href}
