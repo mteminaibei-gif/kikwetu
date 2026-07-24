@@ -12,6 +12,14 @@ const EXPERTISE_OPTIONS = [
   'Music & Arts', 'History & Culture', 'Finance', 'Engineering',
 ];
 
+const TEACHING_LEVELS = ['primary', 'highschool', 'college', 'university'];
+const TEACHING_NICHES: Record<string, string[]> = {
+  primary: ['Standard 1', 'Standard 2', 'Standard 3', 'Standard 4', 'Standard 5', 'Standard 6', 'Standard 7', 'Standard 8'],
+  highschool: ['Form 1', 'Form 2', 'Form 3', 'Form 4'],
+  college: ['Certificate', 'Diploma', 'Higher Diploma'],
+  university: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5+'],
+};
+
 export default function ProfessionalRequestForm() {
   const { user } = useAuth();
   const { requestProfessional } = useApp();
@@ -23,6 +31,8 @@ export default function ProfessionalRequestForm() {
   const [qualifications, setQualifications] = useState('');
   const [qualificationsDocUrl, setQualificationsDocUrl] = useState('');
   const [expertise, setExpertise] = useState<string[]>([]);
+  const [teachingLevel, setTeachingLevel] = useState<string[]>([]);
+  const [teachingNiche, setTeachingNiche] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const toggleExpertise = (e: string) => {
@@ -34,11 +44,12 @@ export default function ProfessionalRequestForm() {
     if (!bio.trim()) { show('Please write a short bio.'); return; }
     if (!qualifications.trim()) { show('Please list your qualifications.'); return; }
     if (expertise.length === 0) { show('Select at least one area of expertise.'); return; }
+    if (teachingLevel.length === 0) { show('Select at least one teaching level.'); return; }
     setLoading(true);
     const { error } = await requestProfessional({
       title: title.trim(), bio: bio.trim(), qualifications: qualifications.trim(),
       qualifications_doc_url: qualificationsDocUrl.trim() || undefined,
-      expertise,
+      expertise, teaching_level: [...teachingLevel, ...teachingNiche],
     });
     setLoading(false);
     if (error) { show(error); return; }
@@ -122,6 +133,37 @@ export default function ProfessionalRequestForm() {
                   }`}>{e}</button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 block">
+              Teaching Level <span className="text-brand-red">*</span>
+            </label>
+            <p className="text-[11px] text-gray-400 mb-3">Which education levels do you teach?</p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {TEACHING_LEVELS.map(lvl => (
+                <button key={lvl} onClick={() => {
+                  setTeachingLevel(prev => prev.includes(lvl) ? prev.filter(x => x !== lvl) : [...prev, lvl]);
+                  if (!teachingLevel.includes(lvl)) setTeachingNiche(prev => prev.filter(n => !TEACHING_NICHES[lvl]?.includes(n)));
+                }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all capitalize ${
+                    teachingLevel.includes(lvl) ? 'bg-brand-deep text-white border-brand-deep shadow-sm' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                  }`}>{lvl}</button>
+              ))}
+            </div>
+            {teachingLevel.map(lvl => TEACHING_NICHES[lvl] && (
+              <div key={lvl} className="mb-2">
+                <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 capitalize block mb-1">{lvl} classes:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {TEACHING_NICHES[lvl].map(n => (
+                    <button key={n} onClick={() => setTeachingNiche(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
+                        teachingNiche.includes(n) ? 'bg-brand-terracotta text-white border-brand-terracotta shadow-sm' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                      }`}>{n}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {user.role === 'expert' && (

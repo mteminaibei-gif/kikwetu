@@ -14,22 +14,22 @@ interface RadioStation {
 }
 
 const STATIONS: RadioStation[] = [
-  { id: 'citizen', name: 'Citizen Radio', slogan: 'Kusikiliza ni Kutambua', streamUrl: 'https://streaming.appwhat.net/citizenradio', logo: '🎙️', category: 'News & Talk', frequency: 'FM 100.9' },
+  { id: 'nrg', name: 'NRG Radio', slogan: 'The Biggest Hits', streamUrl: 'https://streamingv2.shoutcast.com/nrg-radio-ke', logo: '🎧', category: 'Pop Music', frequency: 'FM 92.7' },
+  { id: 'capital', name: '98.4 Capital FM', slogan: 'Nairobi\'s Hit Music Station', streamUrl: 'https://atunwadigital.streamguys1.com/capitalfm', logo: '🔥', category: 'Urban Music', frequency: 'FM 98.4' },
   { id: 'kiss', name: 'Kiss FM', slogan: 'The Biggest Hits', streamUrl: 'https://streaming.appwhat.net/kissfm', logo: '🎧', category: 'Pop Music', frequency: 'FM 100.3' },
   { id: 'classic105', name: 'Classic 105', slogan: 'It\'s a Classic', streamUrl: 'https://streaming.appwhat.net/classic105', logo: '🎵', category: 'Classic Hits', frequency: 'FM 105.3' },
-  { id: 'hot96', name: 'Hot 96', slogan: 'The Urban Beat', streamUrl: 'https://streaming.appwhat.net/hot96', logo: '🔥', category: 'Urban Music', frequency: 'FM 96.3' },
-  { id: 'homeboyz', name: 'Homeboyz Radio', slogan: 'The People\'s Station', streamUrl: 'https://streaming.appwhat.net/homeboyz', logo: '🏠', category: 'Hip Hop & Pop', frequency: 'FM 94.1' },
+  { id: 'kameme', name: 'Kameme FM', slogan: 'Kameme ni Wewe', streamUrl: 'https://kamemefm-atunwadigital.streamguys1.com/kamemefm', logo: '📻', category: 'Kikuyu Music', frequency: 'FM 102.7' },
+  { id: 'radio47', name: 'Radio47', slogan: 'The People\'s Station', streamUrl: 'https://streaming.shoutcast.com/radio-47?ver=690109', logo: '🏠', category: 'News & Talk', frequency: 'FM 98.1' },
   { id: 'milele', name: 'Milele FM', slogan: 'Milele na Watu', streamUrl: 'https://streaming.appwhat.net/milele', logo: '🌅', category: 'Swahili Music', frequency: 'FM 96.1' },
   { id: 'maisha', name: 'Radio Maisha', slogan: 'Lango la Habari', streamUrl: 'https://streaming.appwhat.net/radiomaisha', logo: '🌟', category: 'Swahili Hits', frequency: 'FM 91.1' },
-  { id: 'gukena', name: 'Gukena FM', slogan: 'Gukena na Watu', streamUrl: 'https://streaming.appwhat.net/gukenafm', logo: '🥁', category: 'Kikuyu Music', frequency: 'FM 96.1' },
-  { id: 'kameme', name: 'Kameme FM', slogan: 'Kameme ni Wewe', streamUrl: 'https://streaming.appwhat.net/kameme', logo: '📻', category: 'Kikuyu Music', frequency: 'FM 102.7' },
-  { id: 'coro', name: 'Coro FM', slogan: 'Fm ya Watu', streamUrl: 'https://streaming.appwhat.net/corofm', logo: '🎷', category: 'Kikuyu Music', frequency: 'FM 96.8' },
-  { id: 'inooro', name: 'Inooro FM', slogan: 'Iri Wendo', streamUrl: 'https://streaming.appwhat.net/inoorofm', logo: '📡', category: 'Kikuyu Music', frequency: 'FM 93.6' },
+  { id: 'kbc', name: 'KBC', slogan: 'Taifa la Kenya', streamUrl: 'http://stream.zeno.fm/ud2u96xst5quv', logo: '🌍', category: 'News & Talk', frequency: 'Nationwide' },
+  { id: 'nation', name: 'Nation FM', slogan: 'Sauti ya Taifa', streamUrl: 'http://stream.radiojar.com/3by7s8eg65quv', logo: '🗞️', category: 'News & Talk', frequency: 'FM 95.5' },
+  { id: 'easy', name: 'Easy FM 101.5', slogan: 'Smooth & Easy', streamUrl: 'https://stream.zeno.fm/wvw02zaqpxquv', logo: '🎷', category: 'Soul & Relax', frequency: 'FM 101.5' },
+  { id: 'mayian', name: 'Mayian FM', slogan: 'Sauti ya Upendo', streamUrl: 'https://mayianfm-atunwadigital.streamguys1.com/mayianfm', logo: '💚', category: 'Christian', frequency: 'FM 102.5' },
+  { id: 'waumini', name: 'Radio Waumini 88.3', slogan: 'Katoliki na Taifa', streamUrl: 'http://stream.zeno.fm/gvk894g072quv', logo: '⛪', category: 'Christian', frequency: 'FM 88.3' },
+  { id: 'taach', name: 'Taach FM', slogan: 'Sauti ya Watu', streamUrl: 'https://pegasus.nucast.co.uk:8064/stream', logo: '🎙️', category: 'Swahili Music', frequency: 'FM 97.1' },
   { id: 'ramogi', name: 'Ramogi FM', slogan: 'Dhumna gi Ramogi', streamUrl: 'https://streaming.appwhat.net/ramogifm', logo: '🌍', category: 'Luo Music', frequency: 'FM 91.7' },
-  { id: 'muoroto', name: 'Muoroto FM', slogan: 'Sauti ya Watu', streamUrl: 'https://streaming.appwhat.net/muorotofm', logo: '🎶', category: 'Luo Music', frequency: 'FM 88.9' },
-  { id: 'minto', name: 'Minto FM', slogan: 'Minto ni Wewe', streamUrl: 'https://streaming.appwhat.net/mintofm', logo: '🎤', category: 'Swahili Music', frequency: 'FM 91.3' },
-  { id: 'sulwe', name: 'Sulwe FM', slogan: 'Sauti ya Mwanachi', streamUrl: 'https://streaming.appwhat.net/sulwefm', logo: '⭐', category: 'Swahili Music', frequency: 'FM 104.9' },
-  { id: 'baraka', name: 'Baraka FM', slogan: 'Upendo na Amani', streamUrl: 'https://streaming.appwhat.net/barakafm', logo: '💚', category: 'Christian', frequency: 'FM 91.1' },
+  { id: 'inooro', name: 'Inooro FM', slogan: 'Iri Wendo', streamUrl: 'https://streaming.appwhat.net/inoorofm', logo: '📡', category: 'Kikuyu Music', frequency: 'FM 93.6' },
 ];
 
 const CATEGORIES = [...new Set(STATIONS.map(s => s.category))];

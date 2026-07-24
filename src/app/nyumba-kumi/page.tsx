@@ -368,12 +368,12 @@ export default function NyumbaKumiPage() {
                 <div key={post.id} className={`sun-card p-4 sm:p-5 space-y-3 ${post.urgent ? 'border-l-4 border-l-red-500' : ''}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-xs font-bold text-white">
+                      <Link href={`/profile/${post.author_id}`} className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-xs font-bold text-white hover:ring-2 hover:ring-amber-500 transition-all shrink-0">
                         {post.author?.full_name?.[0] || '?'}
-                      </div>
+                      </Link>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-bold">{post.author?.full_name || 'Anonymous'}</p>
+                          <Link href={`/profile/${post.author_id}`} className="text-sm font-bold hover:text-amber-600 transition-colors">{post.author?.full_name || 'Anonymous'}</Link>
                           {post.urgent && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold animate-pulse">URGENT</span>}
                         </div>
                         <p className="text-[10px] text-gray-400">{post.county}{post.location ? ` \u00b7 ${post.location}` : ''} \u00b7 {timeAgo(post.created_at)}</p>

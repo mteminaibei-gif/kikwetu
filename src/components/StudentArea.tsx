@@ -12,11 +12,20 @@ interface Props {
   mode?: 'student' | 'professional';
 }
 
+const CLASSIFICATION_OPTIONS = [
+  { id: 'primary', label: 'Primary', niches: ['Standard 1', 'Standard 2', 'Standard 3', 'Standard 4', 'Standard 5', 'Standard 6', 'Standard 7', 'Standard 8'] },
+  { id: 'highschool', label: 'Highschool', niches: ['Form 1', 'Form 2', 'Form 3', 'Form 4'] },
+  { id: 'college', label: 'College', niches: ['Certificate', 'Diploma', 'Higher Diploma'] },
+  { id: 'university', label: 'University', niches: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5+'] },
+];
+
 export default function StudentArea({ mode = 'student' }: Props) {
   const { user } = useAuth();
   const { professionals, loadProfessionals, loading } = useApp();
   const [search, setSearch] = useState('');
   const [filterExpertise, setFilterExpertise] = useState<string | null>(null);
+  const [classification, setClassification] = useState<string | null>(null);
+  const [niche, setNiche] = useState<string | null>(null);
 
   const isStudentMode = mode === 'student';
 
@@ -24,9 +33,15 @@ export default function StudentArea({ mode = 'student' }: Props) {
     loadProfessionals();
   }, [loadProfessionals]);
 
+  const availableNiches = classification
+    ? CLASSIFICATION_OPTIONS.find(c => c.id === classification)?.niches || []
+    : [];
+
   const filtered = professionals.filter(p => {
     if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.bio.toLowerCase().includes(search.toLowerCase()) && !p.profile?.full_name?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterExpertise && !p.expertise?.includes(filterExpertise)) return false;
+    if (classification && !p.teaching_level?.includes(classification)) return false;
+    if (niche && !p.teaching_level?.includes(niche)) return false;
     return true;
   });
 
@@ -54,12 +69,39 @@ export default function StudentArea({ mode = 'student' }: Props) {
         </div>
       </div>
 
+      {/* Classification Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {[{ id: null, label: 'All Levels' } as const, ...CLASSIFICATION_OPTIONS].map(c => (
+          <button key={c.id || 'all'} onClick={() => { setClassification(c.id); setNiche(null); }}
+            className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-all', classification === c.id ? 'bg-brand-deep text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700')}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Niche / Sub-class Dropdown */}
+      {classification && availableNiches.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Class:</span>
+          <button onClick={() => setNiche(null)}
+            className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-all', !niche ? 'bg-brand-terracotta text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400')}>
+            All
+          </button>
+          {availableNiches.map(n => (
+            <button key={n} onClick={() => setNiche(n)}
+              className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-all', niche === n ? 'bg-brand-red text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700')}>
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Expertise Filters */}
       {allExpertise.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setFilterExpertise(null)}
             className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-all', !filterExpertise ? 'bg-brand-deep text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400')}>
-            All
+            All Subjects
           </button>
           {allExpertise.map(e => (
             <button key={e} onClick={() => setFilterExpertise(e)}

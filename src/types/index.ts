@@ -171,6 +171,7 @@ export interface Professional {
   qualifications: string;
   qualifications_doc_url?: string;
   expertise: string[];
+  teaching_level: string[];
   hourly_rate?: number;
   verification_status: 'pending' | 'approved' | 'rejected';
   verified_by?: string;
@@ -191,6 +192,7 @@ export interface ProfessionalRequest {
   qualifications: string;
   qualifications_doc_url?: string;
   expertise: string[];
+  teaching_level: string[];
   status: 'pending' | 'approved' | 'rejected';
   reviewed_by?: string;
   reviewed_at?: string;

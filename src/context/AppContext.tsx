@@ -190,7 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await sb.from('professional_requests').insert({
       profile_id: user.id, title: reqData.title, bio: reqData.bio,
       qualifications: reqData.qualifications, qualifications_doc_url: reqData.qualifications_doc_url,
-      expertise: reqData.expertise || [],
+      expertise: reqData.expertise || [], teaching_level: reqData.teaching_level || [],
     }).select().single();
     if (error) return { error: error.message };
     return {};
@@ -209,7 +209,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await sb.from('professionals').upsert({
           profile_id: req.profile_id, title: req.title, bio: req.bio,
           qualifications: req.qualifications, qualifications_doc_url: req.qualifications_doc_url,
-          expertise: req.expertise, verification_status: 'approved', verified_by: user.id, verified_at: new Date().toISOString(),
+          expertise: req.expertise, teaching_level: req.teaching_level || [],
+          verification_status: 'approved', verified_by: user.id, verified_at: new Date().toISOString(),
         }).select().single();
         await sb.from('profiles').update({ role: 'expert' }).eq('id', req.profile_id);
       }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
@@ -90,10 +91,10 @@ export default function ThreadView({ threadId }: Props) {
         <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{thread.content}</p>
         <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2 text-xs text-gray-400">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${getAvatarColor(thread.author?.full_name)}`}>
+            <Link href={`/profile/${thread.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta transition-all ${getAvatarColor(thread.author?.full_name)}`}>
               {getInitials(thread.author?.full_name)}
-            </div>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{thread.author?.full_name || 'Anonymous'}</span>
+            </Link>
+            <Link href={`/profile/${thread.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors">{thread.author?.full_name || 'Anonymous'}</Link>
             <span className="text-gray-300 dark:text-gray-600">·</span>
             <span>{timeAgo(thread.created_at)}</span>
           </div>
@@ -121,10 +122,10 @@ export default function ThreadView({ threadId }: Props) {
         {replies.map(reply => (
           <div key={reply.id} className="sun-card p-5 space-y-3">
             <div className="flex items-center gap-2 text-xs text-gray-400">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${getAvatarColor(reply.author?.full_name)}`}>
-                {getInitials(reply.author?.full_name)}
-              </div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">{reply.author?.full_name || 'Anonymous'}</span>
+            <Link href={`/profile/${reply.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta transition-all ${getAvatarColor(reply.author?.full_name)}`}>
+              {getInitials(reply.author?.full_name)}
+            </Link>
+            <Link href={`/profile/${reply.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors">{reply.author?.full_name || 'Anonymous'}</Link>
               <span className="text-gray-300 dark:text-gray-600">·</span>
               <span>{timeAgo(reply.created_at)}</span>
               {reply.is_accepted && (

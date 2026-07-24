@@ -201,7 +201,7 @@ export default function FeedView() {
                 pathname === '/professionals/request' ? 'bg-brand-deep text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
               )}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-              Understand
+              Professionals
             </Link>
             <Link href="/radio"
               className={cn(
@@ -282,9 +282,11 @@ export default function FeedView() {
                   <div key={thread.id} className="sun-card p-4 sm:p-5 space-y-3 sm:space-y-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-sm font-bold text-white shadow-sm">
-                          {thread.author?.full_name?.[0]?.toUpperCase() || 'A'}
-                        </div>
+                        <Link href={`/profile/${thread.author_id}`} className="shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-sm font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta transition-all">
+                            {thread.author?.full_name?.[0]?.toUpperCase() || 'A'}
+                          </div>
+                        </Link>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <h5 className="text-sm font-bold">{thread.author?.full_name || tr('Mgeni', 'Guest')}</h5>
