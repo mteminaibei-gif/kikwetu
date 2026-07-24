@@ -1,23 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 52" fill="none">
   <defs>
-    <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#274E37"/>
-      <stop offset="100%" stop-color="#D96B27"/>
+    <linearGradient id="sunset2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4b553"/>
+      <stop offset="50%" stop-color="#d28156"/>
+      <stop offset="100%" stop-color="#bd3b3b"/>
     </linearGradient>
-    <linearGradient id="accentGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#F48C4C"/>
-      <stop offset="100%" stop-color="#D96B27"/>
-    </linearGradient>
+    <radialGradient id="glow2" cx="0.5" cy="0.8" r="0.5">
+      <stop offset="0%" stop-color="#f4b553" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#f4b553" stop-opacity="0"/>
+    </radialGradient>
   </defs>
   <g>
-    <rect x="1" y="1" width="48" height="48" rx="12" fill="#274E37"/>
-    <rect x="1" y="1" width="48" height="48" rx="12" stroke="url(#brandGrad)" stroke-width="1.5"/>
-    <path d="M14 38L14 16L25 26L25 14L36 26L36 38L25 30L14 38Z" fill="white" fill-opacity="0.92"/>
-    <circle cx="25" cy="14" r="2.5" fill="#F48C4C"/>
-    <circle cx="36" cy="14" r="2.5" fill="#F48C4C"/>
-    <path d="M14 38L16 32L25 38L34 32L36 38" stroke="#F48C4C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="25" cy="25" r="2" fill="#D96B27"/>
+    <rect x="1" y="2" width="46" height="46" rx="12" fill="#2A1A18"/>
+    <rect x="1" y="2" width="46" height="46" rx="12" fill="url(#glow2)"/>
+    <circle cx="24" cy="34" r="11" fill="url(#sunset2)" opacity="0.20"/>
+    <circle cx="24" cy="34" r="7" fill="url(#sunset2)" opacity="0.35"/>
+    <circle cx="24" cy="34" r="4" fill="url(#sunset2)" opacity="0.65"/>
+    <path d="M15 18 Q20 12 24 18 Q24 12 24 18 Q28 12 33 18" stroke="#f4b553" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
+    <line x1="24" y1="11" x2="24" y2="18" stroke="#f4b553" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+    <text x="24" y="32" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="18" fill="white" letter-spacing="-1">K</text>
   </g>
-  <text x="60" y="30" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="22" fill="#274E37" letter-spacing="-0.3">Kikwetu</text>
-  <text x="60" y="44" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="11" fill="#D96B27" letter-spacing="2">CONNECT</text>
+  <text x="58" y="28" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="20" fill="#bd3b3b" letter-spacing="-0.3">Kikwetu</text>
+  <text x="58" y="42" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="10" fill="#d28156" letter-spacing="2.5">CONNECT</text>
 </svg>

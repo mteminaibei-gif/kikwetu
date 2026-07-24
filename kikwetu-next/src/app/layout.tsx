@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#008751",
+  themeColor: "#cc5b47",
   width: "device-width" as const,
   initialScale: 1,
   maximumScale: 1,
@@ -24,8 +24,10 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
-      <body className="font-sans min-h-screen flex flex-col sun-glow-bg dark:bg-brand-bgDark text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-brand-orange selection:text-white">
+      <body className="font-sans min-h-screen flex flex-col text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-brand-red selection:text-white">
         <Providers>
+          <div className="sun-birds" />
+          <div className="sun-tracks" />
           {children}
         </Providers>
       </body>

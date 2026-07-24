@@ -1,15 +1,14 @@
 {
-  "name": "KikwetuConnect",
-  "short_name": "Kikwetu",
-  "description": "East Africa's premier knowledge platform for agriculture, tech, education, and community storytelling.",
+  "name": "KikwetuConnect — Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu",
+  "short_name": "KikwetuConnect",
+  "description": "East Africa's knowledge platform connecting all 47 counties. Share farming tips, tech skills, Swahili stories, and grow together.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0A0A0A",
-  "theme_color": "#008751",
+  "background_color": "#FFF9F0",
+  "theme_color": "#cc5b47",
   "orientation": "portrait",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" },
+    { "src": "/icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml" }
   ]
 }

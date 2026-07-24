@@ -53,8 +53,6 @@ export default function Navbar() {
     return () => { window.removeEventListener('online', h); window.removeEventListener('offline', h); };
   }, []);
 
-
-
   const toggleTheme = useCallback(() => setDark(prev => !prev), []);
   const handleSignOut = useCallback(async () => { await signOut(); setProfileOpen(false); setMobileOpen(false); router.push('/'); }, [signOut, router]);
 
@@ -94,22 +92,22 @@ export default function Navbar() {
   }, [router]);
 
   return (
-    <header className="sticky top-0 z-50 sun-nav-border bg-white/90 dark:bg-brand-cardDark/90 backdrop-blur-md shadow-sm border-b-0">
+    <header className="sticky top-0 z-50 sun-nav-border bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg shadow-sm border-b-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        <Link href={user ? '/feed' : '/'} className="flex items-center gap-2 shrink-0 group">
+        <Link href={user ? '/feed' : '/'} className="flex items-center gap-2.5 shrink-0 group">
           <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-9 w-auto group-hover:scale-105 transition-transform drop-shadow-sm" />
           <div className="hidden sm:block">
-            <span className="text-lg font-bold text-brand-green dark:text-white">Kikwetu<span className="text-brand-orange">Connect</span></span>
+            <span className="text-lg font-black font-logo text-brand-deep dark:text-white leading-none block">Kikwetu<span className="text-brand-red">Connect</span></span>
           </div>
         </Link>
 
         {user && pathname !== '/' && (
           <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span>
-            <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." className="w-full pl-10 pr-10 py-2 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 text-sm transition-all" />
-            <button className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-brand-orange transition-colors" title="Voice Search"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" /></svg></button>
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span>
+            <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." className="w-full pl-10 pr-10 py-2.5 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-400" />
+            <button className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-brand-red transition-colors" title="Voice Search"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" /></svg></button>
             {searchOpen && (
-              <div className="absolute top-full mt-1 left-0 right-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
+              <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
                 {searchResults.map(r => (
                   <button key={r.id} onClick={() => handleSearchSelect(r.id)}
                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
@@ -123,22 +121,22 @@ export default function Navbar() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors" aria-label="Theme">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90" aria-label="Theme">
             {dark ? <SunIcon /> : <MoonIcon />}
           </button>
 
           {user ? (
             <>
               <div className="relative" ref={notifRef}>
-                <button onClick={() => setNotifOpen(prev => !prev)} className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors" aria-label="Notifications">
+                <button onClick={() => setNotifOpen(prev => !prev)} className="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90" aria-label="Notifications">
                   <BellIcon />
-                  {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-brand-orange rounded-full animate-ping" />}
+                  {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-red rounded-full animate-ping" />}
                 </button>
                 {notifOpen && (
                   <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-3 z-50">
                     <div className="px-4 pb-2 border-b border-gray-100 dark:border-gray-800"><p className="text-sm font-bold">Notifications</p></div>
-                    <div className="px-4 py-6 text-center text-xs text-gray-400">No new notifications</div>
+                    <div className="px-4 py-8 text-center text-xs text-gray-400">No new notifications.</div>
                   </div>
                 )}
               </div>
@@ -149,21 +147,21 @@ export default function Navbar() {
               </div>
 
               <div className="relative" ref={profileRef}>
-                <button onClick={() => setProfileOpen(prev => !prev)} className="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700">
-                  <div className="w-8 h-8 rounded-full bg-brand-green flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                <button onClick={() => setProfileOpen(prev => !prev)} className="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700 group">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white text-sm font-bold overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
                     {user.avatar_url ? <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
                       : user.full_name?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden lg:block text-left">
                     <p className="text-xs font-bold leading-none">{user.full_name}</p>
-                    <span className="text-[10px] text-brand-orange font-semibold">Heshima: {user.heshima_score}</span>
+                    <span className="text-[10px] text-brand-red font-semibold">Heshima: {user.heshima_score}</span>
                   </div>
                 </button>
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1 z-50">
                     <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
                       <p className="text-sm font-semibold truncate">{user.full_name}</p>
-                      <p className="text-xs text-gray-500 truncate">@{user.username}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username}</p>
                     </div>
                     <Link href={`/profile/${user.id}`} onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
                     {isAdmin && <Link href="/admin" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800">Admin</Link>}
@@ -174,37 +172,39 @@ export default function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <Link href="/onboarding" className="text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-brand-orange px-2 py-1.5 transition-colors">Sign In</Link>
-              <Link href="/onboarding" className="bg-brand-orange hover:bg-brand-lightOrange text-white px-4 py-2 rounded-full text-xs font-bold shadow-md transition-all">Get Started</Link>
+              <Link href="/onboarding" className="text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-brand-red px-3 py-1.5 transition-colors">Sign In</Link>
+              <Link href="/onboarding" className="sun-btn px-4 py-2 rounded-full text-xs font-bold shadow-md">Get Started</Link>
             </div>
           )}
 
-          <button onClick={() => setMobileOpen(prev => !prev)} className="md:hidden p-1.5 text-gray-500 dark:text-gray-400">{mobileOpen ? <XIcon /> : <MenuIcon />}</button>
+          <button onClick={() => setMobileOpen(prev => !prev)} className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all">{mobileOpen ? <XIcon /> : <MenuIcon />}</button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-brand-cardDark px-4 py-4 space-y-3">
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-lg px-4 py-4 space-y-3 shadow-lg">
           {user ? (
             <>
               <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-                <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-bold overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white font-bold overflow-hidden shadow-sm">
                   {user.avatar_url ? <img src={user.avatar_url} alt="" className="h-full w-full object-cover" /> : user.full_name?.[0]?.toUpperCase() || 'U'}
                 </div>
-                <div><p className="text-sm font-semibold">{user.full_name}</p><p className="text-xs text-gray-500">@{user.username}</p></div>
+                <div><p className="text-sm font-semibold">{user.full_name}</p><p className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</p></div>
               </div>
-              <Link href="/feed" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-orange">Feed</Link>
-              <Link href="/feed?view=spaces" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-orange">Spaces</Link>
-              <Link href="/feed?view=leaderboard" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-orange">Karma</Link>
-              <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-orange">Profile</Link>
-              {isAdmin && <Link href="/admin" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-red-500">Admin</Link>}
-              <button onClick={handleSignOut} className="block w-full text-left py-2 text-sm font-medium text-red-600">Sign Out</button>
+              <Link href="/feed" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Feed</Link>
+              <Link href="/feed?view=spaces" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Spaces</Link>
+              <Link href="/feed?view=leaderboard" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Karma</Link>
+              <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Profile</Link>
+              {isAdmin && <Link href="/admin" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-red-500 dark:text-red-400">Admin</Link>}
+              <button onClick={handleSignOut} className="block w-full text-left py-2 text-sm font-medium text-red-600 dark:text-red-400">Sign Out</button>
             </>
           ) : (
-            <Link href="/onboarding" onClick={() => setMobileOpen(false)} className="inline-block bg-brand-orange text-white px-5 py-2 rounded-full text-sm font-bold">Get Started</Link>
+            <Link href="/onboarding" onClick={() => setMobileOpen(false)} className="sun-btn inline-flex items-center px-5 py-2.5 rounded-full text-sm font-bold shadow-md">Get Started</Link>
           )}
         </div>
       )}
     </header>
   );
 }
+
+

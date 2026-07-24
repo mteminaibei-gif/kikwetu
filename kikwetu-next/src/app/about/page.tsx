@@ -15,14 +15,9 @@ export default function AboutPage() {
   const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
 
   return (
-    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark relative overflow-hidden">
-      <div className="bird-flock top-12 left-0"><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span></div>
-      <div className="sun-decorative" style={{ width: '300px', height: '300px', top: '-50px', right: '-80px' }} />
-      <div className="acacia-silhouette right">🌳</div>
-      <div className="giraffe-walk">🦒</div>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-orange hover:text-brand-lightOrange mb-8 transition-colors">
+    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-red hover:text-brand-red mb-8 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" /></svg>
           {tr('Rudi Nyumbani', 'Back to Home')}
         </Link>
@@ -30,14 +25,14 @@ export default function AboutPage() {
         <div className="text-center space-y-4 mb-16">
           <img src="/logo-icon.svg" alt="" className="h-14 mx-auto mb-4" />
           <h1 className="text-4xl sm:text-5xl font-black font-logo">
-            <span className="text-brand-green dark:text-white">Kikwetu</span><span className="text-brand-orange">Connect</span>
+            <span className="text-brand-deep dark:text-white">Kikwetu</span><span className="text-brand-red">Connect</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 font-medium">{tr('Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu', 'Our Knowledge, Our Stories, Our Future')}</p>
         </div>
 
         <div className="space-y-16">
           <section className="sun-card p-8 sm:p-10 max-w-2xl mx-auto text-center space-y-4">
-            <h2 className="text-2xl font-black text-brand-green dark:text-white">{tr('Hadithi Yetu', 'Our Story')}</h2>
+            <h2 className="text-2xl font-black text-brand-deep dark:text-white">{tr('Hadithi Yetu', 'Our Story')}</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               {tr(
                 'KikwetuConnect ilizaliwa kutokana na wazo rahisi: Kila Mkenya ana maarifa ya thamani ya kushiriki. Iwe ni mkulima anayejua mbinu bora za kilimo, mtengenezaji wa teknolojia anayejua programu, au mwalimu anayefundisha vizazi vijacho — sote tuna kitu cha kujifunza na kufundisha.',
@@ -53,7 +48,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-black text-center mb-10 text-brand-green dark:text-white">{tr('Thamani Zetu', 'Our Values')}</h2>
+            <h2 className="text-2xl font-black text-center mb-10 text-brand-deep dark:text-white">{tr('Thamani Zetu', 'Our Values')}</h2>
             <div className="grid sm:grid-cols-3 gap-6">
               {[
                 { icon: '🤝', title: tr('Ushirikishwaji', 'Inclusivity'), desc: tr('Kila sauti inahesabiwa, kila lugha inakaribishwa.', 'Every voice counts, every language is welcome.') },
@@ -62,7 +57,7 @@ export default function AboutPage() {
               ].map((v, i) => (
                 <div key={i} className="sun-card p-6 text-center">
                   <span className="text-4xl block mb-3">{v.icon}</span>
-                  <h3 className="text-lg font-bold text-brand-green dark:text-white mb-2">{v.title}</h3>
+                  <h3 className="text-lg font-bold text-brand-deep dark:text-white mb-2">{v.title}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{v.desc}</p>
                 </div>
               ))}
@@ -70,21 +65,21 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-black text-center mb-10 text-brand-green dark:text-white">{tr('Timu Yetu', 'Our Team')}</h2>
+            <h2 className="text-2xl font-black text-center mb-10 text-brand-deep dark:text-white">{tr('Timu Yetu', 'Our Team')}</h2>
             <div className="grid sm:grid-cols-3 gap-6">
               {TEAM.map((t, i) => (
                 <div key={i} className="sun-card p-6 text-center hover:-translate-y-1 transition-all duration-300">
                   <span className="text-5xl block mb-4">{t.emoji}</span>
-                  <h3 className="text-lg font-bold text-brand-green dark:text-white">{t.name}</h3>
-                  <p className="text-xs font-bold text-brand-orange uppercase tracking-wider mb-2">{t.role}</p>
+                  <h3 className="text-lg font-bold text-brand-deep dark:text-white">{t.name}</h3>
+                  <p className="text-xs font-bold text-brand-red uppercase tracking-wider mb-2">{t.role}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{t.desc}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="sun-card p-10 text-center space-y-6 bg-gradient-to-br from-brand-green/5 to-brand-orange/5">
-            <h2 className="text-2xl font-black text-brand-green dark:text-white">{tr('Jiunge Nasi', 'Join Us')}</h2>
+          <section className="sun-card p-10 text-center space-y-6 bg-gradient-to-br from-brand-deep/5 to-brand-red/5">
+            <h2 className="text-2xl font-black text-brand-deep dark:text-white">{tr('Jiunge Nasi', 'Join Us')}</h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
               {tr('Uko tayari kuwa sehemu ya mustakabali wa Kenya? Jiunge na jamii yetu inayokua.', 'Ready to be part of Kenya\'s future? Join our growing community.')}
             </p>

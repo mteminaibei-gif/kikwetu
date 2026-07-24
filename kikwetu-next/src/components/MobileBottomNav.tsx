@@ -29,7 +29,7 @@ export default function MobileBottomNav() {
           <Link key={item.href} href={item.href}
             className={cn(
               'flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-0 flex-1',
-              isActive(item.href) ? 'text-brand-orange' : 'text-gray-400 dark:text-gray-500'
+              isActive(item.href) ? 'text-brand-red' : 'text-gray-400 dark:text-gray-500'
             )}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isActive(item.href) ? 2.5 : 2} d={item.icon} />
@@ -40,7 +40,7 @@ export default function MobileBottomNav() {
         <Link href={user ? `/profile/${user.id}` : '/onboarding'}
           className={cn(
             'flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-0 flex-1',
-            pathname?.startsWith('/profile') ? 'text-brand-orange' : 'text-gray-400 dark:text-gray-500'
+            pathname?.startsWith('/profile') ? 'text-brand-red' : 'text-gray-400 dark:text-gray-500'
           )}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={pathname?.startsWith('/profile') ? 2.5 : 2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

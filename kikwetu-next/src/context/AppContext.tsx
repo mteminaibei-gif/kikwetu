@@ -178,7 +178,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const updated = p.new as Thread;
           setState(prev => ({
             ...prev,
-            threads: prev.threads.map(t => t.id === updated.id ? { ...t, upvotes_count: updated.upvotes_count, reply_count: updated.reply_count } : t),
+            threads: prev.threads.map(t => t.id === updated.id
+              ? { ...t, upvotes_count: updated.upvotes_count, reply_count: updated.reply_count, title: updated.title, content: updated.content }
+              : t),
           }));
         }
       )

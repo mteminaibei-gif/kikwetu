@@ -49,20 +49,15 @@ export default function FAQPage() {
   const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
 
   return (
-    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark relative overflow-hidden">
-      <div className="bird-flock top-24 left-0"><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span></div>
-      <div className="sun-decorative" style={{ width: '280px', height: '280px', bottom: '-60px', right: '-80px' }} />
-      <div className="acacia-silhouette left">🌳</div>
-      <div className="giraffe-walk" style={{ animationDelay: '-15s' }}>🦒</div>
-
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-orange hover:text-brand-lightOrange mb-8 transition-colors">
+    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-red hover:text-brand-red mb-8 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" /></svg>
           {tr('Rudi Nyumbani', 'Back to Home')}
         </Link>
         <div className="text-center space-y-4 mb-16">
           <img src="/logo-icon.svg" alt="" className="h-12 mx-auto mb-4" />
-          <h1 className="text-4xl sm:text-5xl font-black font-logo text-brand-green dark:text-white">
+          <h1 className="text-4xl sm:text-5xl font-black font-logo text-brand-deep dark:text-white">
             {tr('Maswali Yanayoulizwa Mara kwa Mara', 'Frequently Asked Questions')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
@@ -75,10 +70,10 @@ export default function FAQPage() {
             <div key={i} className="sun-card overflow-hidden transition-all">
               <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between p-5 text-left">
                 <span className="text-sm font-bold text-gray-800 dark:text-gray-200 pr-4">{lang === 'sw' ? faq.qs : faq.q}</span>
-                <svg className={`w-4 h-4 shrink-0 text-brand-orange transition-transform ${open === i ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <svg className={`w-4 h-4 shrink-0 text-brand-red transition-transform ${open === i ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {open === i && (
-                <div className="px-5 pb-5 text-sm text-gray-700 dark:text-gray-300 leading-relaxed border-t border-amber-100/30 dark:border-gray-700 pt-4">
+                <div className="px-5 pb-5 text-sm text-gray-700 dark:text-gray-300 leading-relaxed border-t border-black/5 dark:border-gray-700 pt-4">
                   {lang === 'sw' ? faq.as : faq.a}
                 </div>
               )}

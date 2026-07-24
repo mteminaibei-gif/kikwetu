@@ -47,8 +47,8 @@ export default function AdminDashboard() {
     if (rRes.data) setReports(rRes.data as Report[]);
     if (sRes.data) setSpaces(sRes.data as Space[]);
     setStats([
-      { title: 'Total Users', value: String(pCount.count || 0), icon: 'group', color: 'bg-brand-green' },
-      { title: 'Total Threads', value: String(tCount.count || 0), icon: 'forum', color: 'bg-brand-orange' },
+      { title: 'Total Users', value: String(pCount.count || 0), icon: 'group', color: 'bg-brand-deep' },
+      { title: 'Total Threads', value: String(tCount.count || 0), icon: 'forum', color: 'bg-brand-terracotta' },
       { title: 'Total Replies', value: String(rpCount.count || 0), icon: 'chat', color: 'bg-amber-500' },
       { title: 'Flagged Items', value: String(rRes.data?.length || 0), icon: 'warning', color: 'bg-rose-500' },
     ]);
@@ -65,16 +65,16 @@ export default function AdminDashboard() {
 
   const sidebarClasses = (id: string) =>
     `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-      tab === id ? 'bg-brand-green text-white shadow-lg' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400'
+      tab === id ? 'bg-brand-deep text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300'
     }`;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-brand-bgLight dark:bg-brand-bgDark">
-      <aside className="w-full md:w-64 bg-white dark:bg-brand-cardDark border-r border-gray-200 dark:border-gray-800 flex flex-col">
+      <aside className="w-full md:w-64 bg-white dark:bg-brand-cardDark border-r border-gray-200 dark:border-gray-800 flex flex-col shrink-0">
         <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-200 dark:border-gray-800">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-green to-brand-orange flex items-center justify-center text-white font-bold text-sm">K</div>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center text-white font-bold text-sm shadow-sm">K</div>
           <div>
-            <span className="text-sm font-bold text-brand-green dark:text-white">Kikwetu<span className="text-brand-orange">Admin</span></span>
+            <span className="text-sm font-black text-brand-deep dark:text-white">Kikwetu<span className="text-brand-red">Admin</span></span>
             <p className="text-[10px] text-gray-400 leading-none">Management Console</p>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
           ))}
         </nav>
         <div className="mt-auto p-3 border-t border-gray-200 dark:border-gray-800">
-          <button onClick={() => router.push('/feed')} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <button onClick={() => router.push('/feed')} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             Back to Feed
           </button>
@@ -106,8 +106,8 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.map(s => (
                 <div key={s.title} className="sun-card p-5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{s.title}</p>
-                  <p className="text-2xl font-black text-brand-green dark:text-white mt-1">{s.value}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{s.title}</p>
+                  <p className="text-2xl font-black text-brand-deep dark:text-white mt-1">{s.value}</p>
                   <div className={`w-3 h-3 rounded-full mt-2 ${s.color}`} />
                 </div>
               ))}
@@ -120,9 +120,9 @@ export default function AdminDashboard() {
                 </h3>
                 <div className="space-y-2">
                   {users.slice(0, 5).map(u => (
-                    <div key={u.id} className="flex items-center justify-between py-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getAvatarColor(u.full_name)}`}>
+                    <div key={u.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${getAvatarColor(u.full_name)}`}>
                           {getInitials(u.full_name)}
                         </div>
                         <div>
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
                 <h3 className="font-bold mb-3">Spaces</h3>
                 <div className="space-y-2">
                   {spaces.map(s => (
-                    <div key={s.id} className="flex items-center justify-between py-2">
+                    <div key={s.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
                       <span className="text-sm font-semibold">{s.icon || '#'} {s.name}</span>
                       <span className="text-xs text-gray-400">{s.member_count} members</span>
                     </div>
@@ -168,16 +168,16 @@ export default function AdminDashboard() {
                   {users.map(u => (
                     <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
                       <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getAvatarColor(u.full_name)}`}>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${getAvatarColor(u.full_name)}`}>
                             {getInitials(u.full_name)}
                           </div>
-                          <div><p className="font-semibold">{u.full_name || 'Unnamed'}</p><p className="text-xs text-gray-400">{u.email}</p></div>
+                          <div><p className="font-semibold text-sm">{u.full_name || 'Unnamed'}</p><p className="text-xs text-gray-400">{u.email}</p></div>
                         </div>
                       </td>
-                      <td className="py-3 pr-4 text-xs text-gray-500">{u.county || '-'}</td>
-                      <td className="py-3 pr-4"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${roleBadge(u.role)}`}>{u.role}</span></td>
-                      <td className="py-3 pr-4 font-bold">{u.heshima_score}</td>
+                      <td className="py-3 pr-4 text-xs text-gray-500 dark:text-gray-400">{u.county || '-'}</td>
+                      <td className="py-3 pr-4"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${roleBadge(u.role)}`}>{u.role || 'user'}</span></td>
+                      <td className="py-3 pr-4 font-bold text-sm">{u.heshima_score}</td>
                       <td className="py-3 text-xs text-gray-400">{timeAgo(u.created_at)}</td>
                     </tr>
                   ))}
@@ -190,16 +190,17 @@ export default function AdminDashboard() {
         {tab === 'threads' && (
           <div className="space-y-3">
             {threads.map(t => (
-              <div key={t.id} className="sun-card p-4">
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 mb-1">
+              <div key={t.id} className="sun-card p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2 text-[10px] text-gray-400 mb-1.5">
                   <span className="font-bold uppercase px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">{t.type}</span>
                   <span>{t.author?.full_name || 'Unknown'}</span>
+                  <span className="text-gray-300 dark:text-gray-600">·</span>
                   <span>{timeAgo(t.created_at)}</span>
                 </div>
                 <p className="font-semibold text-sm line-clamp-1">{t.title}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
-                  <span>{t.upvotes_count} votes</span>
-                  <span>{t.reply_count} replies</span>
+                <div className="flex items-center gap-4 text-xs text-gray-400 mt-2">
+                  <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>{t.upvotes_count} votes</span>
+                  <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>{t.reply_count} replies</span>
                 </div>
               </div>
             ))}
@@ -214,19 +215,19 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-400">No flagged content. All clear!</p>
               </div>
             ) : reports.map(r => (
-              <div key={r.id} className="sun-card p-4">
+              <div key={r.id} className="sun-card p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-2 text-xs mb-2">
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-900/30 text-rose-600 border border-rose-200">{r.reason}</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200">{r.reason}</span>
                   <span className="text-gray-400">{timeAgo(r.created_at)}</span>
                 </div>
                 <p className="text-xs text-gray-400">Reported by: {r.reporter_id?.substring(0, 8)}...</p>
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => resolveReport(r.id, 'dismiss')}
-                    className="px-3 py-1.5 bg-brand-green/10 text-brand-green hover:bg-brand-green/20 font-semibold text-xs rounded-lg border border-brand-green/30 transition-colors">
+                    className="px-3 py-1.5 bg-brand-deep/10 text-brand-deep hover:bg-brand-deep/20 font-semibold text-xs rounded-lg border border-brand-deep/30 transition-colors active:scale-95">
                     Dismiss
                   </button>
                   <button onClick={() => resolveReport(r.id, 'remove')}
-                    className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100 font-semibold text-xs rounded-lg border border-rose-200 transition-colors">
+                    className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100 font-semibold text-xs rounded-lg border border-rose-200 transition-colors active:scale-95">
                     Remove Content
                   </button>
                 </div>
@@ -238,11 +239,11 @@ export default function AdminDashboard() {
         {tab === 'spaces' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {spaces.map(s => (
-              <div key={s.id} className="sun-card p-5">
+              <div key={s.id} className="sun-card p-5 hover:shadow-md transition-shadow">
                 <h3 className="font-bold">{s.icon || '#'} {s.name}</h3>
-                <p className="text-xs text-gray-400 mt-1">{s.description || 'No description'}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-400 mt-3">
-                  <span className="font-semibold text-brand-green">{s.member_count} members</span>
+                <p className="text-xs text-gray-400 mt-1 line-clamp-2">{s.description || 'No description'}</p>
+                <div className="flex items-center gap-4 text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                  <span className="font-semibold text-brand-deep dark:text-white">{s.member_count} members</span>
                   <span>{s.thread_count} threads</span>
                 </div>
               </div>

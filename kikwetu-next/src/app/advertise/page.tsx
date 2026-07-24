@@ -15,20 +15,16 @@ export default function AdvertisePage() {
   const tr = (en: string, sw: string) => lang === 'sw' ? sw : en;
 
   return (
-    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark relative overflow-hidden">
-      <div className="bird-flock top-20 left-0"><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span><span className="bird">~</span></div>
-      <div className="sun-decorative" style={{ width: '250px', height: '250px', bottom: '100px', left: '-60px' }} />
-      <div className="acacia-silhouette left">🌳</div>
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-orange hover:text-brand-lightOrange mb-8 transition-colors">
+    <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-brand-red hover:text-brand-red mb-8 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" /></svg>
           {tr('Rudi Nyumbani', 'Back to Home')}
         </Link>
 
         <div className="text-center space-y-4 mb-16">
           <img src="/logo-icon.svg" alt="" className="h-12 mx-auto mb-4" />
-          <h1 className="text-4xl sm:text-5xl font-black font-logo text-brand-green dark:text-white">{tr('Tangaza Nasi', 'Advertise with Us')}</h1>
+          <h1 className="text-4xl sm:text-5xl font-black font-logo text-brand-deep dark:text-white">{tr('Tangaza Nasi', 'Advertise with Us')}</h1>
           <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto text-lg">
             {tr('Fikia Wakenya 12,000+ wanaotumia KikwetuConnect kila mwezi. Tangaza bidhaa au huduma zako kwa hadhira inayolengwa.', 'Reach 12,000+ active Kenyans on KikwetuConnect every month. Promote your products or services to a targeted audience.')}
           </p>
@@ -36,10 +32,10 @@ export default function AdvertisePage() {
 
         <div className="grid md:grid-cols-3 gap-6 mb-20">
           {PACKAGES.map((pkg, i) => (
-            <div key={i} className={`sun-card p-6 flex flex-col ${i === 1 ? 'ring-2 ring-brand-orange scale-105 relative' : ''}`}>
-              {i === 1 && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-orange text-white text-[10px] font-bold px-3 py-1 rounded-full">{tr('Inapendekezwa', 'Recommended')}</div>}
-              <h3 className="text-xl font-bold text-brand-green dark:text-white mb-1">{pkg.name}</h3>
-              <p className="text-3xl font-black text-brand-orange mb-2">{pkg.price}</p>
+            <div key={i} className={`sun-card p-6 flex flex-col ${i === 1 ? 'ring-2 ring-brand-terracotta scale-105 relative' : ''}`}>
+              {i === 1 && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[10px] font-bold px-3 py-1 rounded-full">{tr('Inapendekezwa', 'Recommended')}</div>}
+              <h3 className="text-xl font-bold text-brand-deep dark:text-white mb-1">{pkg.name}</h3>
+              <p className="text-3xl font-black text-brand-red mb-2">{pkg.price}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{pkg.desc}</p>
               <ul className="space-y-3 mb-8 flex-1">
                 {pkg.features.map((f, j) => (
@@ -56,8 +52,8 @@ export default function AdvertisePage() {
           ))}
         </div>
 
-        <div className="rounded-[32px] p-10 text-white text-center space-y-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #274E37 0%, #162F21 100%)' }}>
-          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-brand-orange/20 to-transparent rounded-full blur-3xl -translate-y-1/3 translate-x-1/3" />
+        <div className="rounded-[32px] p-10 text-white text-center space-y-4 relative overflow-hidden sun-cta-warm-sm">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-brand-terracotta/20 to-transparent rounded-full blur-3xl -translate-y-1/3 translate-x-1/3" />
           <div className="relative z-10">
             <h2 className="text-2xl font-black">{tr('Je, Una Maswali?', 'Have Questions?')}</h2>
             <p className="text-white/80 max-w-lg mx-auto">{tr('Timu yetu ya matangazo iko tayari kukusaidia. Tuma ujumbe kupitia ukurasa wa Contact.', 'Our advertising team is ready to help. Send a message through our Contact page.')}</p>
