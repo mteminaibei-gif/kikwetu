@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../styles/safe-area.css";
 
 @theme inline {
   --font-sans: var(--font-inter), system-ui, sans-serif;
@@ -310,19 +311,11 @@ button, a, [role="button"], summary {
   }
 }
 
-/* ============================================================
-   SAFE AREA UTILITIES
-   Requires: <meta name="viewport" content="..., viewport-fit=cover">
-   (set via next/viewport viewportFit: "cover")
-   ============================================================ */
-
-/* Single-edge padding */
+/* Legacy class aliases (kept for existing components) */
 .safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
 .safe-right  { padding-right:  env(safe-area-inset-right, 0px); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-left   { padding-left:   env(safe-area-inset-left, 0px); }
-
-/* Horizontal / vertical pairs */
 .safe-x {
   padding-left:  max(0.75rem, env(safe-area-inset-left, 0px));
   padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
@@ -331,61 +324,37 @@ button, a, [role="button"], summary {
   padding-top:    env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-
-/* All four edges */
 .safe-all {
   padding-top:    env(safe-area-inset-top, 0px);
   padding-right:  env(safe-area-inset-right, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left:   env(safe-area-inset-left, 0px);
 }
-
-/* Margin variants (for fixed elements that should clear the notch) */
 .safe-mt { margin-top:    env(safe-area-inset-top, 0px); }
 .safe-mb { margin-bottom: env(safe-area-inset-bottom, 0px); }
 .safe-ml { margin-left:   env(safe-area-inset-left, 0px); }
 .safe-mr { margin-right:  env(safe-area-inset-right, 0px); }
-
-/* Fixed top bar: pad content under status bar / notch */
 .safe-fixed-top {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   padding-top: env(safe-area-inset-top, 0px);
 }
-
-/* Fixed bottom bar: pad above home indicator */
 .safe-fixed-bottom {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-
-/* Content offset under sticky header (nav height + safe top) */
 .safe-pt-nav {
   padding-top: calc(var(--nav-h, 3.5rem) + env(safe-area-inset-top, 0px));
 }
-
-/* Content offset above bottom tab bar */
 .safe-pb-tab {
   padding-bottom: calc(var(--tab-h, 3.75rem) + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 768px) {
   .safe-pb-tab { padding-bottom: 0; }
 }
-
-/* Absolute/fixed position helpers using calc */
-.safe-bottom-offset {
-  bottom: env(safe-area-inset-bottom, 0px);
-}
-.safe-top-offset {
-  top: env(safe-area-inset-top, 0px);
-}
-
-/* Toast / snackbar above tab bar + home indicator */
+.safe-bottom-offset { bottom: env(safe-area-inset-bottom, 0px); }
+.safe-top-offset { top: env(safe-area-inset-top, 0px); }
 .safe-toast {
   bottom: calc(var(--tab-h, 3.75rem) + 1.25rem + env(safe-area-inset-bottom, 0px));
 }
@@ -393,7 +362,6 @@ button, a, [role="button"], summary {
   .safe-toast { bottom: 1.5rem; }
 }
 
-/* Page shell under sticky header + above bottom nav */
 .page-shell {
   width: 100%;
   max-width: 80rem;
@@ -403,7 +371,6 @@ button, a, [role="button"], summary {
   padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
 }
 
-/* FAB above bottom tab bar */
 .mobile-fab {
   bottom: calc(var(--tab-h, 3.75rem) + 1.5rem + env(safe-area-inset-bottom, 0px));
 }
@@ -411,7 +378,6 @@ button, a, [role="button"], summary {
   .mobile-fab { bottom: 1.25rem; }
 }
 
-/* Sticky composer above tab bar */
 .mobile-composer {
   position: sticky;
   bottom: calc(var(--tab-h, 3.75rem) + env(safe-area-inset-bottom, 0px));
@@ -425,12 +391,10 @@ button, a, [role="button"], summary {
   }
 }
 
-/* Bottom sheet: footer clears home indicator */
 .sheet-footer-safe {
   padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
 }
 
-/* Full-bleed fixed panel that still respects insets for interactive content */
 .safe-inset-box {
   padding:
     max(0.75rem, env(safe-area-inset-top, 0px))
