@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
@@ -36,6 +36,18 @@ export default function PostComposer() {
     setPollOptions(['', '']);
     setExpanded(false);
   };
+
+  const openComposer = () => {
+    setExpanded(true);
+    setTimeout(() => expandedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
+
+  // FAB / sidebar can dispatch window event to expand without relying on DOM click
+  useEffect(() => {
+    const handler = () => openComposer();
+    window.addEventListener('kikwetu:open-composer', handler);
+    return () => window.removeEventListener('kikwetu:open-composer', handler);
+  }, []);
 
   const handleSubmit = async () => {
     if (!content.trim()) { show('Please write some content.'); return; }
@@ -80,11 +92,6 @@ export default function PostComposer() {
     setPollOptions(prev => prev.map((o, idx) => (idx === i ? val : o)));
   };
 
-  const openComposer = () => {
-    setExpanded(true);
-    setTimeout(() => expandedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-  };
-
   if (!user) {
     return (
       <div id="post-composer" className="sun-card p-4 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -93,13 +100,15 @@ export default function PostComposer() {
     );
   }
 
-  // Collapsed prompt (matches previous feed card look)
   if (!expanded) {
     return (
       <div
         id="post-composer"
         onClick={openComposer}
         className="sun-card p-3 sm:p-4 cursor-pointer hover:border-brand-terracotta transition-all touch-manipulation"
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openComposer(); } }}
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center text-white font-bold shadow-sm overflow-hidden shrink-0">
@@ -114,19 +123,19 @@ export default function PostComposer() {
           </div>
         </div>
         <div className="flex items-center justify-around pt-3 mt-3 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1.5 hover:text-brand-red transition-colors">
+          <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Swali
           </span>
-          <span className="flex items-center gap-1.5 hover:text-green-600 transition-colors">
+          <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
             </svg>
             Maarifa
           </span>
-          <span className="flex items-center gap-1.5 hover:text-blue-500 transition-colors">
+          <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -137,12 +146,11 @@ export default function PostComposer() {
     );
   }
 
-  // Expanded inline composer — all modal functions integrated here
   return (
     <div
       id="post-composer"
       ref={expandedRef}
-      className="sun-card p-4 sm:p-5 space-y-4 animate-in fade-in duration-200"
+      className="sun-card p-4 sm:p-5 space-y-4"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
