@@ -59,7 +59,7 @@ function openComposer() {
 }
 
 export default function FeedView() {
-  const { threads, loadThreads, loading, subscribeToFeed, vote } = useApp();
+  const { threads, loadThreads, loading, subscribeToFeed, vote, userVotes, feedError } = useApp();
   const { user } = useAuth();
   const { show } = useToast();
   const router = useRouter();
@@ -140,14 +140,17 @@ export default function FeedView() {
   }, [hasMore, loadingMore, threads.length]);
 
   const loadMoreThreads = async () => {
-    const sb = sbRef.current;
     setLoadingMore(true);
-    const { data } = await sb.from('threads')
-      .select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)')
-      .order('created_at', { ascending: false })
-      .range(threads.length, threads.length + PAGE_SIZE - 1);
-    if (data && data.length > 0) {
-      setHasMore(data.length >= PAGE_SIZE);
+    const lastThread = threads[threads.length - 1];
+    if (!lastThread) {
+      setHasMore(false);
+      setLoadingMore(false);
+      return;
+    }
+    
+    const newThreads = await loadThreads({ cursor: lastThread.created_at });
+    if (newThreads && newThreads.length > 0) {
+      setHasMore(newThreads.length >= 30);
     } else {
       setHasMore(false);
     }
@@ -341,7 +344,16 @@ export default function FeedView() {
               </button>
             </div>
 
-            {loading ? (
+            {feedError ? (
+              <div className="text-center py-16 space-y-4">
+                <div className="text-sm text-red-500 dark:text-red-400 font-medium">
+                  {tr('Kuna tatizo kupakia machapisho.', 'There was an error loading the feed.')}
+                </div>
+                <button onClick={() => loadThreads()} className="bg-brand-terracotta text-white px-4 py-2 rounded-full font-bold shadow hover:bg-brand-red transition-all">
+                  {tr('Jaribu Tena', 'Try Again')}
+                </button>
+              </div>
+            ) : loading ? (
               <div className="flex justify-center py-12"><LoadingSpinner /></div>
             ) : displayedThreads.length === 0 ? (
               <div className="text-center py-16 text-sm text-gray-500 dark:text-gray-400">
@@ -395,12 +407,22 @@ export default function FeedView() {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                           <button type="button" onClick={e => handleVote(thread, 'up', e)} disabled={votingThread === thread.id}
-                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-2.5 py-1.5 rounded-l-full font-bold transition-all active:scale-95 disabled:opacity-50">
+                            className={cn(
+                              "flex items-center gap-1 px-2.5 py-1.5 rounded-l-full font-bold transition-all active:scale-95 disabled:opacity-50",
+                              userVotes[thread.id] === 'up'
+                                ? "bg-emerald-500 text-white"
+                                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-emerald-500 hover:text-white"
+                            )}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                             {formatNumber(getDisplayCount(thread))}
                           </button>
                           <button type="button" onClick={e => handleVote(thread, 'down', e)} disabled={votingThread === thread.id}
-                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full font-bold transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50">
+                            className={cn(
+                              "flex items-center gap-1 px-2.5 py-1.5 rounded-r-full font-bold transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50",
+                              userVotes[thread.id] === 'down'
+                                ? "bg-red-500 text-white"
+                                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-red-500 hover:text-white"
+                            )}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </button>
                         </div>

@@ -1,21 +1,35 @@
-'use client';
-
-import { useAuth } from '@/context/AuthContext';
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { Metadata } from 'next';
+import { createClient } from '@supabase/supabase-js';
 import ThreadView from '@/components/ThreadView';
-import LoadingSpinner from '@/components/LoadingSpinner';
 
-export default function ThreadPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
-  const params = useParams();
-  const id = params?.id as string;
+const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
-  useEffect(() => {
-    if (!authLoading && !user) router.push('/onboarding');
-  }, [user, authLoading, router]);
+type Props = {
+  params: Promise<{ id: string }>;
+};
 
-  if (authLoading) return <LoadingSpinner />;
-  return <ThreadView threadId={id} />;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const resolvedParams = await params;
+  const { data: thread } = await sb.from('threads').select('title, content').eq('id', resolvedParams.id).single();
+  
+  if (!thread) {
+    return { title: 'Thread Not Found | Kikwetu Connect' };
+  }
+  
+  return {
+    title: `${thread.title} | Kikwetu Connect`,
+    description: thread.content.slice(0, 150) + '...',
+  };
+}
+
+export default async function ThreadPage({ params }: Props) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
+  
+  const [tRes, rRes] = await Promise.all([
+    sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').eq('id', id).single(),
+    sb.from('replies').select('*, author:profiles(full_name, avatar_url, verified)').eq('thread_id', id).order('created_at', { ascending: true }),
+  ]);
+
+  return <ThreadView threadId={id} initialThread={tRes.data as any || null} initialReplies={rRes.data as any || []} />;
 }

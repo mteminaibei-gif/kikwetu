@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { createClient } from '@/lib/supabase';
 import { Offline } from '@/lib/offline';
@@ -24,10 +24,12 @@ interface AppState {
   messages: ChatMessage[];
   ratings: ServiceRating[];
   tips: Tip[];
+  userVotes: Record<string, 'up' | 'down'>;
+  feedError: string | null;
 }
 
 interface AppContextType extends AppState {
-  loadThreads: (params?: { spaceId?: string; type?: string }) => Promise<void>;
+  loadThreads: (params?: { spaceId?: string; type?: string; cursor?: string }) => Promise<Thread[]>;
   loadThread: (id: string) => Promise<void>;
   loadReplies: (threadId: string) => Promise<void>;
   loadSpaces: () => Promise<void>;
@@ -62,27 +64,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     threads: [], replies: [], spaces: [], notifications: [],
     unreadCount: 0, selectedThread: null, loading: true, pendingSyncCount: 0,
     professionals: [], professionalRequests: [], sessions: [], messages: [],
-    ratings: [], tips: [],
+    ratings: [], tips: [], userVotes: {}, feedError: null,
   });
+
+  const voteLimits = useRef({ count: 0, lastReset: Date.now() });
 
   const update = useCallback((partial: Partial<AppState>) => {
     setState(prev => ({ ...prev, ...partial }));
   }, []);
 
-  const loadThreads = useCallback(async (params?: { spaceId?: string; type?: string }) => {
-    const sb = createClient();
-    let q = sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').order('created_at', { ascending: false }).limit(30);
-    if (params?.spaceId) q = q.eq('space_id', params.spaceId);
-    if (params?.type) q = q.eq('type', params.type);
-    const { data } = await q;
-    if (data) {
-      setState(prev => ({ ...prev, threads: data as Thread[], loading: false }));
-      if (navigator.onLine) { data.forEach(t => Offline.cacheThread(t as Thread)); }
-    } else {
-      const cached = await Offline.getCachedThreads();
-      setState(prev => ({ ...prev, threads: cached.length > 0 ? cached : prev.threads, loading: false }));
+  const loadThreads = useCallback(async (params?: { spaceId?: string; type?: string; cursor?: string }) => {
+    try {
+      if (!params?.cursor) update({ feedError: null });
+      const sb = createClient();
+      let q = sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)').order('created_at', { ascending: false }).limit(30);
+      if (params?.spaceId) q = q.eq('space_id', params.spaceId);
+      if (params?.type) q = q.eq('type', params.type);
+      if (params?.cursor) q = q.lt('created_at', params.cursor);
+      const { data, error } = await q;
+      if (error) throw error;
+      if (data) {
+        setState(prev => {
+          const newThreads = params?.cursor ? [...prev.threads, ...(data as Thread[])] : (data as Thread[]);
+          return { ...prev, threads: newThreads, loading: false };
+        });
+        if (navigator.onLine) { data.forEach(t => Offline.cacheThread(t as Thread)); }
+        return data as Thread[];
+      }
+      return [];
+    } catch (e: any) {
+      console.error('[loadThreads] Error:', e);
+      if (!params?.cursor) {
+        update({ feedError: e.message || 'Failed to load feed', loading: false });
+      }
+      return [];
     }
-  }, []);
+  }, [update]);
 
   const loadThread = useCallback(async (id: string) => {
     const sb = createClient();
@@ -109,6 +126,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (data) {
       const notifs = data as Notification[];
       update({ notifications: notifs, unreadCount: notifs.filter(n => !n.is_read).length });
+    }
+  }, [user, update]);
+
+  const loadUserVotes = useCallback(async () => {
+    if (!user) {
+      update({ userVotes: {} });
+      return;
+    }
+    const sb = createClient();
+    const { data } = await sb.from('thread_votes').select('entity_id, vote_type').eq('user_id', user.id);
+    if (data) {
+      const map: Record<string, 'up' | 'down'> = {};
+      (data as Array<{ entity_id: string; vote_type: 'up' | 'down' }>).forEach(v => {
+        map[v.entity_id] = v.vote_type;
+      });
+      update({ userVotes: map });
     }
   }, [user, update]);
 
@@ -153,6 +186,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const vote = useCallback(async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down'): Promise<{ upvotes_count?: number }> => {
     if (!user) throw new Error('Please login to vote.');
+    
+    const now = Date.now();
+    if (now - voteLimits.current.lastReset > 60000) {
+      voteLimits.current.count = 0;
+      voteLimits.current.lastReset = now;
+    }
+    if (voteLimits.current.count >= 30) {
+      throw new Error('You are voting too fast. Please wait a moment.');
+    }
+    voteLimits.current.count++;
+
     const sb = createClient();
     const { data: upvotes_count, error } = await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
     if (error) {
@@ -160,6 +204,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!navigator.onLine) { await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } }); }
       return {};
     }
+
+    setState(prev => {
+      const current = prev.userVotes[entityId];
+      const nextVotes = { ...prev.userVotes };
+      if (current === voteType) {
+        delete nextVotes[entityId];
+      } else {
+        nextVotes[entityId] = voteType;
+      }
+      return { ...prev, userVotes: nextVotes };
+    });
     // Insert notification for the content author (if not self)
 
     try {
@@ -416,9 +471,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       loadNotifications();
+      loadUserVotes();
       (async () => { const pending = await Offline.getPendingCount(); update({ pendingSyncCount: pending }); })();
+    } else {
+      update({ userVotes: {} });
     }
-  }, [user, loadNotifications, update]);
+  }, [user, loadNotifications, loadUserVotes, update]);
 
   useEffect(() => {
     const handleOnline = async () => {

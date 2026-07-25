@@ -12,15 +12,17 @@ import type { Thread, Reply } from '@/types';
 
 interface Props {
   threadId: string;
+  initialThread?: Thread | null;
+  initialReplies?: Reply[];
 }
 
-export default function ThreadView({ threadId }: Props) {
+export default function ThreadView({ threadId, initialThread, initialReplies }: Props) {
   const { user } = useAuth();
-  const { vote } = useApp();
+  const { vote, userVotes } = useApp();
   const { show } = useToast();
-  const [thread, setThread] = useState<Thread | null>(null);
-  const [replies, setReplies] = useState<Reply[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [thread, setThread] = useState<Thread | null>(initialThread || null);
+  const [replies, setReplies] = useState<Reply[]>(initialReplies || []);
+  const [loading, setLoading] = useState(!initialThread);
   const [replyContent, setReplyContent] = useState('');
   const [replying, setReplying] = useState(false);
   const [votingId, setVotingId] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export default function ThreadView({ threadId }: Props) {
   const sb = sbRef.current;
 
   useEffect(() => {
+    if (initialThread) return;
     const load = async () => {
       try {
         const [tRes, rRes] = await Promise.all([
@@ -43,27 +46,22 @@ export default function ThreadView({ threadId }: Props) {
       setLoading(false);
     };
     load();
-  }, [threadId]);
-
-  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+  }, [threadId, initialThread, sb]);
 
   const handleVote = async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => {
     if (!user) { show('Please login to vote.'); return; }
     try {
-      await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
-      if (entityType === 'thread') {
-        const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
-        if (data) setThread(prev => prev ? { ...prev, upvotes_count: data.upvotes_count } : prev);
-      } else {
-        const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
-        if (data) setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: data.upvotes_count } : r));
-
+      const res = await vote(entityId, entityType, voteType);
+      if (res.upvotes_count !== undefined) {
+        if (entityType === 'thread') {
+          setThread(prev => prev ? { ...prev, upvotes_count: res.upvotes_count as number } : prev);
+        } else {
+          setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: res.upvotes_count as number } : r));
+        }
       }
-      setUserVote(prev => prev === voteType ? null : voteType);
     } catch (e) {
       console.error('[ThreadView] vote error:', e);
       show('Vote failed. Please try again.');
-
     }
   };
 
@@ -109,7 +107,7 @@ export default function ThreadView({ threadId }: Props) {
           </div>
           <div className="flex items-center gap-1.5">
             <button onClick={() => handleVote(thread.id, 'thread', 'up')}
-              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 ${userVote === 'up' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white'}`}>
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 ${userVotes[thread.id] === 'up' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white'}`}>
 
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -117,7 +115,7 @@ export default function ThreadView({ threadId }: Props) {
               {formatNumber(thread.upvotes_count)}
             </button>
             <button onClick={() => handleVote(thread.id, 'thread', 'down')}
-              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border-l border-gray-200 dark:border-gray-700 transition-all active:scale-95 ${userVote === 'down' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white'}`}>
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border-l border-gray-200 dark:border-gray-700 transition-all active:scale-95 ${userVotes[thread.id] === 'down' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white'}`}>
 
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -158,7 +156,7 @@ export default function ThreadView({ threadId }: Props) {
             <div className="flex items-center gap-3 pt-1">
               <div className="flex items-center gap-1">
                 <button onClick={() => handleVote(reply.id, 'reply', 'up')}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-full transition-all active:scale-95">
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 ${userVotes[reply.id] === 'up' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white'}`}>
 
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -166,7 +164,7 @@ export default function ThreadView({ threadId }: Props) {
                   {formatNumber(reply.upvotes_count)}
                 </button>
                 <button onClick={() => handleVote(reply.id, 'reply', 'down')}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded-full border-l border-gray-200 dark:border-gray-700 transition-all active:scale-95">
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border-l border-gray-200 dark:border-gray-700 transition-all active:scale-95 ${userVotes[reply.id] === 'down' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white'}`}>
 
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

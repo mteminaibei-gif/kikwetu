@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { createClient } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { cn, timeAgo } from '@/lib/utils';
 
 function BellIcon({ className }: { className?: string }) { return <svg xmlns="http://www.w3.org/2000/svg" className={cn('h-5 w-5', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>; }
 function SunIcon({ className }: { className?: string }) { return <svg xmlns="http://www.w3.org/2000/svg" className={cn('h-5 w-5', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>; }
@@ -17,7 +17,7 @@ function XIcon() { return <svg xmlns="http://www.w3.org/2000/svg" className="h-6
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth();
-  const { unreadCount, pendingSyncCount } = useApp();
+  const { notifications, unreadCount, pendingSyncCount } = useApp();
   const { uiLang, setUiLang } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -147,12 +147,30 @@ export default function Navbar() {
               <div className="relative" ref={notifRef}>
                 <button onClick={() => setNotifOpen(prev => !prev)} className="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all active:scale-90" aria-label="Notifications">
                   <BellIcon />
-                  {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-red rounded-full animate-ping" />}
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-red text-[9px] font-bold text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-3 z-50">
-                    <div className="px-4 pb-2 border-b border-gray-100 dark:border-gray-800"><p className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</p></div>
-                    <div className="px-4 py-8 text-center text-xs text-gray-500 dark:text-gray-400">No new notifications.</div>
+                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-3 z-50">
+                    <div className="px-4 pb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</p>
+                      {unreadCount > 0 && <span className="text-[10px] font-semibold text-brand-terracotta">{unreadCount} unread</span>}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-gray-500 dark:text-gray-400">No new notifications.</div>
+                    ) : (
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {notifications.map(n => (
+                          <div key={n.id} className={cn("px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-xs cursor-pointer", !n.is_read && "bg-brand-terracotta/5 font-semibold")}>
+                            <p className="text-gray-800 dark:text-gray-200">{n.title || n.body || `New ${n.type} on your post`}</p>
+                            <span className="text-[10px] text-gray-400 mt-1 block">{timeAgo(n.created_at)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
