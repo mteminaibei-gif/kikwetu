@@ -34,7 +34,8 @@ interface AppContextType extends AppState {
   loadNotifications: () => Promise<void>;
   createThread: (data: Partial<Thread>) => Promise<{ error?: string }>;
   createReply: (threadId: string, content: string) => Promise<{ error?: string }>;
-  vote: (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => Promise<void>;
+  /** Toggle vote. Throws on online RPC failure. Returns new upvotes_count when available. */
+  vote: (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => Promise<{ upvotes_count?: number }>;
   subscribeToFeed: () => () => void;
   setSelectedThread: (thread: Thread | null) => void;
   loadProfessionals: () => Promise<void>;
@@ -151,12 +152,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {};
   }, [user, loadReplies]);
 
-  const vote = useCallback(async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => {
-    if (!user) return;
+  const vote = useCallback(async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down'): Promise<{ upvotes_count?: number }> => {
+    if (!user) throw new Error('Please login to vote.');
     const sb = createClient();
-    const { error } = await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
-    if (error && !navigator.onLine) { await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } }); }
-    // Insert notification for the content author (if not self)
+
+    const { error } = await sb.rpc('toggle_vote', {
+      p_user_id: user.id,
+      p_entity_id: entityId,
+      p_entity_type: entityType,
+      p_vote_type: voteType,
+    });
+
+    if (error) {
+      // Queue for later if offline; otherwise surface the failure so UI can revert
+      if (!navigator.onLine) {
+        await Offline.queueAction({
+          type: 'vote',
+          userId: user.id,
+          payload: { entityId, entityType, voteType },
+        });
+        return {};
+      }
+      throw new Error(error.message || 'Vote failed');
+    }
+
+    // Read the authoritative count after the RPC (handles toggle correctly)
+    let upvotes_count: number | undefined;
+    try {
+      if (entityType === 'thread') {
+        const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
+        upvotes_count = data?.upvotes_count;
+        if (typeof upvotes_count === 'number') {
+          setState(prev => ({
+            ...prev,
+            threads: prev.threads.map(t =>
+              t.id === entityId ? { ...t, upvotes_count } : t
+            ),
+            selectedThread:
+              prev.selectedThread?.id === entityId
+                ? { ...prev.selectedThread, upvotes_count }
+                : prev.selectedThread,
+          }));
+        }
+      } else {
+        const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
+        upvotes_count = data?.upvotes_count;
+        if (typeof upvotes_count === 'number') {
+          setState(prev => ({
+            ...prev,
+            replies: prev.replies.map(r =>
+              r.id === entityId ? { ...r, upvotes_count } : r
+            ),
+          }));
+        }
+      }
+    } catch {
+      // non-fatal — realtime or next load will sync
+    }
+
+    // Notify content author (non-self)
     try {
       let authorId: string | null = null;
       if (entityType === 'thread') {
@@ -170,12 +224,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await sb.from('notifications').insert({
           user_id: authorId,
           actor_id: user.id,
-          type: 'vote',
+          type: 'upvote',
           entity_type: entityType,
           entity_id: entityId,
         });
       }
-    } catch {}
+    } catch {
+      // notification failure must not break voting
+    }
+
+    return { upvotes_count };
   }, [user]);
 
   const subscribeToFeed = useCallback(() => {
@@ -183,26 +241,75 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const channel = sb.channel('feed-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, async (p) => {
         const newThread = p.new as Thread;
+        // Avoid duplicate
         setState(prev => {
           if (prev.threads.find(t => t.id === newThread.id)) return prev;
           return prev;
         });
-        const { data: authorProfile } = await sb.from('profiles').select('full_name, avatar_url, verified, county, username').eq('id', newThread.author_id).single();
+        const { data: authorProfile } = await sb
+          .from('profiles')
+          .select('full_name, avatar_url, verified, county, username')
+          .eq('id', newThread.author_id)
+          .single();
         setState(prev => {
           if (prev.threads.find(t => t.id === newThread.id)) return prev;
-          return { ...prev, threads: [{ ...newThread, author: authorProfile || { full_name: 'New', avatar_url: '', verified: false, county: '', username: 'user' } }, ...prev.threads] };
+          return {
+            ...prev,
+            threads: [{
+              ...newThread,
+              author: authorProfile || {
+                full_name: 'New',
+                avatar_url: '',
+                verified: false,
+                county: '',
+                username: 'user',
+              },
+            }, ...prev.threads],
+          };
         });
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'threads', filter: `upvotes_count=neq.${-1}` }, (p) => {
+      // IMPORTANT: no broken filter — previous `upvotes_count=neq.-1` prevented most vote updates
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'threads' }, (p) => {
         const updated = p.new as Thread;
-        setState(prev => ({ ...prev, threads: prev.threads.map(t => t.id === updated.id ? { ...t, upvotes_count: updated.upvotes_count, reply_count: updated.reply_count, title: updated.title, content: updated.content } : t) }));
+        setState(prev => ({
+          ...prev,
+          threads: prev.threads.map(t =>
+            t.id === updated.id
+              ? {
+                  ...t,
+                  upvotes_count: updated.upvotes_count,
+                  reply_count: updated.reply_count,
+                  title: updated.title,
+                  content: updated.content,
+                }
+              : t
+          ),
+          selectedThread:
+            prev.selectedThread?.id === updated.id
+              ? {
+                  ...prev.selectedThread,
+                  upvotes_count: updated.upvotes_count,
+                  reply_count: updated.reply_count,
+                }
+              : prev.selectedThread,
+        }));
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'replies' }, (p) => {
         const newReply = p.new as Reply;
-        setState(prev => ({ ...prev, replies: [...prev.replies, newReply], threads: prev.threads.map(t => t.id === newReply.thread_id ? { ...t, reply_count: (t.reply_count || 0) + 1 } : t) }));
+        setState(prev => ({
+          ...prev,
+          replies: [...prev.replies, newReply],
+          threads: prev.threads.map(t =>
+            t.id === newReply.thread_id
+              ? { ...t, reply_count: (t.reply_count || 0) + 1 }
+              : t
+          ),
+        }));
       })
       .subscribe();
-    return () => { sb.removeChannel(channel); };
+    return () => {
+      sb.removeChannel(channel);
+    };
   }, []);
 
   const loadProfessionals = useCallback(async () => {

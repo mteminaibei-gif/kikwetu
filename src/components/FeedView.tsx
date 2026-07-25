@@ -81,6 +81,8 @@ export default function FeedView() {
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  // Local optimistic counts so UI feels instant; authoritative value comes from vote() / realtime
+  const [localCounts, setLocalCounts] = useState<Record<string, number>>({});
 
   const [savedThreads, setSavedThreads] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {};
@@ -145,15 +147,29 @@ export default function FeedView() {
 
   const displayedThreads = filtered.slice(0, displayCount);
 
+  const getDisplayCount = (thread: Thread) =>
+    localCounts[thread.id] ?? thread.upvotes_count ?? 0;
+
   const handleVote = async (thread: Thread, voteType: 'up' | 'down', e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user) { show('Please login to vote.'); return; }
     if (votingThread === thread.id) return;
+
+    const prevCount = getDisplayCount(thread);
+    // Optimistic delta (exact value comes back from RPC / realtime)
+    const optimistic = voteType === 'up' ? prevCount + 1 : Math.max(0, prevCount - 1);
+    setLocalCounts(c => ({ ...c, [thread.id]: optimistic }));
     setVotingThread(thread.id);
+
     try {
-      await vote(thread.id, 'thread', voteType);
-      await loadThreads();
+      const result = await vote(thread.id, 'thread', voteType);
+      if (typeof result.upvotes_count === 'number') {
+        setLocalCounts(c => ({ ...c, [thread.id]: result.upvotes_count! }));
+      }
+      // Do NOT call loadThreads() here — it resets the list, loses scroll, and races with realtime
     } catch (err: unknown) {
+      // Revert optimistic update
+      setLocalCounts(c => ({ ...c, [thread.id]: prevCount }));
       show(err instanceof Error ? err.message : 'Vote failed');
     } finally {
       setVotingThread(null);
@@ -353,7 +369,7 @@ export default function FeedView() {
                           <button type="button" onClick={e => handleVote(thread, 'up', e)} disabled={votingThread === thread.id}
                             className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-2.5 py-1.5 rounded-l-full font-bold transition-all active:scale-95 disabled:opacity-50">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                            {formatNumber(thread.upvotes_count)}
+                            {formatNumber(getDisplayCount(thread))}
                           </button>
                           <button type="button" onClick={e => handleVote(thread, 'down', e)} disabled={votingThread === thread.id}
                             className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full font-bold transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50">

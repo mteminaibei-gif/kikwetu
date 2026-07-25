@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
 import { timeAgo, formatNumber, getInitials, getAvatarColor } from '@/lib/utils';
@@ -15,12 +16,14 @@ interface Props {
 
 export default function ThreadView({ threadId }: Props) {
   const { user } = useAuth();
+  const { vote } = useApp();
   const { show } = useToast();
   const [thread, setThread] = useState<Thread | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyContent, setReplyContent] = useState('');
   const [replying, setReplying] = useState(false);
+  const [votingId, setVotingId] = useState<string | null>(null);
 
   const sbRef = useRef(createClient());
   const sb = sbRef.current;
@@ -42,19 +45,23 @@ export default function ThreadView({ threadId }: Props) {
     load();
   }, [threadId]);
 
-  const handleVote = async (entityId: string, entityType: 'thread' | 'reply') => {
+  const handleVote = async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down' = 'up') => {
     if (!user) { show('Please login to vote.'); return; }
-    await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: 'up' });
+    if (votingId === entityId) return;
+    setVotingId(entityId);
     try {
-      if (entityType === 'thread') {
-        const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
-        if (data) setThread(prev => prev ? { ...prev, upvotes_count: data.upvotes_count } : prev);
-      } else {
-        const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
-        if (data) setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: data.upvotes_count } : r));
+      const result = await vote(entityId, entityType, voteType);
+      if (typeof result.upvotes_count === 'number') {
+        if (entityType === 'thread') {
+          setThread(prev => prev ? { ...prev, upvotes_count: result.upvotes_count! } : prev);
+        } else {
+          setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: result.upvotes_count! } : r));
+        }
       }
     } catch (e) {
-      console.error('[ThreadView] vote refresh error:', e);
+      show(e instanceof Error ? e.message : 'Vote failed');
+    } finally {
+      setVotingId(null);
     }
   };
 
@@ -98,13 +105,27 @@ export default function ThreadView({ threadId }: Props) {
             <span className="text-gray-300 dark:text-gray-600">·</span>
             <span>{timeAgo(thread.created_at)}</span>
           </div>
-          <button onClick={() => handleVote(thread.id, 'thread')}
-            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-1.5 rounded-full transition-all active:scale-95">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-            {formatNumber(thread.upvotes_count)}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleVote(thread.id, 'thread', 'up')}
+              disabled={votingId === thread.id}
+              className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-l-full transition-all active:scale-95 disabled:opacity-50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+              {formatNumber(thread.upvotes_count)}
+            </button>
+            <button
+              onClick={() => handleVote(thread.id, 'thread', 'down')}
+              disabled={votingId === thread.id}
+              className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -137,13 +158,27 @@ export default function ThreadView({ threadId }: Props) {
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
             <div className="flex items-center gap-3 pt-1">
-              <button onClick={() => handleVote(reply.id, 'reply')}
-                className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-1.5 rounded-full transition-all active:scale-95">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-                {formatNumber(reply.upvotes_count)}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleVote(reply.id, 'reply', 'up')}
+                  disabled={votingId === reply.id}
+                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-l-full transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  {formatNumber(reply.upvotes_count)}
+                </button>
+                <button
+                  onClick={() => handleVote(reply.id, 'reply', 'down')}
+                  disabled={votingId === reply.id}
+                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         ))}
