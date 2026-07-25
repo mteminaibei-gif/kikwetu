@@ -223,11 +223,9 @@ export default function ProfileSettingsForm() {
 
         <div>
           <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 block">Primary County</label>
-          <select
-            value={county}
-            onChange={e => setCounty(e.target.value)}
-            className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 transition-shadow min-h-[44px]"
-          >
+          <select value={county} onChange={e => setCounty(e.target.value)}
+            className="sun-select w-full p-3.5 rounded-xl text-sm transition-shadow">
+
             <option value="">Select your county...</option>
             {COUNTIES.map(c => (
               <option key={c}>{c}</option>

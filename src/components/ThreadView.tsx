@@ -45,23 +45,25 @@ export default function ThreadView({ threadId }: Props) {
     load();
   }, [threadId]);
 
-  const handleVote = async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down' = 'up') => {
+  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+
+  const handleVote = async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => {
     if (!user) { show('Please login to vote.'); return; }
-    if (votingId === entityId) return;
-    setVotingId(entityId);
     try {
-      const result = await vote(entityId, entityType, voteType);
-      if (typeof result.upvotes_count === 'number') {
-        if (entityType === 'thread') {
-          setThread(prev => prev ? { ...prev, upvotes_count: result.upvotes_count! } : prev);
-        } else {
-          setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: result.upvotes_count! } : r));
-        }
+      await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
+      if (entityType === 'thread') {
+        const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
+        if (data) setThread(prev => prev ? { ...prev, upvotes_count: data.upvotes_count } : prev);
+      } else {
+        const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
+        if (data) setReplies(prev => prev.map(r => r.id === entityId ? { ...r, upvotes_count: data.upvotes_count } : r));
+
       }
+      setUserVote(prev => prev === voteType ? null : voteType);
     } catch (e) {
-      show(e instanceof Error ? e.message : 'Vote failed');
-    } finally {
-      setVotingId(null);
+      console.error('[ThreadView] vote error:', e);
+      show('Vote failed. Please try again.');
+
     }
   };
 
@@ -105,22 +107,18 @@ export default function ThreadView({ threadId }: Props) {
             <span className="text-gray-300 dark:text-gray-600">·</span>
             <span>{timeAgo(thread.created_at)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => handleVote(thread.id, 'thread', 'up')}
-              disabled={votingId === thread.id}
-              className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-l-full transition-all active:scale-95 disabled:opacity-50"
-            >
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => handleVote(thread.id, 'thread', 'up')}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 ${userVote === 'up' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white'}`}>
+
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
               </svg>
               {formatNumber(thread.upvotes_count)}
             </button>
-            <button
-              onClick={() => handleVote(thread.id, 'thread', 'down')}
-              disabled={votingId === thread.id}
-              className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50"
-            >
+            <button onClick={() => handleVote(thread.id, 'thread', 'down')}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border-l border-gray-200 dark:border-gray-700 transition-all active:scale-95 ${userVote === 'down' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white'}`}>
+
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
@@ -159,21 +157,17 @@ export default function ThreadView({ threadId }: Props) {
             <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
             <div className="flex items-center gap-3 pt-1">
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleVote(reply.id, 'reply', 'up')}
-                  disabled={votingId === reply.id}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-l-full transition-all active:scale-95 disabled:opacity-50"
-                >
+                <button onClick={() => handleVote(reply.id, 'reply', 'up')}
+                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-full transition-all active:scale-95">
+
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                   </svg>
                   {formatNumber(reply.upvotes_count)}
                 </button>
-                <button
-                  onClick={() => handleVote(reply.id, 'reply', 'down')}
-                  disabled={votingId === reply.id}
-                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-2.5 py-1.5 rounded-r-full transition-all active:scale-95 border-l border-gray-200 dark:border-gray-700 disabled:opacity-50"
-                >
+                <button onClick={() => handleVote(reply.id, 'reply', 'down')}
+                  className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded-full border-l border-gray-200 dark:border-gray-700 transition-all active:scale-95">
+
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>

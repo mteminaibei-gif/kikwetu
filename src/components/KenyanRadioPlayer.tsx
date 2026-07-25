@@ -164,7 +164,7 @@ export default function KenyanRadioPlayer() {
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50" />
         </div>
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50">
+          className="sun-select px-3 py-2.5 rounded-xl text-sm">
           <option value="">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const ALL_INTERESTS = [
   '#KilimoSmart', 'Tech Kenya', 'Education', 'Health',
@@ -25,8 +25,9 @@ export default function OnboardingForm() {
   const { signUp, signIn, signInWithGoogle } = useAuth();
   const { show } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [mode, setMode] = useState<'login' | 'signup'>('signup');
+  const [mode, setMode] = useState<'login' | 'signup'>(searchParams.get('tab') === 'login' ? 'login' : 'signup');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -173,7 +174,7 @@ export default function OnboardingForm() {
             <div>
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 block">Primary County</label>
               <select value={county} onChange={e => setCounty(e.target.value)}
-                className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 transition-shadow">
+                className="sun-select w-full p-3.5 rounded-xl text-sm">
                 <option value="">Select your county...</option>
                 {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>

@@ -154,68 +154,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const vote = useCallback(async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down'): Promise<{ upvotes_count?: number }> => {
     if (!user) throw new Error('Please login to vote.');
     const sb = createClient();
-
-    // RPC returns the new upvotes_count (INTEGER) when migration_votes.sql is applied
-    const { data: rpcData, error } = await sb.rpc('toggle_vote', {
-      p_user_id: user.id,
-      p_entity_id: entityId,
-      p_entity_type: entityType,
-      p_vote_type: voteType,
-    });
-
+    const { data: upvotes_count, error } = await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
     if (error) {
-      if (!navigator.onLine) {
-        await Offline.queueAction({
-          type: 'vote',
-          userId: user.id,
-          payload: { entityId, entityType, voteType },
-        });
-        return {};
-      }
-      throw new Error(error.message || 'Vote failed');
+      console.error('[AppContext] vote RPC error:', error);
+      if (!navigator.onLine) { await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } }); }
+      return {};
     }
+    // Insert notification for the content author (if not self)
 
-    let upvotes_count: number | undefined =
-      typeof rpcData === 'number' ? rpcData : undefined;
-
-    // Fallback SELECT if older RPC returned void
-    if (typeof upvotes_count !== 'number') {
-      try {
-        if (entityType === 'thread') {
-          const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
-          upvotes_count = data?.upvotes_count;
-        } else {
-          const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
-          upvotes_count = data?.upvotes_count;
-        }
-      } catch {
-        // realtime / next load will sync
-      }
-    }
-
-    if (typeof upvotes_count === 'number') {
-      if (entityType === 'thread') {
-        setState(prev => ({
-          ...prev,
-          threads: prev.threads.map(t =>
-            t.id === entityId ? { ...t, upvotes_count: upvotes_count! } : t
-          ),
-          selectedThread:
-            prev.selectedThread?.id === entityId
-              ? { ...prev.selectedThread, upvotes_count: upvotes_count! }
-              : prev.selectedThread,
-        }));
-      } else {
-        setState(prev => ({
-          ...prev,
-          replies: prev.replies.map(r =>
-            r.id === entityId ? { ...r, upvotes_count: upvotes_count! } : r
-          ),
-        }));
-      }
-    }
-
-    // Notify content author (non-self) — never break voting
     try {
       let authorId: string | null = null;
       if (entityType === 'thread') {

@@ -289,7 +289,7 @@ export default function StudentPlatform() {
             <form onSubmit={e => { e.preventDefault(); handleCreateQuestion(); }} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{tr('Subject', 'Somuo')}</label>
-                <select value={newQuestion.subject} onChange={e => setNewQuestion(d => ({ ...d, subject: e.target.value }))} required className="w-full px-3 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50">
+                <select value={newQuestion.subject} onChange={e => setNewQuestion(d => ({ ...d, subject: e.target.value }))} required className="sun-select w-full">
                   {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>

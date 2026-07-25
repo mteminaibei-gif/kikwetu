@@ -11,7 +11,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { timeAgo, formatNumber, cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PostComposer from '@/components/PostComposer';
-import type { Thread } from '@/types';
+import ProfileView from '@/components/ProfileView';
+import type { Thread, Space } from '@/types';
+
 
 const TABS = [
   { id: 'feed', label: 'Feed', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -383,7 +385,8 @@ export default function FeedView() {
                             'text-sm px-2 py-0.5 rounded-full border transition-all duration-200 active:scale-90',
                             emojiReactions[thread.id] === emoji
                               ? 'bg-brand-terracotta/15 border-brand-terracotta/40 scale-110 shadow-sm'
-                              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60 hover:opacity-100'
+                              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 opacity-60 hover:opacity-100'
+
                           )}>{emoji}</button>
                       ))}
                     </div>
@@ -505,33 +508,8 @@ export default function FeedView() {
         )}
 
         {view === 'profile' && user && (
-          <div className="sun-card rounded-2xl overflow-hidden">
-            <div className="h-32 bg-gradient-to-r from-brand-deep via-brand-deep to-brand-red" />
-            <div className="px-6 pb-6 relative">
-              <div className="flex justify-between items-end -mt-12 mb-4">
-                <div className="w-24 h-24 rounded-full border-4 border-white dark:border-brand-cardDark bg-gradient-to-br from-brand-deep to-brand-red flex items-center justify-center text-3xl font-bold text-white shadow-xl overflow-hidden">
-                  {user.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" /> : user.full_name?.[0]?.toUpperCase() || 'U'}
-                </div>
-                <Link href="/settings" className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-xs font-bold px-4 py-2 rounded-full hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm text-gray-800 dark:text-gray-200">{tr('Hariri', 'Edit Profile')}</Link>
-              </div>
-              <h2 className="text-xl font-black text-gray-900 dark:text-gray-100">{user.full_name}</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">@{user.username} &middot; {user.county || ''}</p>
-              <div className="grid grid-cols-3 gap-4 my-6 py-4 border-y border-gray-100 dark:border-gray-800 text-center">
-                <div>
-                  <span className="block text-lg font-bold text-brand-red">{user.heshima_score}</span>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{tr('Heshima', 'Karma')}</span>
-                </div>
-                <div>
-                  <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{user.answer_count}</span>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{tr('Majibu', 'Answers')}</span>
-                </div>
-                <div>
-                  <span className="block text-lg font-bold text-gray-900 dark:text-gray-100">{user.badges?.length || 0}</span>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{tr('Bidhaa', 'Badges')}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ProfileView profileId={user.id} />
+
         )}
       </main>
 

@@ -8,6 +8,9 @@ import { createClient } from '@/lib/supabase';
 import { cn, timeAgo } from '@/lib/utils';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import dynamic from 'next/dynamic';
+
+const NyumbaKumiGroupView = dynamic(() => import('@/components/NyumbaKumiGroupView'), { loading: () => <LoadingSpinner /> });
 
 interface Post {
   id: string;
@@ -81,6 +84,7 @@ export default function NyumbaKumiPage() {
   const sb = sbRef.current;
 
   const [tab, setTab] = useState<'feed' | 'communities' | 'nearby'>('feed');
+  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState('');
@@ -243,6 +247,14 @@ export default function NyumbaKumiPage() {
     ? COUNTY_LIST.filter(c => pseudoRandom(c + '-nearby-' + (userLocation.lat.toFixed(2) + userLocation.lng.toFixed(2))) > 0.5).slice(0, 5)
     : [];
 
+  if (selectedCommunity) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <NyumbaKumiGroupView community={selectedCommunity} onBack={() => setSelectedCommunity(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
@@ -259,13 +271,13 @@ export default function NyumbaKumiPage() {
           <div className="flex flex-wrap gap-2 mt-4">
             <div className="flex-1 min-w-[200px]">
               <select value={filterCounty} onChange={e => setFilterCounty(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30">
+                className="sun-select w-full px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30">
                 <option value="" className="text-gray-800">All Counties</option>
                 {COUNTY_LIST.map(c => <option key={c} value={c} className="text-gray-800">{c}</option>)}
               </select>
             </div>
             <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-              className="px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30">
+              className="sun-select px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30">
               <option value="" className="text-gray-800">All Types</option>
               {CATEGORIES.map(c => <option key={c} value={c} className="text-gray-800">{c}</option>)}
             </select>
@@ -332,14 +344,14 @@ export default function NyumbaKumiPage() {
                 className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none" />
               <div className="flex flex-wrap gap-3">
                 <select value={category} onChange={e => setCategory(e.target.value as typeof category)}
-                  className="p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+                  className="sun-select p-2.5 rounded-xl text-sm">
                   <option value="general">General</option>
                   <option value="alert">Alert / Emergency</option>
                   <option value="question">Question</option>
                   <option value="info">Information</option>
                 </select>
                 <select value={county} onChange={e => setCounty(e.target.value)}
-                  className="p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none">
+                  className="sun-select p-2.5 rounded-xl text-sm focus:outline-none">
                   <option value="">{tr('Select County', 'Chagua Kaunti')}</option>
                   {COUNTY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -459,10 +471,39 @@ export default function NyumbaKumiPage() {
 
       {/* Tab Content: COMMUNITIES */}
       {tab === 'communities' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* My Joined Groups — prominent at top */}
+          {joinedComms.size > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                {tr('Jamii Zangu', 'My Groups')} ({joinedComms.size})
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {communities.filter(c => joinedComms.has(c.id)).map(comm => (
+                  <button key={comm.id} onClick={() => setSelectedCommunity(comm)}
+                    className="sun-card p-4 text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border border-transparent hover:border-amber-400 dark:hover:border-amber-600 group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
+                        {comm.isPrivate ? '🔒' : '🏘️'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-bold truncate">{comm.name}</h4>
+                        <p className="text-[10px] text-gray-400">{comm.county} · {comm.memberCount} {tr('wanachama', 'members')}</p>
+                      </div>
+                      <div className="shrink-0 text-amber-600 group-hover:translate-x-1 transition-transform">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {tr('Jiunge na jamii za kaunti zako ili kupata taarifa za usalama.', 'Join county communities to get local security updates.')}
+              {tr('Jiunge na jamii za kaunti zako.', 'Join county communities to get local updates.')}
             </p>
             <button onClick={() => setShowCreateCommunity(true)}
               className="sun-btn px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5">
@@ -472,13 +513,13 @@ export default function NyumbaKumiPage() {
           </div>
 
           {showCreateCommunity && (
-            <div className="sun-card p-5 space-y-3">
+            <div className="sun-card p-5 space-y-3 animate-fadeUp">
               <h4 className="text-sm font-bold">{tr('Unda Jamii Mpya', 'Create New Community')}</h4>
               <input value={newCommName} onChange={e => setNewCommName(e.target.value)}
                 placeholder={tr('Jina la jamii', 'Community name')}
                 className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50" />
               <select value={newCommCounty} onChange={e => setNewCommCounty(e.target.value)}
-                className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none">
+                className="sun-select w-full p-2.5 rounded-xl text-sm focus:outline-none">
                 <option value="">{tr('Chagua Kaunti', 'Select County')}</option>
                 {COUNTY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -490,7 +531,7 @@ export default function NyumbaKumiPage() {
                   className="w-4 h-4 rounded accent-amber-600" />
                 <div>
                   <p className="text-xs font-bold">{tr('Nyumba Kumi Binafsi', 'Private Nyumba Kumi')}</p>
-                  <p className="text-[10px] text-gray-400">{tr('Wanachama wanahitaji msimbo wa邀请', 'Members need an invite code to join')}</p>
+                  <p className="text-[10px] text-gray-400">{tr('Wanachama wanahitaji msimbo wa karibu', 'Members need an invite code to join')}</p>
                 </div>
               </label>
               <div className="flex gap-2">
@@ -503,46 +544,52 @@ export default function NyumbaKumiPage() {
           )}
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {communities.map(comm => (
-              <div key={comm.id} className="sun-card p-4 space-y-3 hover:shadow-md transition-all">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-lg">{comm.isPrivate ? '🔒' : '🏘️'}</div>
-                    <div>
-                      <h4 className="text-sm font-bold">{comm.name}</h4>
-                      <p className="text-[10px] text-gray-400">{comm.county}{comm.isPrivate ? ` · ${tr('Binafsi', 'Private')}` : ''}</p>
+            {communities.map(comm => {
+              const isJoined = joinedComms.has(comm.id);
+              return (
+                <div key={comm.id} className="sun-card p-4 space-y-3 hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => isJoined && setSelectedCommunity(comm)}>
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-lg">{comm.isPrivate ? '🔒' : '🏘️'}</div>
+                      <div>
+                        <h4 className="text-sm font-bold">{comm.name}</h4>
+                        <p className="text-[10px] text-gray-400">{comm.county}{comm.isPrivate ? ` · ${tr('Binafsi', 'Private')}` : ''}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {comm.isPrivate && isJoined && (
+                        <button onClick={() => copyInviteLink(comm)} title="Copy invite link"
+                          className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        </button>
+                      )}
+                      {isJoined ? (
+                        <button onClick={() => setSelectedCommunity(comm)}
+                          className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-600 text-white hover:bg-amber-700 transition-all flex items-center gap-1">
+                          {tr('Enter', 'Ingia')}
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                      ) : (
+                        <button onClick={() => joinCommunity(comm.id)}
+                          className="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-600/10 text-amber-700 dark:text-amber-400 hover:bg-amber-600 hover:text-white transition-all">
+                          {comm.isPrivate ? tr('Omba', 'Request') : tr('Jiunga', 'Join')}
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {comm.isPrivate && joinedComms.has(comm.id) && (
-                      <button onClick={() => copyInviteLink(comm)} title="Copy invite link"
-                        className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                      </button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{comm.description}</p>
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <span>{comm.memberCount.toLocaleString()} {tr('wanachama', 'members')}</span>
+                    {isJoined && (
+                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        {tr('Umejiunga', 'Joined')}
+                      </span>
                     )}
-                    <button onClick={() => joinCommunity(comm.id)}
-                      className={cn(
-                        'px-3 py-1 rounded-full text-[10px] font-bold transition-all',
-                        joinedComms.has(comm.id)
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                          : 'bg-amber-600 text-white hover:bg-amber-700'
-                      )}>
-                      {joinedComms.has(comm.id) ? tr('Umejiunga', 'Joined') : (comm.isPrivate ? tr('Omba Kujiunga', 'Request Join') : tr('Jiunga', 'Join'))}
-                    </button>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{comm.description}</p>
-                <div className="flex items-center justify-between text-[10px] text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
-                  <span>{comm.memberCount.toLocaleString()} {tr('wanachama', 'members')}</span>
-                  {comm.emergencyContacts.filter(Boolean).length > 0 && (
-                    <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                      {tr('Dharura: 112', 'Emergency: 112')}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -581,7 +628,7 @@ export default function NyumbaKumiPage() {
               <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{tr('Jiunge na Nyumba Kumi Binafsi', 'Join Private Nyumba Kumi')}</h4>
               <div className="flex gap-2">
                 <input value={inviteInput} onChange={e => setInviteInput(e.target.value)}
-                  placeholder={tr('Weka msimbo wa邀请', 'Enter invite code')}
+                  placeholder={tr('Weka msimbo wa karibu', 'Enter invite code')}
                   className="flex-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-amber-500/50" />
                 <button onClick={joinByInviteCode}
                   className="sun-btn px-5 py-2.5 rounded-xl text-xs font-bold">{tr('Jiunga', 'Join')}</button>
@@ -657,7 +704,7 @@ export default function NyumbaKumiPage() {
           <h4 className="text-sm font-bold mb-3">{tr('Jiunge na msimbo', 'Join by Invite Code')}</h4>
           <div className="flex gap-2">
             <input value={inviteInput} onChange={e => setInviteInput(e.target.value)}
-              placeholder={tr('Weka msimbo wa邀请', 'Enter invite code')}
+              placeholder={tr('Weka msimbo wa karibu', 'Enter invite code')}
               className="flex-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono tracking-widest text-center uppercase focus:outline-none focus:ring-2 focus:ring-amber-500/50" />
             <button onClick={joinByInviteCode}
               className="sun-btn px-5 py-2.5 rounded-xl text-xs font-bold">{tr('Jiunga', 'Join')}</button>

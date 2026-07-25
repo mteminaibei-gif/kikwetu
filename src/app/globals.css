@@ -184,8 +184,56 @@ body {
 
 /* ===== MAASAI NAV BORDER ===== */
 .sun-nav-border {
-  position: relative;
+  position: sticky;
+  position: -webkit-sticky;
+  top: 0;
+  z-index: 9999;
+  isolation: isolate;
   border-bottom: none !important;
+}
+
+/* ===== STYLED SELECT ===== */
+.sun-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #FDF6EE;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d28156' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  padding-right: 36px;
+  border: 1.5px solid #E0CFC0;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 14px;
+  color: #3C2415;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.sun-select:focus {
+  outline: none;
+  border-color: #d28156;
+  box-shadow: 0 0 0 3px rgba(210, 129, 86, 0.15);
+}
+.sun-select:hover {
+  border-color: #cc5b47;
+}
+.dark .sun-select {
+  background-color: #1A1412;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d28156' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  border-color: #3A3432;
+  color: #E8D5CC;
+}
+.dark .sun-select:focus {
+  border-color: #d28156;
+  box-shadow: 0 0 0 3px rgba(210, 129, 86, 0.25);
+}
+.dark .sun-select:hover {
+  border-color: #cc5b47;
 }
 .sun-nav-border::after {
   content: '';
@@ -228,8 +276,14 @@ body {
 :root .hover\:bg-gray-200:hover { background-color: #D4C0B0; }
 .dark .bg-gray-100 { background-color: #252220; }
 .dark .bg-gray-50 { background-color: #1A1412; }
+.dark .bg-gray-200 { background-color: #3A3432; }
 .dark .border-gray-100 { border-color: #332E2C; }
 .dark .border-gray-200 { border-color: #3A3432; }
+.dark .border-gray-300 { border-color: #4A4340; }
+/* Dark hover overrides — critical: unlayered CSS beats @layer utilities in Tailwind v4 */
+.dark .hover\:bg-gray-100:hover { background-color: #3A3432; }
+.dark .hover\:bg-gray-50:hover { background-color: #252220; }
+.dark .hover\:bg-gray-200:hover { background-color: #3A3432; }
 
 /* ===== CTA GRADIENT BACKGROUNDS ===== */
 .sun-cta-warm {

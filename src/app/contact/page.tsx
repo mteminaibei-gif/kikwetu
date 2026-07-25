@@ -51,7 +51,7 @@ export default function ContactPage() {
             </div>
             <div>
               <label className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5 block">{tr('Kichwa', 'Subject')}</label>
-              <select className="w-full p-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50">
+              <select className="sun-select w-full p-3.5 rounded-xl text-sm">
                 <option>{tr('Swala la Jumla', 'General Inquiry')}</option>
                 <option>{tr('Msaada wa Kiufundi', 'Technical Support')}</option>
                 <option>{tr('Ripoti', 'Report')}</option>

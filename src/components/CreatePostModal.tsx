@@ -5,3 +5,4 @@
  * Keep this file so any old imports still resolve without a modal popup.
  */
 export { default } from '@/components/PostComposer';
+

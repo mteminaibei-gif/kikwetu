@@ -48,13 +48,13 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = pathname?.startsWith('/admin');
   const isLanding = pathname === '/';
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       {!isAdmin && <Navbar />}
       <TutorialGate />
       <ConsentBanner />
       <main className={cn('flex-1', !isLanding && 'pb-20 md:pb-0')}>{children}</main>
       <MobileBottomNav />
-    </>
+    </div>
   );
 }
 
