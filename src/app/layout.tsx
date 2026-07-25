@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   keywords: ["Kenya", "agriculture", "KilimoSmart", "education", "tech", "community", "Swahili", "Kikwetu", "East Africa", "farming", "startups"],
   manifest: "/manifest.json",
   icons: { icon: "/logo-icon.svg", apple: "/logo-icon.svg" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "KikwetuConnect",
+  },
   openGraph: {
     title: "KikwetuConnect - East Africa's Knowledge Platform",
     description: "Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu. Join thousands of Kenyans sharing knowledge in agriculture, tech, education & culture.",
@@ -37,11 +42,15 @@ export const metadata: Metadata = {
   verification: { google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "" },
 };
 
-export const viewport = {
-  themeColor: "#cc5b47",
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#cc5b47" },
+    { media: "(prefers-color-scheme: dark)", color: "#1A0F0F" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -50,6 +59,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="alternate" hrefLang="en" href={siteUrl} />
         <link rel="alternate" hrefLang="sw" href={`${siteUrl}/sw`} />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -65,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }),
         }} />
       </head>
-      <body className="font-sans min-h-screen flex flex-col text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-brand-red selection:text-white touch-manipulation antialiased">
+      <body className="font-sans min-h-screen min-h-dvh flex flex-col text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-brand-red selection:text-white touch-manipulation antialiased">
         <SavannahBackground />
         <Providers>
           {children}

@@ -1,11 +1,12 @@
 import Dexie from 'dexie';
-import type { Thread, Reply, Profile, Space } from '@/types';
+import type { Thread, Reply, Profile } from '@/types';
 
 let db: Dexie | null = null;
 
 export function getOfflineDB() {
   if (db) return db;
   db = new Dexie('KikwetuConnect');
+  // synced is 0 | 1 (IndexedDB cannot reliably query boolean false with equals(0))
   db.version(1).stores({
     threads: 'id, space_id, author_id, created_at, upvotes_count, cached_at',
     replies: 'id, thread_id, author_id, parent_id, created_at',
@@ -25,7 +26,12 @@ export interface SyncAction {
   userId: string;
   payload: Record<string, unknown>;
   created_at: string;
-  synced: boolean;
+  /** 0 = pending, 1 = synced — must be numeric for Dexie index queries */
+  synced: number;
+}
+
+function isPendingSynced(value: unknown): boolean {
+  return value === 0 || value === false || value === '0';
 }
 
 export const Offline = {
@@ -50,20 +56,23 @@ export const Offline = {
     await d.table('syncQueue').add({
       ...action,
       created_at: new Date().toISOString(),
-      synced: false,
+      synced: 0,
     });
   },
   async getPendingCount(): Promise<number> {
     const d = getOfflineDB();
-    return d.table('syncQueue').where('synced').equals(0).count();
+    // Support both legacy boolean false and numeric 0
+    const rows = await d.table('syncQueue').toArray();
+    return rows.filter(r => isPendingSynced(r.synced)).length;
   },
   async getPendingActions(): Promise<SyncAction[]> {
     const d = getOfflineDB();
-    return d.table('syncQueue').where('synced').equals(0).toArray();
+    const rows = await d.table('syncQueue').toArray();
+    return rows.filter(r => isPendingSynced(r.synced)) as SyncAction[];
   },
   async markSynced(id: number) {
     const d = getOfflineDB();
-    await d.table('syncQueue').update(id, { synced: true });
+    await d.table('syncQueue').update(id, { synced: 1 });
   },
   async getThread(id: string): Promise<Thread | undefined> {
     const d = getOfflineDB();
@@ -76,24 +85,42 @@ export const Offline = {
 
   async drainSyncQueue(sb: ReturnType<typeof import('./supabase').createClient>): Promise<number> {
     const d = getOfflineDB();
-    const pending = await d.table('syncQueue').where('synced').equals(0).toArray();
+    const pending = await Offline.getPendingActions();
     let drained = 0;
     for (const action of pending) {
       try {
         if (action.type === 'createThread') {
-          await sb.from('threads').insert(action.payload).select().single();
+          const p = action.payload;
+          const { error } = await sb.from('threads').insert({
+            author_id: p.author_id ?? action.userId,
+            space_id: p.space_id ?? null,
+            type: p.type || 'question',
+            title: p.title,
+            content: p.content,
+            language: p.language || 'en',
+            tags: p.tags || [],
+            county: p.county || '',
+          }).select().single();
+          if (error) throw error;
         } else if (action.type === 'createReply') {
-          await sb.from('replies').insert(action.payload).select().single();
+          const p = action.payload;
+          const { error } = await sb.from('replies').insert({
+            thread_id: p.thread_id,
+            author_id: p.author_id ?? action.userId,
+            content: p.content,
+          }).select().single();
+          if (error) throw error;
         } else if (action.type === 'vote') {
           const p = action.payload as Record<string, string>;
-          await sb.rpc('toggle_vote', {
+          const { error } = await sb.rpc('toggle_vote', {
             p_user_id: action.userId,
             p_entity_id: p.entityId,
             p_entity_type: p.entityType,
             p_vote_type: p.voteType,
           });
+          if (error) throw error;
         }
-        if (action.id) await d.table('syncQueue').update(action.id, { synced: true });
+        if (action.id != null) await d.table('syncQueue').update(action.id, { synced: 1 });
         drained++;
       } catch (err) {
         console.error('[Offline] Sync failed for action', action.id, action.type, err);
