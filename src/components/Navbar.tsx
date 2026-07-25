@@ -131,7 +131,7 @@ export default function Navbar() {
     router.push(`/thread/${id}`);
   }, [router]);
 
-  const menuLinkClass = 'flex items-center gap-3 min-h-[48px] px-3 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 touch-manipulation';
+  const menuLinkClass = 'flex items-center gap-3 min-h-[48px] px-3 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200 active:bg-black/5 dark:active:bg-white/10 touch-manipulation';
 
   const statusDot =
     !online || realtimeStatus === 'offline'
@@ -142,33 +142,33 @@ export default function Navbar() {
           ? { color: 'bg-green-500', label: 'Live' }
           : { color: 'bg-gray-400', label: 'Connecting' };
 
+  const iconBtn = 'p-2.5 min-w-[44px] min-h-[44px] rounded-xl text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition-all active:scale-90 touch-manipulation';
+
   return (
     <header className={cn(
-      'sticky top-0 z-[9999] sun-nav-border backdrop-blur-xl border-b-0 transition-all duration-300',
-      scrolled
-        ? 'bg-white dark:bg-brand-cardDark shadow-[0_2px_20px_rgba(204,91,71,0.12)]'
-        : 'bg-white/80 dark:bg-brand-cardDark/80'
+      'sticky top-0 z-[9999] sun-nav-border sun-nav backdrop-blur-xl transition-all duration-300',
+      scrolled && 'scrolled',
     )}>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         <Link href={user ? '/feed' : '/'} className="flex items-center gap-2 shrink-0 group min-h-[44px]">
           <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-8 sm:h-9 w-auto group-hover:scale-105 transition-transform drop-shadow-sm" />
           <div className="hidden sm:block">
-            <span className="text-lg font-black font-logo text-brand-deep dark:text-white leading-none block">Kikwetu<span className="text-brand-red">Connect</span></span>
+            <span className="text-lg font-black font-logo text-gray-900 dark:text-white leading-none block">Kikwetu<span className="text-brand-red">Connect</span></span>
           </div>
         </Link>
 
         {user && pathname !== '/' && (
           <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400"><SearchIcon /></span>
-            <input type="search" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart..." className="w-full pl-10 pr-10 py-2.5 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-400" />
+            <input type="search" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search)..." className="w-full pl-10 pr-10 py-2.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white/80 dark:bg-black/30 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-400" />
             {searchOpen && (
-              <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
+              <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-brand-cardDark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
                 {searchResults.map(r => (
                   <button key={r.id} onClick={() => handleSearchSelect(r.id)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
                     <SearchIcon className="shrink-0 text-gray-400" />
                     <span className="truncate font-medium">{r.title}</span>
-                    <span className="text-[10px] text-gray-400 shrink-0 ml-auto">{r.author?.full_name || ''}</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0 ml-auto">{r.author?.full_name || ''}</span>
                   </button>
                 ))}
               </div>
@@ -180,21 +180,21 @@ export default function Navbar() {
           {user && pathname !== '/' && (
             <button
               onClick={() => { setMobileSearchOpen(prev => !prev); setMobileOpen(false); }}
-              className="md:hidden p-2.5 min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90 touch-manipulation"
+              className={cn(iconBtn, 'md:hidden')}
               aria-label="Search"
             >
               <SearchIcon className="w-5 h-5" />
             </button>
           )}
 
-          <button onClick={toggleTheme} className="p-2.5 min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90 touch-manipulation" aria-label="Theme">
+          <button onClick={toggleTheme} className={iconBtn} aria-label="Theme">
             {dark ? <SunIcon /> : <MoonIcon />}
           </button>
 
           {user ? (
             <>
               <div className="relative" ref={notifRef}>
-                <button onClick={openNotifications} className="relative p-2.5 min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90 touch-manipulation" aria-label="Notifications">
+                <button onClick={openNotifications} className={cn(iconBtn, 'relative')} aria-label="Notifications">
                   <BellIcon />
                   {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 min-w-[1rem] h-4 px-1 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -203,16 +203,16 @@ export default function Navbar() {
                   )}
                 </button>
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-brand-cardDark shadow-xl z-50 overflow-hidden">
                     <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                      <p className="text-sm font-bold">Notifications</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-50">Notifications</p>
                       {notifications.length > 0 && (
                         <button type="button" onClick={() => markNotificationsRead()} className="text-[10px] text-brand-red font-semibold">Mark all read</button>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-xs text-gray-400">No notifications yet.</div>
+                        <div className="px-4 py-8 text-center text-xs text-gray-500 dark:text-gray-400">No notifications yet.</div>
                       ) : (
                         notifications.map(n => {
                           const href = notificationHref(n);
@@ -229,8 +229,8 @@ export default function Navbar() {
                                 !n.is_read ? 'bg-brand-terracotta/5' : 'hover:bg-gray-50 dark:hover:bg-gray-800',
                               )}
                             >
-                              <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">{n.title || n.type}</p>
-                              {n.body && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>}
+                              <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{n.title || n.type}</p>
+                              {n.body && <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>}
                               <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
                             </button>
                           );
@@ -241,35 +241,32 @@ export default function Navbar() {
                 )}
               </div>
 
-              <div
-                className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-400"
-                title={`Realtime: ${statusDot.label}`}
-              >
+              <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400" title={`Realtime: ${statusDot.label}`}>
                 <span className={cn('w-1.5 h-1.5 rounded-full', statusDot.color, realtimeStatus === 'connected' && 'animate-pulse')} />
                 <span className="hidden lg:inline">{statusDot.label}</span>
                 {pendingSyncCount > 0 && <span className="text-amber-500 font-medium">({pendingSyncCount})</span>}
               </div>
 
               <div className="relative hidden sm:block" ref={profileRef}>
-                <button onClick={() => setProfileOpen(prev => !prev)} className="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700 group min-h-[44px]">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white text-sm font-bold overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+                <button onClick={() => setProfileOpen(prev => !prev)} className="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-600 group min-h-[44px]">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white text-sm font-bold overflow-hidden shadow-sm">
                     {user.avatar_url ? <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
                       : user.full_name?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden lg:block text-left">
-                    <p className="text-xs font-bold leading-none">{user.full_name}</p>
+                    <p className="text-xs font-bold leading-none text-gray-900 dark:text-gray-50">{user.full_name}</p>
                     <span className="text-[10px] text-brand-red font-semibold">Heshima: {user.heshima_score}</span>
                   </div>
                 </button>
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-brand-cardDark shadow-lg py-1 z-50">
                     <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-                      <p className="text-sm font-semibold truncate">{user.full_name}</p>
+                      <p className="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">{user.full_name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username}</p>
                     </div>
-                    <Link href={`/profile/${user.id}`} onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
-                    <Link href="/settings" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Settings</Link>
-                    <Link href="/parent" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Mzazi (Parent)</Link>
+                    <Link href={`/profile/${user.id}`} onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
+                    <Link href="/settings" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">Settings</Link>
+                    <Link href="/parent" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">Mzazi (Parent)</Link>
                     {isAdmin && <Link href="/admin" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800">Admin</Link>}
                     <button onClick={handleSignOut} className="block w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800">Sign Out</button>
                   </div>
@@ -278,14 +275,14 @@ export default function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Link href="/onboarding" className="hidden xs:inline text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-brand-red px-2 py-2 transition-colors min-h-[44px] flex items-center">Sign In</Link>
+              <Link href="/onboarding" className="hidden xs:inline text-xs font-bold text-gray-700 dark:text-gray-200 hover:text-brand-red px-2 py-2 transition-colors min-h-[44px] flex items-center">Sign In</Link>
               <Link href="/onboarding" className="sun-btn px-3 sm:px-4 py-2 rounded-full text-xs font-bold shadow-md min-h-[40px] flex items-center">Get Started</Link>
             </div>
           )}
 
           <button
             onClick={() => setMobileOpen(prev => !prev)}
-            className="md:hidden p-2.5 min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all touch-manipulation"
+            className={cn(iconBtn, 'md:hidden')}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
           >
@@ -295,7 +292,7 @@ export default function Navbar() {
       </div>
 
       {mobileSearchOpen && user && (
-        <div className="md:hidden border-t border-gray-200 dark:border-gray-800 px-3 py-2 bg-white dark:bg-brand-cardDark">
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-700 px-3 py-2 sun-nav">
           <div className="relative">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><SearchIcon /></span>
             <input
@@ -304,61 +301,39 @@ export default function Navbar() {
               value={searchQuery}
               onChange={e => handleSearchChange(e.target.value)}
               placeholder="Tafuta..."
-              className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm"
+              className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-black/30 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm"
             />
             <button type="button" onClick={() => { setMobileSearchOpen(false); setSearchQuery(''); setSearchOpen(false); }} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400" aria-label="Close search">
               <XIcon />
             </button>
           </div>
-          {searchOpen && searchResults.length > 0 && (
-            <div className="mt-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg max-h-60 overflow-y-auto">
-              {searchResults.map(r => (
-                <button key={r.id} onClick={() => handleSearchSelect(r.id)}
-                  className="w-full text-left px-4 py-3 text-sm active:bg-gray-100 dark:active:bg-gray-800 flex items-center gap-2 border-b border-gray-50 dark:border-gray-800 last:border-0 touch-manipulation">
-                  <span className="truncate font-medium flex-1">{r.title}</span>
-                  <span className="text-[10px] text-gray-400 shrink-0">{r.author?.full_name || ''}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
       {mobileOpen && (
         <>
-          <div
-            className="md:hidden fixed inset-0 top-14 sm:top-16 z-40 bg-black/40 backdrop-blur-[2px]"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden
-          />
-          <div className="md:hidden relative z-50 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-brand-cardDark shadow-xl max-h-[min(80vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain">
+          <div className="md:hidden fixed inset-0 top-14 sm:top-16 z-40 bg-black/40 backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} aria-hidden />
+          <div className="md:hidden relative z-50 border-t border-gray-200 dark:border-gray-700 sun-nav shadow-xl max-h-[min(80vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain">
             <div className="px-3 py-3 space-y-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {user ? (
                 <>
-                  <div className="flex items-center gap-3 p-3 mb-2 rounded-xl bg-gray-50 dark:bg-gray-900/50">
+                  <div className="flex items-center gap-3 p-3 mb-2 rounded-xl bg-black/5 dark:bg-white/5">
                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white font-bold overflow-hidden shadow-sm shrink-0">
                       {user.avatar_url ? <img src={user.avatar_url} alt="" className="h-full w-full object-cover" /> : user.full_name?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{user.full_name}</p>
+                      <p className="text-sm font-semibold truncate text-gray-900 dark:text-gray-50">{user.full_name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username} · Heshima {user.heshima_score}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
-                        <span className={cn('w-1.5 h-1.5 rounded-full', statusDot.color)} />
-                        {statusDot.label}
-                      </p>
                     </div>
                   </div>
                   <Link href="/feed" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Feed</Link>
-                  <Link href="/students" onClick={() => setMobileOpen(false)} className={menuLinkClass}>🎓 Students / Learn</Link>
-                  <Link href="/nyumba-kumi" onClick={() => setMobileOpen(false)} className={cn(menuLinkClass, 'text-amber-600 dark:text-amber-400')}>🏘️ Nyumba Kumi</Link>
-                  <Link href="/professionals" onClick={() => setMobileOpen(false)} className={cn(menuLinkClass, 'text-brand-red')}>🛡️ Professionals</Link>
-                  <Link href="/radio" onClick={() => setMobileOpen(false)} className={menuLinkClass}>📻 Radio</Link>
-                  <Link href="/feed?view=spaces" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Spaces</Link>
-                  <Link href="/feed?view=leaderboard" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Karma</Link>
-                  <div className="border-t border-gray-100 dark:border-gray-800 my-2" />
+                  <Link href="/students" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Students / Learn</Link>
+                  <Link href="/nyumba-kumi" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Nyumba Kumi</Link>
+                  <Link href="/professionals" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Professionals</Link>
+                  <Link href="/radio" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Radio</Link>
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
                   <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className={menuLinkClass}>Profile</Link>
                   <Link href="/settings" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Settings</Link>
-                  <Link href="/parent" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Mzazi (Parent)</Link>
                   {isAdmin && <Link href="/admin" onClick={() => setMobileOpen(false)} className={cn(menuLinkClass, 'text-red-500')}>Admin</Link>}
                   <button onClick={handleSignOut} className={cn(menuLinkClass, 'w-full text-left text-red-600 dark:text-red-400')}>Sign Out</button>
                 </>
