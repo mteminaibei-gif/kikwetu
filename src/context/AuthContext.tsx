@@ -23,6 +23,13 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function oauthRedirectTo() {
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+  if (site) return `${site}/feed`;
+  if (typeof window !== 'undefined') return `${window.location.origin}/feed`;
+  return undefined;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null, loading: true, isAdmin: false, supabase: null,
@@ -111,9 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const sb = state.supabase || createClient();
+    const redirectTo = oauthRedirectTo();
     await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/feed' },
+      options: redirectTo ? { redirectTo } : undefined,
     });
   };
 
