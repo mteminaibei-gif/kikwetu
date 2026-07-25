@@ -47,14 +47,22 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
   const isLanding = pathname === '/';
-  const showBottomPad = !isLanding && !isAdmin;
+  const isChat = pathname?.startsWith('/chat');
+  const isOnboarding = pathname?.startsWith('/onboarding');
+  // Chat manages its own bottom chrome; landing/admin/onboarding hide tab bar
+  const showBottomPad = !isLanding && !isAdmin && !isChat && !isOnboarding;
 
   return (
     <>
       {!isAdmin && <Navbar />}
       <TutorialGate />
       <ConsentBanner />
-      <main className={cn('flex-1 min-w-0 overflow-x-hidden', showBottomPad && 'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0')}>
+      <main
+        className={cn(
+          'flex-1 min-w-0 overflow-x-hidden',
+          showBottomPad && 'pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-0',
+        )}
+      >
         {children}
       </main>
       <MobileBottomNav />
