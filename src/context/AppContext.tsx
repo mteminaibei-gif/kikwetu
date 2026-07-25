@@ -155,7 +155,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('Please login to vote.');
     const sb = createClient();
 
-    const { error } = await sb.rpc('toggle_vote', {
+    // RPC returns the new upvotes_count (INTEGER) when migration_votes.sql is applied
+    const { data: rpcData, error } = await sb.rpc('toggle_vote', {
       p_user_id: user.id,
       p_entity_id: entityId,
       p_entity_type: entityType,
@@ -174,41 +175,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message || 'Vote failed');
     }
 
-    // Read authoritative count after RPC (handles toggle correctly)
-    let upvotes_count: number | undefined;
-    try {
-      if (entityType === 'thread') {
-        const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
-        upvotes_count = data?.upvotes_count;
-        if (typeof upvotes_count === 'number') {
-          setState(prev => ({
-            ...prev,
-            threads: prev.threads.map(t =>
-              t.id === entityId ? { ...t, upvotes_count } : t
-            ),
-            selectedThread:
-              prev.selectedThread?.id === entityId
-                ? { ...prev.selectedThread, upvotes_count }
-                : prev.selectedThread,
-          }));
+    let upvotes_count: number | undefined =
+      typeof rpcData === 'number' ? rpcData : undefined;
+
+    // Fallback SELECT if older RPC returned void
+    if (typeof upvotes_count !== 'number') {
+      try {
+        if (entityType === 'thread') {
+          const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
+          upvotes_count = data?.upvotes_count;
+        } else {
+          const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
+          upvotes_count = data?.upvotes_count;
         }
-      } else {
-        const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
-        upvotes_count = data?.upvotes_count;
-        if (typeof upvotes_count === 'number') {
-          setState(prev => ({
-            ...prev,
-            replies: prev.replies.map(r =>
-              r.id === entityId ? { ...r, upvotes_count } : r
-            ),
-          }));
-        }
+      } catch {
+        // realtime / next load will sync
       }
-    } catch {
-      // non-fatal — realtime or next load will sync
     }
 
-    // Notify content author (non-self)
+    if (typeof upvotes_count === 'number') {
+      if (entityType === 'thread') {
+        setState(prev => ({
+          ...prev,
+          threads: prev.threads.map(t =>
+            t.id === entityId ? { ...t, upvotes_count: upvotes_count! } : t
+          ),
+          selectedThread:
+            prev.selectedThread?.id === entityId
+              ? { ...prev.selectedThread, upvotes_count: upvotes_count! }
+              : prev.selectedThread,
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          replies: prev.replies.map(r =>
+            r.id === entityId ? { ...r, upvotes_count: upvotes_count! } : r
+          ),
+        }));
+      }
+    }
+
+    // Notify content author (non-self) — never break voting
     try {
       let authorId: string | null = null;
       if (entityType === 'thread') {
@@ -218,7 +225,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: reply } = await sb.from('replies').select('author_id').eq('id', entityId).single();
         authorId = reply?.author_id ?? null;
       }
-      if (authorId && authorId !== user.id) {
+      if (authorId && authorId !== user.id && voteType === 'up') {
         await sb.from('notifications').insert({
           user_id: authorId,
           actor_id: user.id,
@@ -228,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch {
-      // notification failure must not break voting
+      // ignore
     }
 
     return { upvotes_count };
@@ -302,7 +309,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ),
         }));
       })
-      // Realtime for reply vote counts (ThreadView + any shared reply lists)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'replies' }, (p) => {
         const updated = p.new as Reply;
         setState(prev => ({
