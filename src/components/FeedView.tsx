@@ -49,15 +49,11 @@ const AD_SPOTS = [
   { id: 2, label: 'Sponsored', desc: 'Reach 12,000+ Kenyans', color: 'from-purple-500/10 to-purple-600/5' },
 ];
 
-function scrollToComposer() {
-  if (typeof document === 'undefined') return;
+function openComposer() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('kikwetu:open-composer'));
   const el = document.getElementById('post-composer');
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Expand by clicking the collapsed card if present
-    const clickable = el.querySelector('[class*="cursor-pointer"]') || el;
-    (clickable as HTMLElement).click?.();
-  }
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 export default function FeedView() {
@@ -217,6 +213,12 @@ export default function FeedView() {
     return () => clearInterval(interval);
   }, [loadThreads]);
 
+  const goCompose = () => {
+    setView('feed');
+    router.replace('/feed?view=feed', { scroll: false });
+    setTimeout(openComposer, 120);
+  };
+
   return (
     <div className="max-w-7xl mx-auto flex-1 w-full grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 px-2 sm:px-6 lg:px-8 py-3 sm:py-4 md:py-6">
       <aside className="hidden md:block md:col-span-1">
@@ -251,7 +253,7 @@ export default function FeedView() {
             </Link>
           </nav>
 
-          <button type="button" onClick={() => { setView('feed'); router.replace('/feed?view=feed', { scroll: false }); setTimeout(scrollToComposer, 100); }}
+          <button type="button" onClick={goCompose}
             className="w-full bg-gradient-to-r from-brand-terracotta to-brand-red text-white font-bold py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 hover:shadow-xl">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             <span>Andika (Post)</span>
@@ -276,7 +278,6 @@ export default function FeedView() {
       <main className="col-span-1 md:col-span-3 lg:col-span-3 space-y-6">
         {view === 'feed' && (
           <div className="space-y-6">
-            {/* Inline post composer — all functions integrated, no modal */}
             <PostComposer />
 
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
@@ -448,7 +449,7 @@ export default function FeedView() {
               {LEADERBOARD_DATA.map(l => (
                 <div key={l.rank} className={cn('flex items-center justify-between p-3 rounded-xl border', l.rank === 1 ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800')}>
                   <div className="flex items-center gap-3">
-                    <span className={cn('w-6 h-6 rounded-full flex items- items-center justify-center font-bold text-xs text-white', l.rank === 1 ? 'bg-yellow-500' : l.rank === 2 ? 'bg-gray-400' : 'bg-brand-terracotta')}>{l.rank}</span>
+                    <span className={cn('w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white', l.rank === 1 ? 'bg-yellow-500' : l.rank === 2 ? 'bg-gray-400' : 'bg-brand-terracotta')}>{l.rank}</span>
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center font-bold text-white">{l.name[0]}</div>
                     <div>
                       <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{l.name}</p>
@@ -517,10 +518,9 @@ export default function FeedView() {
         </div>
       </aside>
 
-      {/* Mobile FAB — scrolls to inline composer */}
       <button
         type="button"
-        onClick={() => { setView('feed'); router.replace('/feed?view=feed', { scroll: false }); setTimeout(scrollToComposer, 100); }}
+        onClick={goCompose}
         className="md:hidden fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-brand-terracotta to-brand-red text-white shadow-2xl flex items-center justify-center transition-all active:scale-90 hover:scale-105"
         aria-label="Compose post"
       >
