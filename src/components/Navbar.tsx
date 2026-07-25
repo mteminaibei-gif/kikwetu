@@ -103,10 +103,8 @@ export default function Navbar() {
 
   return (
     <header className={cn(
-      'sticky top-0 z-[9999] sun-nav-border backdrop-blur-xl border-b-0 transition-all duration-300',
-      scrolled
-        ? 'bg-white dark:bg-brand-cardDark shadow-[0_2px_20px_rgba(204,91,71,0.12)]'
-        : 'bg-white/80 dark:bg-brand-cardDark/80'
+      'sticky top-0 z-[9999] sun-nav sun-nav-border backdrop-blur-xl border-b-0 transition-all duration-300',
+      scrolled && 'scrolled'
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         <Link href={user ? '/feed' : '/'} className="flex items-center gap-2.5 shrink-0 group">
@@ -119,13 +117,13 @@ export default function Navbar() {
         {user && pathname !== '/' && (
           <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></span>
-            <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." className="w-full pl-10 pr-10 py-2.5 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-400" />
+            <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." className="w-full pl-10 pr-10 py-2.5 rounded-full border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-400" />
             <button className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-brand-red transition-colors" title="Voice Search"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" /></svg></button>
             {searchOpen && (
               <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
                 {searchResults.map(r => (
                   <button key={r.id} onClick={() => handleSearchSelect(r.id)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2">
                     <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     <span className="truncate font-medium">{r.title}</span>
                     <span className="text-[10px] text-gray-400 shrink-0 ml-auto">{r.author?.full_name || ''}</span>
@@ -137,26 +135,26 @@ export default function Navbar() {
         )}
 
         <div className="flex items-center gap-1 sm:gap-1.5">
-          <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90" aria-label="Theme">
+          <button onClick={toggleTheme} className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all active:scale-90" aria-label="Theme">
             {dark ? <SunIcon /> : <MoonIcon />}
           </button>
 
           {user ? (
             <>
               <div className="relative" ref={notifRef}>
-                <button onClick={() => setNotifOpen(prev => !prev)} className="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90" aria-label="Notifications">
+                <button onClick={() => setNotifOpen(prev => !prev)} className="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all active:scale-90" aria-label="Notifications">
                   <BellIcon />
                   {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-red rounded-full animate-ping" />}
                 </button>
                 {notifOpen && (
                   <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-3 z-50">
-                    <div className="px-4 pb-2 border-b border-gray-100 dark:border-gray-800"><p className="text-sm font-bold">Notifications</p></div>
-                    <div className="px-4 py-8 text-center text-xs text-gray-400">No new notifications.</div>
+                    <div className="px-4 pb-2 border-b border-gray-100 dark:border-gray-800"><p className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</p></div>
+                    <div className="px-4 py-8 text-center text-xs text-gray-500 dark:text-gray-400">No new notifications.</div>
                   </div>
                 )}
               </div>
 
-              <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-400">
+              <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
                 <span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-green-500' : 'bg-red-500')} />
                 {pendingSyncCount > 0 && <span className="text-amber-500 font-medium">({pendingSyncCount})</span>}
               </div>
@@ -168,14 +166,14 @@ export default function Navbar() {
                       : user.full_name?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="hidden lg:block text-left">
-                    <p className="text-xs font-bold leading-none">{user.full_name}</p>
+                    <p className="text-xs font-bold leading-none text-gray-900 dark:text-gray-100">{user.full_name}</p>
                     <span className="text-[10px] text-brand-red font-semibold">Heshima: {user.heshima_score}</span>
                   </div>
                 </button>
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1 z-50">
                     <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
-                      <p className="text-sm font-semibold truncate">{user.full_name}</p>
+                      <p className="text-sm font-semibold truncate text-gray-900 dark:text-gray-100">{user.full_name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username}</p>
                     </div>
                     <Link href={`/profile/${user.id}`} onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
@@ -194,7 +192,7 @@ export default function Navbar() {
             </div>
           )}
 
-          <button onClick={() => setMobileOpen(prev => !prev)} className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all">{mobileOpen ? <XIcon /> : <MenuIcon />}</button>
+          <button onClick={() => setMobileOpen(prev => !prev)} className="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all">{mobileOpen ? <XIcon /> : <MenuIcon />}</button>
         </div>
       </div>
 
@@ -206,7 +204,7 @@ export default function Navbar() {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white font-bold overflow-hidden shadow-sm">
                   {user.avatar_url ? <img src={user.avatar_url} alt="" className="h-full w-full object-cover" /> : user.full_name?.[0]?.toUpperCase() || 'U'}
                 </div>
-                <div><p className="text-sm font-semibold">{user.full_name}</p><p className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</p></div>
+                <div><p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.full_name}</p><p className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</p></div>
               </div>
               <Link href="/feed" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">Feed</Link>
               <Link href="/students" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red">🎓 Students</Link>

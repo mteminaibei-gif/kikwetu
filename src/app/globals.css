@@ -15,37 +15,42 @@
   --color-brand-surface: #FFF9F0;
 }
 
-/* ===== BASE TYPOGRAPHY ===== */
+/* ===== BASE TYPOGRAPHY =====
+   Body text is neutral gray for readability.
+   Only true headings use brand accent colors. */
 body {
   font-family: var(--font-sans);
   scroll-behavior: smooth;
-  color: #3C2415;
+  color: #1f2937; /* gray-800 — readable on warm cream */
 }
 .dark body {
-  color: #E8D5CC;
+  color: #e5e7eb; /* gray-200 — readable on warm night */
 }
 
-h1, h2, h3, h4, h5, h6, .font-black, .font-bold {
+/* Headings only — accent brand color */
+h1, h2, h3, h4, h5, h6 {
   color: #bd3b3b;
   font-family: var(--font-logo);
   letter-spacing: -0.02em;
 }
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
-.dark .font-black, .dark .font-bold {
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
   color: #FDE8C8;
+}
+
+/* font-bold / font-black used for UI labels should NOT force brand red */
+.font-black:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6),
+.font-bold:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) {
+  /* inherit body color unless a text-* utility overrides */
+  color: inherit;
 }
 
 /* ===== LIGHT MODE — WARM TERRACOTTA ATMOSPHERE ===== */
 body {
   background-color: #FFF9F0;
   background-image:
-    /* Golden glow from bottom */
     radial-gradient(ellipse 140% 30% at 50% 100%, rgba(244, 181, 83, 0.08) 0%, transparent 55%),
-    /* Warm amber wash from right */
     radial-gradient(ellipse 70% 30% at 80% 90%, rgba(210, 129, 86, 0.05) 0%, transparent 50%),
-    /* Soft yellow light from top */
     radial-gradient(ellipse 100% 25% at 50% 0%, rgba(255, 216, 53, 0.04) 0%, transparent 70%),
-    /* Base warm fade */
     linear-gradient(180deg, #FFF9F0 0%, #FFF3E5 100%);
 }
 
@@ -59,9 +64,6 @@ body {
     linear-gradient(180deg, #1A0F0F 0%, #221514 50%, #2A1A18 100%);
 }
 
-/* ===== ATMOSPHERE OVERLAY (light mode) ===== */
-/* Removed — SavannahBackground React component handles all atmosphere */
-
 /* ===== LIGHT THEME CARDS ===== */
 .sun-card {
   background: #FFFFFF;
@@ -73,6 +75,7 @@ body {
   position: relative;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #1f2937;
 }
 .sun-card::before {
   content: '';
@@ -107,6 +110,7 @@ body {
   background: #2A1A18;
   border: 1px solid rgba(210, 129, 86, 0.25);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(204, 91, 71, 0.1);
+  color: #e5e7eb;
 }
 .dark .sun-card::before {
   background: linear-gradient(90deg, #d28156 0%, #cc5b47 50%, #bd3b3b 80%, transparent 100%);
@@ -159,6 +163,25 @@ body {
   border: 1px solid rgba(210, 129, 86, 0.15);
 }
 
+/* ===== NAV — seamless light / dark ===== */
+.sun-nav {
+  background-color: rgba(255, 255, 255, 0.92);
+  color: #1f2937;
+  transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+.dark .sun-nav {
+  background-color: rgba(42, 26, 24, 0.94);
+  color: #e5e7eb;
+}
+.sun-nav.scrolled {
+  background-color: #ffffff;
+  box-shadow: 0 2px 20px rgba(204, 91, 71, 0.12);
+}
+.dark .sun-nav.scrolled {
+  background-color: #2A1A18;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
+}
+
 /* ===== MAASAI NAV BORDER ===== */
 .sun-nav-border {
   position: relative;
@@ -182,7 +205,6 @@ body {
 }
 
 /* ===== LIGHT MODE CONTRAST FIXES ===== */
-/* Shift all gray text one shade darker for readability on warm #FFF9F0 bg */
 :root .text-gray-400 { color: #6B7280; }
 :root .text-gray-500 { color: #4B5563; }
 :root .text-gray-600 { color: #374151; }
@@ -195,18 +217,15 @@ body {
 .dark .text-gray-800 { color: #F3F4F6; }
 
 /* ===== LIGHT MODE — WARM BACKGROUND GRAYS ===== */
-/* Replace cool gray bg/border with warm tones that blend with #FFF9F0 */
 :root .bg-gray-50 { background-color: #FDF6EE; }
 :root .bg-gray-100 { background-color: #F5EDE3; }
 :root .bg-gray-200 { background-color: #E8D5CC; }
 :root .border-gray-100 { border-color: #E8D5CC; }
 :root .border-gray-200 { border-color: #E0CFC0; }
 :root .border-gray-300 { border-color: #D4C0B0; }
-/* Hover states — warm tones */
 :root .hover\:bg-gray-100:hover { background-color: #E8D5CC; }
 :root .hover\:bg-gray-50:hover { background-color: #F5EDE3; }
 :root .hover\:bg-gray-200:hover { background-color: #D4C0B0; }
-/* Dark mode overrides */
 .dark .bg-gray-100 { background-color: #252220; }
 .dark .bg-gray-50 { background-color: #1A1412; }
 .dark .border-gray-100 { border-color: #332E2C; }
@@ -219,7 +238,6 @@ body {
 .sun-cta-warm-sm {
   background: linear-gradient(135deg, #d28156 0%, #cc5b47 100%);
 }
-/* Legacy aliases — old green/orange CTAs remapped to warm palette */
 .sun-cta-green {
   background: linear-gradient(135deg, #d28156 0%, #cc5b47 50%, #bd3b3b 100%);
 }
@@ -227,10 +245,6 @@ body {
   background: linear-gradient(135deg, #d28156 0%, #cc5b47 100%);
 }
 
-/* ===== SAVANNAH DECORATIVE ELEMENTS ===== */
-/* All handled by SavannahBackground React component */
-
-/* Acacia tree silhouette — handled by SavannahBackground React component */
 .sun-acacia { display: none; }
 
 /* ===== TEXT GRADIENTS ===== */
