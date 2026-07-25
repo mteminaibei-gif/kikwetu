@@ -80,10 +80,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let q = sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)').order('created_at', { ascending: false }).limit(30);
     if (params?.spaceId) q = q.eq('space_id', params.spaceId);
     if (params?.type) q = q.eq('type', params.type);
-    const { data } = await q;
-    if (data) {
+    const { data, error } = await q;
+    if (data && !error) {
       setState(prev => ({ ...prev, threads: data as Thread[], loading: false }));
-      if (navigator.onLine) { data.forEach(t => Offline.cacheThread(t as Thread)); }
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        data.forEach(t => Offline.cacheThread(t as Thread));
+      }
     } else {
       const cached = await Offline.getCachedThreads();
       setState(prev => ({ ...prev, threads: cached.length > 0 ? cached : prev.threads, loading: false }));
@@ -120,14 +122,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createThreadFn = useCallback(async (data: Partial<Thread>): Promise<{ error?: string }> => {
     if (!data.author_id) return { error: 'Missing author_id' };
+    const payload = {
+      author_id: data.author_id,
+      space_id: data.space_id || null,
+      type: data.type || 'question',
+      title: data.title,
+      content: data.content,
+      language: data.language || 'en',
+      tags: data.tags || [],
+      county: data.county || '',
+    };
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await Offline.queueAction({ type: 'createThread', userId: data.author_id, payload });
+      return {};
+    }
     const sb = createClient();
-    const { error } = await sb.from('threads').insert({
-      author_id: data.author_id, space_id: data.space_id || null, type: data.type || 'question',
-      title: data.title, content: data.content, language: data.language || 'en',
-      tags: data.tags || [], county: data.county || '',
-    }).select().single();
+    const { error } = await sb.from('threads').insert(payload).select().single();
     if (error) {
-      if (!navigator.onLine) { await Offline.queueAction({ type: 'createThread', userId: data.author_id, payload: data }); return {}; }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await Offline.queueAction({ type: 'createThread', userId: data.author_id, payload });
+        return {};
+      }
       return { error: error.message };
     }
     return {};
@@ -135,10 +150,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createReply = useCallback(async (threadId: string, content: string): Promise<{ error?: string }> => {
     if (!user) return { error: 'Not logged in' };
+    const payload = { thread_id: threadId, author_id: user.id, content };
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await Offline.queueAction({ type: 'createReply', userId: user.id, payload });
+      return {};
+    }
     const sb = createClient();
-    const { error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
+    const { error } = await sb.from('replies').insert(payload).select().single();
     if (error) {
-      if (!navigator.onLine) { await Offline.queueAction({ type: 'createReply', userId: user.id, payload: { thread_id: threadId, content } }); return {}; }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await Offline.queueAction({ type: 'createReply', userId: user.id, payload });
+        return {};
+      }
       return { error: error.message };
     }
     await loadReplies(threadId);
@@ -153,15 +176,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
           entity_id: threadId,
         });
       }
-    } catch {}
+    } catch { /* non-critical */ }
     return {};
   }, [user, loadReplies]);
 
   const vote = useCallback(async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => {
     if (!user) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } });
+      return;
+    }
     const sb = createClient();
     const { error } = await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
-    if (error && !navigator.onLine) { await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } }); }
+    if (error && typeof navigator !== 'undefined' && !navigator.onLine) {
+      await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } });
+      return;
+    }
     try {
       let authorId: string | null = null;
       if (entityType === 'thread') {
@@ -180,10 +210,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           entity_id: entityId,
         });
       }
-    } catch {}
+    } catch { /* non-critical */ }
   }, [user]);
 
-  /** Feed subscription with WS → HTTP polling fallback */
   const subscribeToFeed = useCallback(() => {
     const sb = createClient();
 
@@ -238,7 +267,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }));
           }),
       onPoll: async () => {
-        // Lightweight refresh: pull latest threads and merge by id
         const { data } = await sb
           .from('threads')
           .select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)')
@@ -346,7 +374,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {};
   }, [user, loadMessages]);
 
-  /** Chat subscription with faster polling fallback (4s) while WS is down */
   const subscribeToMessages = useCallback((sessionId: string, onMessage: (msg: ChatMessage) => void) => {
     const sb = createClient();
     let lastSeen = new Date().toISOString();
@@ -402,6 +429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const submitTip = useCallback(async (tData: Partial<Tip>): Promise<{ error?: string }> => {
     if (!user) return { error: 'Not logged in' };
     const amt = tData.amount || 0;
+    if (!Number.isFinite(amt) || amt < 10) return { error: 'Invalid tip amount' };
     const professionalAmount = Math.round(amt * 0.7);
     const platformAmount = amt - professionalAmount;
     const sb = createClient();
@@ -441,7 +469,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, update, loadThreads]);
 
   useEffect(() => {
-    if (user && navigator.onLine) {
+    if (user && typeof navigator !== 'undefined' && navigator.onLine) {
       (async () => {
         const sb = createClient();
         const drained = await Offline.drainSyncQueue(sb);
