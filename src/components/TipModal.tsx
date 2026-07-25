@@ -22,17 +22,34 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
   const [step, setStep] = useState<'amount' | 'payment'>('amount');
   const [loading, setLoading] = useState(false);
 
-  const getSelectedAmount = () => customAmount ? parseInt(customAmount) : amount;
+  const getSelectedAmount = (): number | null => {
+    if (customAmount.trim()) {
+      const n = Number.parseInt(customAmount.trim(), 10);
+      return Number.isFinite(n) ? n : null;
+    }
+    return amount;
+  };
 
   const handleProceed = () => {
     const amt = getSelectedAmount();
-    if (amt < 10) { show('Minimum tip is KES 10.'); return; }
+    if (amt == null || Number.isNaN(amt)) {
+      show('Enter a valid tip amount.');
+      return;
+    }
+    if (amt < 10) {
+      show('Minimum tip is KES 10.');
+      return;
+    }
     setStep('payment');
   };
 
   const handleSubmit = async () => {
     if (!mpesaRef.trim()) { show('Please enter the M-Pesa transaction code.'); return; }
     const amt = getSelectedAmount();
+    if (amt == null || amt < 10) {
+      show('Invalid tip amount.');
+      return;
+    }
     const proAmount = Math.round(amt * 0.7);
     const platAmount = amt - proAmount;
     setLoading(true);
@@ -46,7 +63,7 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
     onClose();
   };
 
-  const mpesaNumber = '+254 700 000 000';
+  const displayAmount = getSelectedAmount() ?? 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -65,9 +82,9 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
           <>
             <div className="grid grid-cols-3 gap-2">
               {TIP_AMOUNTS.map(a => (
-                <button key={a} onClick={() => { setAmount(a); setCustomAmount(''); }}
-                  className={`py-3 rounded-xl text-sm font-bold border-2 transition-all ${
-                    amount === a && !customAmount ? 'border-brand-terracotta bg-brand-terracotta/10 text-brand-red' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                <button key={a} type="button" onClick={() => { setAmount(a); setCustomAmount(''); }}
+                  className={`py-3 rounded-xl text-sm font-bold border-2 transition-all min-h-[44px] touch-manipulation ${
+                    amount === a && !customAmount ? 'border-brand-terracotta bg-brand-terracotta/10 text-brand-red' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
                   }`}>
                   KES {a}
                 </button>
@@ -82,17 +99,17 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
                   className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-r-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50" />
               </div>
             </div>
-            <button onClick={handleProceed}
-              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg transition-all active:scale-[0.98]">
+            <button type="button" onClick={handleProceed}
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg transition-all active:scale-[0.98] min-h-[44px] touch-manipulation">
               Continue to M-Pesa
             </button>
           </>
         ) : (
           <>
             <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Total Tip</span><span className="font-bold">KES {getSelectedAmount()}</span></div>
-              <div className="flex justify-between text-emerald-600 font-semibold"><span>Professional (70%)</span><span>KES {Math.round(getSelectedAmount() * 0.7)}</span></div>
-              <div className="flex justify-between text-brand-red font-semibold"><span>Platform (30%)</span><span>KES {getSelectedAmount() - Math.round(getSelectedAmount() * 0.7)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Total Tip</span><span className="font-bold">KES {displayAmount}</span></div>
+              <div className="flex justify-between text-emerald-600 font-semibold"><span>Professional (70%)</span><span>KES {Math.round(displayAmount * 0.7)}</span></div>
+              <div className="flex justify-between text-brand-red font-semibold"><span>Platform (30%)</span><span>KES {displayAmount - Math.round(displayAmount * 0.7)}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">To</span><span className="font-bold">{professionalName}</span></div>
             </div>
 
@@ -101,7 +118,7 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
               <p>1. Go to M-Pesa on your phone</p>
               <p>2. Select Lipa na M-Pesa &rarr; Buy Goods</p>
               <p>3. Enter Till Number: <strong className="text-brand-red">247247</strong></p>
-              <p>4. Enter Amount: <strong>KES {getSelectedAmount()}</strong></p>
+              <p>4. Enter Amount: <strong>KES {displayAmount}</strong></p>
               <p>5. Complete payment and enter the transaction code below</p>
             </div>
 
@@ -115,12 +132,12 @@ export default function TipModal({ sessionId, professionalId, professionalName, 
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setStep('amount')}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+              <button type="button" onClick={() => setStep('amount')}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all min-h-[44px] touch-manipulation">
                 Back
               </button>
-              <button onClick={handleSubmit} disabled={loading || !mpesaRef.trim()}
-                className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50 active:scale-95">
+              <button type="button" onClick={handleSubmit} disabled={loading || !mpesaRef.trim()}
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50 active:scale-95 min-h-[44px] touch-manipulation">
                 {loading ? 'Confirming...' : 'Confirm Tip'}
               </button>
             </div>
