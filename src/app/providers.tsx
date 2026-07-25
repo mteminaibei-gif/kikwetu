@@ -47,12 +47,16 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
   const isLanding = pathname === '/';
+  const showBottomPad = !isLanding && !isAdmin;
+
   return (
     <>
       {!isAdmin && <Navbar />}
       <TutorialGate />
       <ConsentBanner />
-      <main className={cn('flex-1', !isLanding && 'pb-20 md:pb-0')}>{children}</main>
+      <main className={cn('flex-1 min-w-0 overflow-x-hidden', showBottomPad && 'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0')}>
+        {children}
+      </main>
       <MobileBottomNav />
     </>
   );
