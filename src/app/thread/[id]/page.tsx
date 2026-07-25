@@ -1,8 +1,6 @@
 import { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import ThreadView from '@/components/ThreadView';
-
-const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -10,6 +8,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
+  const sb = await createClient();
   const { data: thread } = await sb.from('threads').select('title, content').eq('id', resolvedParams.id).single();
   
   if (!thread) {
@@ -25,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ThreadPage({ params }: Props) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
+  const sb = await createClient();
   
   const [tRes, rRes] = await Promise.all([
     sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').eq('id', id).single(),
