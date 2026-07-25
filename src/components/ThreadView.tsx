@@ -40,7 +40,7 @@ export default function ThreadView({ threadId }: Props) {
       setLoading(false);
     };
     load();
-  }, [threadId]);
+  }, [threadId, sb]);
 
   const handleVote = async (entityId: string, entityType: 'thread' | 'reply') => {
     if (!user) { show('Please login to vote.'); return; }
@@ -74,12 +74,12 @@ export default function ThreadView({ threadId }: Props) {
   };
 
   if (loading) return <LoadingSpinner />;
-  if (!thread) return <div className="text-center py-12 text-gray-400">Thread not found.</div>;
+  if (!thread) return <div className="text-center py-12 text-gray-400 px-4">Thread not found.</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      <div className="sun-card p-6 space-y-4">
-        <div className="flex items-center gap-2">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-8">
+      <div className="sun-card p-4 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
             {thread.type === 'question' ? 'Q&A' : thread.type}
           </span>
@@ -87,19 +87,19 @@ export default function ThreadView({ threadId }: Props) {
             <span className="text-[10px] text-gray-400 bg-brand-terracotta/5 px-2 py-0.5 rounded-full">{(thread.space as unknown as { name: string }).name}</span>
           )}
         </div>
-        <h1 className="text-xl font-black leading-snug">{thread.title}</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{thread.content}</p>
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Link href={`/profile/${thread.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta transition-all ${getAvatarColor(thread.author?.full_name)}`}>
+        <h1 className="text-lg sm:text-xl font-black leading-snug">{thread.title}</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed break-words">{thread.content}</p>
+        <div className="flex items-center justify-between gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0">
+            <Link href={`/profile/${thread.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${getAvatarColor(thread.author?.full_name)}`}>
               {getInitials(thread.author?.full_name)}
             </Link>
-            <Link href={`/profile/${thread.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors">{thread.author?.full_name || 'Anonymous'}</Link>
-            <span className="text-gray-300 dark:text-gray-600">·</span>
-            <span>{timeAgo(thread.created_at)}</span>
+            <Link href={`/profile/${thread.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors truncate">{thread.author?.full_name || 'Anonymous'}</Link>
+            <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">·</span>
+            <span className="shrink-0">{timeAgo(thread.created_at)}</span>
           </div>
           <button onClick={() => handleVote(thread.id, 'thread')}
-            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-1.5 rounded-full transition-all active:scale-95">
+            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-2 rounded-full transition-all active:scale-95 min-h-[40px] touch-manipulation shrink-0">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
@@ -120,12 +120,12 @@ export default function ThreadView({ threadId }: Props) {
           </div>
         )}
         {replies.map(reply => (
-          <div key={reply.id} className="sun-card p-5 space-y-3">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Link href={`/profile/${reply.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm hover:ring-2 hover:ring-brand-terracotta transition-all ${getAvatarColor(reply.author?.full_name)}`}>
-              {getInitials(reply.author?.full_name)}
-            </Link>
-            <Link href={`/profile/${reply.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors">{reply.author?.full_name || 'Anonymous'}</Link>
+          <div key={reply.id} className="sun-card p-4 sm:p-5 space-y-3">
+            <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+              <Link href={`/profile/${reply.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${getAvatarColor(reply.author?.full_name)}`}>
+                {getInitials(reply.author?.full_name)}
+              </Link>
+              <Link href={`/profile/${reply.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors">{reply.author?.full_name || 'Anonymous'}</Link>
               <span className="text-gray-300 dark:text-gray-600">·</span>
               <span>{timeAgo(reply.created_at)}</span>
               {reply.is_accepted && (
@@ -135,10 +135,10 @@ export default function ThreadView({ threadId }: Props) {
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed break-words">{reply.content}</p>
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => handleVote(reply.id, 'reply')}
-                className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-1.5 rounded-full transition-all active:scale-95">
+                className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-2 rounded-full transition-all active:scale-95 min-h-[40px] touch-manipulation">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
@@ -150,7 +150,7 @@ export default function ThreadView({ threadId }: Props) {
       </div>
 
       {user && (
-        <div className="sun-card p-5 space-y-3">
+        <div className="sun-card p-4 sm:p-5 space-y-3 sticky bottom-0 sm:static z-10">
           <div className="flex items-center gap-2.5 text-xs font-bold text-gray-500 dark:text-gray-400">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${getAvatarColor(user.full_name)}`}>
               {getInitials(user.full_name)}
@@ -162,7 +162,7 @@ export default function ThreadView({ threadId }: Props) {
             className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 resize-none transition-shadow" />
           <div className="flex justify-end">
             <button onClick={handleReply} disabled={replying || !replyContent.trim()}
-              className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md transition-all hover:shadow-lg disabled:opacity-50 active:scale-95">
+              className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md transition-all hover:shadow-lg disabled:opacity-50 active:scale-95 min-h-[44px] touch-manipulation">
               {replying ? 'Posting...' : 'Post Answer'}
             </button>
           </div>

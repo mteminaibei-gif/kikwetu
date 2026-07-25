@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
@@ -11,10 +11,10 @@ interface Props {
 }
 
 const POST_TYPES = [
-  { id: 'question', label: 'Swali (Q&A)', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { id: 'educative', label: 'Post (Maarifa)', icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
-  { id: 'poll', label: 'Kura (Poll)', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { id: 'swahili', label: 'Kiswahili', icon: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129' },
+  { id: 'question', label: 'Q&A', full: 'Swali (Q&A)', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { id: 'educative', label: 'Post', full: 'Post (Maarifa)', icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
+  { id: 'poll', label: 'Poll', full: 'Kura (Poll)', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { id: 'swahili', label: 'SW', full: 'Kiswahili', icon: 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129' },
 ];
 
 export default function CreatePostModal({ onClose }: Props) {
@@ -28,6 +28,18 @@ export default function CreatePostModal({ onClose }: Props) {
   const [spaceId, setSpaceId] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const handleSubmit = async () => {
     if (!content.trim()) { show('Please write some content.'); return; }
@@ -72,34 +84,47 @@ export default function CreatePostModal({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-      onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 duration-200"
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-          <h3 className="font-bold text-sm">Post to Baraza</h3>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors active:scale-90">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-post-title"
+        className="w-full sm:max-w-lg bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[min(92dvh,100%)] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <h3 id="create-post-title" className="font-bold text-sm">Post to Baraza</h3>
+          <button
+            onClick={onClose}
+            className="p-2.5 min-w-[44px] min-h-[44px] rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors active:scale-90 touch-manipulation flex items-center justify-center"
+            aria-label="Close"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-4 gap-2">
+        <div className="p-4 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {POST_TYPES.map(t => (
               <button key={t.id} onClick={() => setType(t.id)}
-                className={`flex flex-col items-center gap-1.5 py-3 border-2 rounded-xl text-[10px] font-bold transition-all active:scale-95 ${
-                  type === t.id ? 'border-brand-terracotta bg-brand-terracotta/10 text-brand-red shadow-sm' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                title={t.full}
+                className={`flex flex-col items-center gap-1 py-2.5 sm:py-3 border-2 rounded-xl text-[10px] font-bold transition-all active:scale-95 min-h-[52px] touch-manipulation ${
+                  type === t.id ? 'border-brand-terracotta bg-brand-terracotta/10 text-brand-red shadow-sm' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
                 }`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={t.icon} /></svg>
-                {t.label}
+                <span className="truncate max-w-full px-0.5">{t.label}</span>
               </button>
             ))}
           </div>
 
           <input value={title} onChange={e => setTitle(e.target.value)}
-            placeholder="Title (optional - defaults to first 100 chars)"
+            placeholder="Title (optional)"
             className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 transition-shadow" />
 
           <textarea value={content} onChange={e => setContent(e.target.value)}
@@ -113,15 +138,15 @@ export default function CreatePostModal({ onClose }: Props) {
                   <span className="text-xs font-bold text-brand-red w-5">{i + 1}.</span>
                   <input value={opt} onChange={e => updatePollOption(i, e.target.value)}
                     placeholder={`Option ${i + 1}`}
-                    className="flex-1 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50" />
+                    className="flex-1 min-w-0 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50" />
                   {pollOptions.length > 2 && (
-                    <button onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))}
-                      className="text-red-400 hover:text-red-600 text-xs font-semibold p-1">Remove</button>
+                    <button type="button" onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))}
+                      className="text-red-400 hover:text-red-600 text-xs font-semibold p-2 min-h-[40px] touch-manipulation">Remove</button>
                   )}
                 </div>
               ))}
-              <button onClick={addPollOption}
-                className="text-xs text-brand-red font-semibold hover:text-brand-red/80 transition-colors">+ Add option</button>
+              <button type="button" onClick={addPollOption}
+                className="text-xs text-brand-red font-semibold py-2 touch-manipulation">+ Add option</button>
             </div>
           )}
 
@@ -131,31 +156,25 @@ export default function CreatePostModal({ onClose }: Props) {
             </div>
           )}
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <select value={spaceId} onChange={e => setSpaceId(e.target.value)}
-              className="text-xs bg-gray-100 dark:bg-gray-800 p-2.5 rounded-lg font-semibold border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50">
+              className="text-xs bg-gray-100 dark:bg-gray-800 p-2.5 rounded-lg font-semibold border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 w-full sm:w-auto max-w-full">
               <option value="">General Baraza</option>
               {spaces.map(s => (
                 <option key={s.id} value={s.id}>{s.icon || '#'} {s.name}</option>
               ))}
             </select>
-            <div className="flex items-center gap-3">
-              <label className="text-xs text-gray-400 cursor-pointer hover:text-brand-red transition-colors flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                Media
-              </label>
-              <span className="text-xs text-gray-400 font-medium">{content.trim().length} chars</span>
-            </div>
+            <span className="text-xs text-gray-400 font-medium self-end sm:self-auto">{content.trim().length} chars</span>
           </div>
         </div>
 
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button onClick={onClose}
-            className="px-5 py-2.5 rounded-full text-xs font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            className="px-5 py-2.5 rounded-full text-xs font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors min-h-[44px] touch-manipulation">
             Cancel
           </button>
           <button onClick={handleSubmit} disabled={loading || !content.trim()}
-            className="bg-gradient-to-r from-brand-terracotta to-brand-red hover:from-brand-red hover:to-brand-terracotta text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-50 active:scale-95">
+            className="bg-gradient-to-r from-brand-terracotta to-brand-red hover:from-brand-red hover:to-brand-terracotta text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-50 active:scale-95 min-h-[44px] touch-manipulation">
             {loading ? 'Posting...' : 'Post to Baraza'}
           </button>
         </div>
