@@ -18,7 +18,7 @@ function SearchIcon({ className }: { className?: string }) { return <svg classNa
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth();
-  const { unreadCount, pendingSyncCount } = useApp();
+  const { unreadCount, pendingSyncCount, realtimeStatus } = useApp();
   const { uiLang, setUiLang } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -65,7 +65,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
     setMobileSearchOpen(false);
@@ -73,7 +72,6 @@ export default function Navbar() {
     setNotifOpen(false);
   }, [pathname]);
 
-  // Lock body scroll when mobile menu is open
   useEffect(() => {
     if (mobileOpen) {
       const prev = document.body.style.overflow;
@@ -123,6 +121,15 @@ export default function Navbar() {
   }, [router]);
 
   const menuLinkClass = 'flex items-center gap-3 min-h-[48px] px-3 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 active:bg-gray-100 dark:active:bg-gray-800 touch-manipulation';
+
+  const statusDot =
+    !online || realtimeStatus === 'offline'
+      ? { color: 'bg-red-500', label: 'Offline' }
+      : realtimeStatus === 'polling'
+        ? { color: 'bg-amber-500', label: 'Polling' }
+        : realtimeStatus === 'connected'
+          ? { color: 'bg-green-500', label: 'Live' }
+          : { color: 'bg-gray-400', label: 'Connecting' };
 
   return (
     <header className={cn(
@@ -188,8 +195,12 @@ export default function Navbar() {
                 )}
               </div>
 
-              <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-400">
-                <span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-green-500' : 'bg-red-500')} />
+              <div
+                className="hidden sm:flex items-center gap-1.5 text-[10px] text-gray-400"
+                title={`Realtime: ${statusDot.label}`}
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full', statusDot.color, realtimeStatus === 'connected' && 'animate-pulse')} />
+                <span className="hidden lg:inline">{statusDot.label}</span>
                 {pendingSyncCount > 0 && <span className="text-amber-500 font-medium">({pendingSyncCount})</span>}
               </div>
 
@@ -237,7 +248,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile search bar */}
       {mobileSearchOpen && user && (
         <div className="md:hidden border-t border-gray-200 dark:border-gray-800 px-3 py-2 bg-white dark:bg-brand-cardDark">
           <div className="relative">
@@ -268,7 +278,6 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Mobile drawer + backdrop */}
       {mobileOpen && (
         <>
           <div
@@ -287,6 +296,10 @@ export default function Navbar() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{user.full_name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username} · Heshima {user.heshima_score}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
+                        <span className={cn('w-1.5 h-1.5 rounded-full', statusDot.color)} />
+                        {statusDot.label}
+                      </p>
                     </div>
                   </div>
                   <Link href="/feed" onClick={() => setMobileOpen(false)} className={menuLinkClass}>Feed</Link>
