@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
-import { useLanguage } from '@/context/LanguageContext';
 import { createClient } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { cn, timeAgo } from '@/lib/utils';
+import { notificationHref } from '@/lib/notifications';
 
 function BellIcon({ className }: { className?: string }) { return <svg xmlns="http://www.w3.org/2000/svg" className={cn('h-5 w-5', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>; }
 function SunIcon({ className }: { className?: string }) { return <svg xmlns="http://www.w3.org/2000/svg" className={cn('h-5 w-5', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>; }
@@ -18,8 +18,10 @@ function SearchIcon({ className }: { className?: string }) { return <svg classNa
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth();
-  const { unreadCount, pendingSyncCount, realtimeStatus } = useApp();
-  const { uiLang, setUiLang } = useLanguage();
+  const {
+    unreadCount, pendingSyncCount, realtimeStatus,
+    notifications, loadNotifications, markNotificationsRead,
+  } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -92,6 +94,15 @@ export default function Navbar() {
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
+
+  const openNotifications = useCallback(async () => {
+    const next = !notifOpen;
+    setNotifOpen(next);
+    if (next) {
+      await loadNotifications();
+      if (unreadCount > 0) await markNotificationsRead();
+    }
+  }, [notifOpen, loadNotifications, markNotificationsRead, unreadCount]);
 
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim() || !user) { setSearchResults([]); setSearchOpen(false); return; }
@@ -183,14 +194,49 @@ export default function Navbar() {
           {user ? (
             <>
               <div className="relative" ref={notifRef}>
-                <button onClick={() => setNotifOpen(prev => !prev)} className="relative p-2.5 min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90 touch-manipulation" aria-label="Notifications">
+                <button onClick={openNotifications} className="relative p-2.5 min-w-[44px] min-h-[44px] rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-90 touch-manipulation" aria-label="Notifications">
                   <BellIcon />
-                  {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-red rounded-full animate-ping" />}
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[1rem] h-4 px-1 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-[min(18rem,calc(100vw-1.5rem))] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl py-3 z-50">
-                    <div className="px-4 pb-2 border-b border-gray-100 dark:border-gray-800"><p className="text-sm font-bold">Notifications</p></div>
-                    <div className="px-4 py-8 text-center text-xs text-gray-400">No new notifications.</div>
+                  <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl z-50 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      <p className="text-sm font-bold">Notifications</p>
+                      {notifications.length > 0 && (
+                        <button type="button" onClick={() => markNotificationsRead()} className="text-[10px] text-brand-red font-semibold">Mark all read</button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-xs text-gray-400">No notifications yet.</div>
+                      ) : (
+                        notifications.map(n => {
+                          const href = notificationHref(n);
+                          return (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => {
+                                setNotifOpen(false);
+                                if (href) router.push(href);
+                              }}
+                              className={cn(
+                                'w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors touch-manipulation',
+                                !n.is_read ? 'bg-brand-terracotta/5' : 'hover:bg-gray-50 dark:hover:bg-gray-800',
+                              )}
+                            >
+                              <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">{n.title || n.type}</p>
+                              {n.body && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>}
+                              <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
