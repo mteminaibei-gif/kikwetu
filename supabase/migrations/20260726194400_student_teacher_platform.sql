@@ -19,24 +19,24 @@ CREATE TABLE IF NOT EXISTS professional_requests (
 
 ALTER TABLE professional_requests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read approved requests"
-  ON professional_requests FOR SELECT
+DROP POLICY IF EXISTS "Anyone can read approved requests" ON professional_requests;
+CREATE POLICY "Anyone can read approved requests" ON professional_requests FOR SELECT
   USING (status = 'approved');
 
-CREATE POLICY "Users can read own requests"
-  ON professional_requests FOR SELECT
+DROP POLICY IF EXISTS "Users can read own requests" ON professional_requests;
+CREATE POLICY "Users can read own requests" ON professional_requests FOR SELECT
   USING (profile_id = auth.uid());
 
-CREATE POLICY "Users can insert own requests"
-  ON professional_requests FOR INSERT
+DROP POLICY IF EXISTS "Users can insert own requests" ON professional_requests;
+CREATE POLICY "Users can insert own requests" ON professional_requests FOR INSERT
   WITH CHECK (profile_id = auth.uid());
 
-CREATE POLICY "Admins can read all requests"
-  ON professional_requests FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all requests" ON professional_requests;
+CREATE POLICY "Admins can read all requests" ON professional_requests FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
-CREATE POLICY "Admins can update requests"
-  ON professional_requests FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update requests" ON professional_requests;
+CREATE POLICY "Admins can update requests" ON professional_requests FOR UPDATE
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- 2. PROFESSIONALS (verified teachers)
@@ -61,24 +61,24 @@ CREATE TABLE IF NOT EXISTS professionals (
 
 ALTER TABLE professionals ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read approved professionals"
-  ON professionals FOR SELECT
+DROP POLICY IF EXISTS "Anyone can read approved professionals" ON professionals;
+CREATE POLICY "Anyone can read approved professionals" ON professionals FOR SELECT
   USING (verification_status = 'approved');
 
-CREATE POLICY "Professionals can read own profile"
-  ON professionals FOR SELECT
+DROP POLICY IF EXISTS "Professionals can read own profile" ON professionals;
+CREATE POLICY "Professionals can read own profile" ON professionals FOR SELECT
   USING (profile_id = auth.uid());
 
-CREATE POLICY "Admins can read all"
-  ON professionals FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all" ON professionals;
+CREATE POLICY "Admins can read all" ON professionals FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
-CREATE POLICY "Admins can insert/update"
-  ON professionals FOR INSERT
+DROP POLICY IF EXISTS "Admins can insert/update" ON professionals;
+CREATE POLICY "Admins can insert/update" ON professionals FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
-CREATE POLICY "Admins can update professionals"
-  ON professionals FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update professionals" ON professionals;
+CREATE POLICY "Admins can update professionals" ON professionals FOR UPDATE
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- 3. TEACHING SESSIONS (student books a session with a professional)
@@ -95,20 +95,20 @@ CREATE TABLE IF NOT EXISTS teaching_sessions (
 
 ALTER TABLE teaching_sessions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Participants can read sessions"
-  ON teaching_sessions FOR SELECT
+DROP POLICY IF EXISTS "Participants can read sessions" ON teaching_sessions;
+CREATE POLICY "Participants can read sessions" ON teaching_sessions FOR SELECT
   USING (student_id = auth.uid() OR professional_id = auth.uid());
 
-CREATE POLICY "Students can insert sessions"
-  ON teaching_sessions FOR INSERT
+DROP POLICY IF EXISTS "Students can insert sessions" ON teaching_sessions;
+CREATE POLICY "Students can insert sessions" ON teaching_sessions FOR INSERT
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY "Participants can update sessions"
-  ON teaching_sessions FOR UPDATE
+DROP POLICY IF EXISTS "Participants can update sessions" ON teaching_sessions;
+CREATE POLICY "Participants can update sessions" ON teaching_sessions FOR UPDATE
   USING (student_id = auth.uid() OR professional_id = auth.uid());
 
-CREATE POLICY "Admins can read all sessions"
-  ON teaching_sessions FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all sessions" ON teaching_sessions;
+CREATE POLICY "Admins can read all sessions" ON teaching_sessions FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- 4. CHAT MESSAGES (within a session)
@@ -122,8 +122,8 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Session participants can read messages"
-  ON chat_messages FOR SELECT
+DROP POLICY IF EXISTS "Session participants can read messages" ON chat_messages;
+CREATE POLICY "Session participants can read messages" ON chat_messages FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM teaching_sessions
@@ -132,8 +132,8 @@ CREATE POLICY "Session participants can read messages"
     )
   );
 
-CREATE POLICY "Session participants can insert messages"
-  ON chat_messages FOR INSERT
+DROP POLICY IF EXISTS "Session participants can insert messages" ON chat_messages;
+CREATE POLICY "Session participants can insert messages" ON chat_messages FOR INSERT
   WITH CHECK (
     sender_id = auth.uid() AND
     EXISTS (
@@ -143,12 +143,15 @@ CREATE POLICY "Session participants can insert messages"
     )
   );
 
-CREATE POLICY "Admins can read all messages"
-  ON chat_messages FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all messages" ON chat_messages;
+CREATE POLICY "Admins can read all messages" ON chat_messages FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Enable realtime for chat messages
-ALTER publication supabase_realtime ADD TABLE chat_messages;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 5. SERVICE RATINGS (student rates a session)
 CREATE TABLE IF NOT EXISTS service_ratings (
@@ -164,12 +167,12 @@ CREATE TABLE IF NOT EXISTS service_ratings (
 
 ALTER TABLE service_ratings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read ratings"
-  ON service_ratings FOR SELECT
+DROP POLICY IF EXISTS "Anyone can read ratings" ON service_ratings;
+CREATE POLICY "Anyone can read ratings" ON service_ratings FOR SELECT
   USING (true);
 
-CREATE POLICY "Students can insert own ratings"
-  ON service_ratings FOR INSERT
+DROP POLICY IF EXISTS "Students can insert own ratings" ON service_ratings;
+CREATE POLICY "Students can insert own ratings" ON service_ratings FOR INSERT
   WITH CHECK (student_id = auth.uid());
 
 -- 6. TIPS (student tips professional via M-Pesa)
@@ -186,20 +189,20 @@ CREATE TABLE IF NOT EXISTS tips (
 
 ALTER TABLE tips ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Participants can read own tips"
-  ON tips FOR SELECT
+DROP POLICY IF EXISTS "Participants can read own tips" ON tips;
+CREATE POLICY "Participants can read own tips" ON tips FOR SELECT
   USING (student_id = auth.uid() OR professional_id = auth.uid());
 
-CREATE POLICY "Students can insert tips"
-  ON tips FOR INSERT
+DROP POLICY IF EXISTS "Students can insert tips" ON tips;
+CREATE POLICY "Students can insert tips" ON tips FOR INSERT
   WITH CHECK (student_id = auth.uid());
 
-CREATE POLICY "Admins can read all tips"
-  ON tips FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all tips" ON tips;
+CREATE POLICY "Admins can read all tips" ON tips FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
-CREATE POLICY "Admins can update tips"
-  ON tips FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update tips" ON tips;
+CREATE POLICY "Admins can update tips" ON tips FOR UPDATE
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- 7. RPC: Update professional average rating
@@ -221,4 +224,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 8. Enable realtime for teaching_sessions (for chat status updates)
-ALTER publication supabase_realtime ADD TABLE teaching_sessions;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE teaching_sessions;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

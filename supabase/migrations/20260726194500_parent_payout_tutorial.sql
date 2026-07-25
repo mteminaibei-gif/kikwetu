@@ -18,20 +18,20 @@ CREATE TABLE IF NOT EXISTS parent_links (
 
 ALTER TABLE parent_links ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Parents can read own links"
-  ON parent_links FOR SELECT
+DROP POLICY IF EXISTS "Parents can read own links" ON parent_links;
+CREATE POLICY "Parents can read own links" ON parent_links FOR SELECT
   USING (parent_id = auth.uid());
 
-CREATE POLICY "Parents can insert own links"
-  ON parent_links FOR INSERT
+DROP POLICY IF EXISTS "Parents can insert own links" ON parent_links;
+CREATE POLICY "Parents can insert own links" ON parent_links FOR INSERT
   WITH CHECK (parent_id = auth.uid());
 
-CREATE POLICY "Parents can update own links"
-  ON parent_links FOR UPDATE
+DROP POLICY IF EXISTS "Parents can update own links" ON parent_links;
+CREATE POLICY "Parents can update own links" ON parent_links FOR UPDATE
   USING (parent_id = auth.uid());
 
-CREATE POLICY "Admins can read all parent_links"
-  ON parent_links FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all parent_links" ON parent_links;
+CREATE POLICY "Admins can read all parent_links" ON parent_links FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- 3. Add tip split columns to tips table
@@ -55,20 +55,23 @@ CREATE TABLE IF NOT EXISTS payouts (
 
 ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Professionals can read own payouts"
-  ON payouts FOR SELECT
+DROP POLICY IF EXISTS "Professionals can read own payouts" ON payouts;
+CREATE POLICY "Professionals can read own payouts" ON payouts FOR SELECT
   USING (professional_id = auth.uid());
 
-CREATE POLICY "Admins can read all payouts"
-  ON payouts FOR SELECT
+DROP POLICY IF EXISTS "Admins can read all payouts" ON payouts;
+CREATE POLICY "Admins can read all payouts" ON payouts FOR SELECT
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
-CREATE POLICY "Admins can manage payouts"
-  ON payouts FOR ALL
+DROP POLICY IF EXISTS "Admins can manage payouts" ON payouts;
+CREATE POLICY "Admins can manage payouts" ON payouts FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- 5. Enable realtime for payouts
-ALTER publication supabase_realtime ADD TABLE payouts;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE payouts;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 6. Update existing tips with calculated split values (run once)
 UPDATE tips SET
@@ -90,14 +93,14 @@ CREATE TABLE IF NOT EXISTS nyumba_kumi_posts (
 
 ALTER TABLE nyumba_kumi_posts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read nyumba_kumi posts"
-  ON nyumba_kumi_posts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Anyone can read nyumba_kumi posts" ON nyumba_kumi_posts;
+CREATE POLICY "Anyone can read nyumba_kumi posts" ON nyumba_kumi_posts FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can insert posts"
-  ON nyumba_kumi_posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Authenticated users can insert posts" ON nyumba_kumi_posts;
+CREATE POLICY "Authenticated users can insert posts" ON nyumba_kumi_posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Authors can update own posts"
-  ON nyumba_kumi_posts FOR UPDATE USING (author_id = auth.uid());
+DROP POLICY IF EXISTS "Authors can update own posts" ON nyumba_kumi_posts;
+CREATE POLICY "Authors can update own posts" ON nyumba_kumi_posts FOR UPDATE USING (author_id = auth.uid());
 
 CREATE TABLE IF NOT EXISTS nyumba_kumi_replies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -109,14 +112,20 @@ CREATE TABLE IF NOT EXISTS nyumba_kumi_replies (
 
 ALTER TABLE nyumba_kumi_replies ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read replies"
-  ON nyumba_kumi_replies FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Anyone can read replies" ON nyumba_kumi_replies;
+CREATE POLICY "Anyone can read replies" ON nyumba_kumi_replies FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can insert replies"
-  ON nyumba_kumi_replies FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Authenticated users can insert replies" ON nyumba_kumi_replies;
+CREATE POLICY "Authenticated users can insert replies" ON nyumba_kumi_replies FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-ALTER publication supabase_realtime ADD TABLE nyumba_kumi_posts;
-ALTER publication supabase_realtime ADD TABLE nyumba_kumi_replies;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE nyumba_kumi_posts;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE nyumba_kumi_replies;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- 8. AUTO-CREATE TRIGGER: Profile on user signup (runs when auth.users row created)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
