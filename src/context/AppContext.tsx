@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { createClient } from '@/lib/supabase';
 import { Offline } from '@/lib/offline';
 import { subscribeWithFallback, onRealtimeStatus, type RealtimeStatus } from '@/lib/realtime';
+import { insertNotification } from '@/lib/notifications';
 import type {
   Thread, Reply, Space, Notification, Professional, ProfessionalRequest,
   TeachingSession, ChatMessage, ServiceRating, Tip,
@@ -34,6 +35,7 @@ interface AppContextType extends AppState {
   loadReplies: (threadId: string) => Promise<void>;
   loadSpaces: () => Promise<void>;
   loadNotifications: () => Promise<void>;
+  markNotificationsRead: (ids?: string[]) => Promise<void>;
   createThread: (data: Partial<Thread>) => Promise<{ error?: string }>;
   createReply: (threadId: string, content: string) => Promise<{ error?: string }>;
   vote: (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => Promise<void>;
@@ -113,12 +115,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadNotifications = useCallback(async () => {
     if (!user) return;
     const sb = createClient();
-    const { data } = await sb.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+    const { data } = await sb.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30);
     if (data) {
       const notifs = data as Notification[];
       update({ notifications: notifs, unreadCount: notifs.filter(n => !n.is_read).length });
     }
   }, [user, update]);
+
+  const markNotificationsRead = useCallback(async (ids?: string[]) => {
+    if (!user) return;
+    const sb = createClient();
+    let q = sb.from('notifications').update({ is_read: true }).eq('user_id', user.id);
+    if (ids?.length) q = q.in('id', ids);
+    else q = q.eq('is_read', false);
+    await q;
+    setState(prev => ({
+      ...prev,
+      notifications: prev.notifications.map(n =>
+        (!ids || ids.includes(n.id)) ? { ...n, is_read: true } : n
+      ),
+      unreadCount: ids
+        ? prev.notifications.filter(n => !n.is_read && !ids.includes(n.id)).length
+        : 0,
+    }));
+  }, [user]);
 
   const createThreadFn = useCallback(async (data: Partial<Thread>): Promise<{ error?: string }> => {
     if (!data.author_id) return { error: 'Missing author_id' };
@@ -166,14 +186,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     await loadReplies(threadId);
     try {
-      const { data: thread } = await sb.from('threads').select('author_id').eq('id', threadId).single();
-      if (thread?.author_id && thread.author_id !== user.id) {
-        await sb.from('notifications').insert({
+      const { data: thread } = await sb.from('threads').select('author_id, title').eq('id', threadId).single();
+      if (thread?.author_id) {
+        await insertNotification(sb, {
           user_id: thread.author_id,
           actor_id: user.id,
           type: 'reply',
-          entity_type: 'thread',
-          entity_id: threadId,
+          title: 'New reply on your post',
+          body: content.slice(0, 120),
+          related_id: threadId,
         });
       }
     } catch { /* non-critical */ }
@@ -192,22 +213,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } });
       return;
     }
+    if (voteType !== 'up') return;
     try {
       let authorId: string | null = null;
+      let relatedId = entityId;
       if (entityType === 'thread') {
         const { data: thread } = await sb.from('threads').select('author_id').eq('id', entityId).single();
         authorId = thread?.author_id ?? null;
       } else {
-        const { data: reply } = await sb.from('replies').select('author_id').eq('id', entityId).single();
+        const { data: reply } = await sb.from('replies').select('author_id, thread_id').eq('id', entityId).single();
         authorId = reply?.author_id ?? null;
+        if (reply?.thread_id) relatedId = reply.thread_id;
       }
-      if (authorId && authorId !== user.id) {
-        await sb.from('notifications').insert({
+      if (authorId) {
+        await insertNotification(sb, {
           user_id: authorId,
           actor_id: user.id,
-          type: 'vote',
-          entity_type: entityType,
-          entity_id: entityId,
+          type: 'upvote',
+          title: entityType === 'thread' ? 'Someone upvoted your post' : 'Someone upvoted your reply',
+          related_id: relatedId,
         });
       }
     } catch { /* non-critical */ }
@@ -480,7 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      ...state, loadThreads, loadThread, loadReplies, loadSpaces, loadNotifications,
+      ...state, loadThreads, loadThread, loadReplies, loadSpaces, loadNotifications, markNotificationsRead,
       createThread: createThreadFn, createReply, vote, subscribeToFeed,
       setSelectedThread: (t) => update({ selectedThread: t }),
       loadProfessionals, loadProfessionalRequests, requestProfessional, reviewProfessionalRequest,
