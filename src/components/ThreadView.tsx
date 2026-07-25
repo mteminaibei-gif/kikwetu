@@ -77,7 +77,7 @@ export default function ThreadView({ threadId }: Props) {
   if (!thread) return <div className="text-center py-12 text-gray-400 px-4">Thread not found.</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-8">
+    <div className="page-shell max-w-3xl py-3 sm:py-6 space-y-4 sm:space-y-6 pb-28 md:pb-8">
       <div className="sun-card p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
@@ -91,7 +91,7 @@ export default function ThreadView({ threadId }: Props) {
         <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed break-words">{thread.content}</p>
         <div className="flex items-center justify-between gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 flex-wrap">
           <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0">
-            <Link href={`/profile/${thread.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${getAvatarColor(thread.author?.full_name)}`}>
+            <Link href={`/profile/${thread.author_id}`} className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${getAvatarColor(thread.author?.full_name)}`}>
               {getInitials(thread.author?.full_name)}
             </Link>
             <Link href={`/profile/${thread.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors truncate">{thread.author?.full_name || 'Anonymous'}</Link>
@@ -99,8 +99,8 @@ export default function ThreadView({ threadId }: Props) {
             <span className="shrink-0">{timeAgo(thread.created_at)}</span>
           </div>
           <button onClick={() => handleVote(thread.id, 'thread')}
-            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-2 rounded-full transition-all active:scale-95 min-h-[40px] touch-manipulation shrink-0">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 active:bg-brand-terracotta active:text-white px-3 py-2.5 rounded-full transition-all min-h-[44px] touch-manipulation shrink-0">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
             {formatNumber(thread.upvotes_count)}
@@ -108,13 +108,13 @@ export default function ThreadView({ threadId }: Props) {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="font-bold text-sm flex items-center gap-2">
+      <div className="space-y-3 sm:space-y-4">
+        <h3 className="font-bold text-sm flex items-center gap-2 px-0.5">
           <svg className="w-4 h-4 text-brand-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
           {replies.length} {replies.length === 1 ? 'Answer' : 'Answers'}
         </h3>
         {replies.length === 0 && (
-          <div className="text-center py-12 text-sm text-gray-400">
+          <div className="text-center py-10 text-sm text-gray-400">
             <svg className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
             No answers yet. Be the first to respond!
           </div>
@@ -122,7 +122,7 @@ export default function ThreadView({ threadId }: Props) {
         {replies.map(reply => (
           <div key={reply.id} className="sun-card p-4 sm:p-5 space-y-3">
             <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
-              <Link href={`/profile/${reply.author_id}`} className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${getAvatarColor(reply.author?.full_name)}`}>
+              <Link href={`/profile/${reply.author_id}`} className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${getAvatarColor(reply.author?.full_name)}`}>
                 {getInitials(reply.author?.full_name)}
               </Link>
               <Link href={`/profile/${reply.author_id}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-brand-red transition-colors">{reply.author?.full_name || 'Anonymous'}</Link>
@@ -138,8 +138,8 @@ export default function ThreadView({ threadId }: Props) {
             <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed break-words">{reply.content}</p>
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => handleVote(reply.id, 'reply')}
-                className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 hover:bg-brand-terracotta hover:text-white px-3 py-2 rounded-full transition-all active:scale-95 min-h-[40px] touch-manipulation">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 active:bg-brand-terracotta active:text-white px-3 py-2.5 rounded-full transition-all min-h-[44px] touch-manipulation">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
                 {formatNumber(reply.upvotes_count)}
@@ -150,19 +150,19 @@ export default function ThreadView({ threadId }: Props) {
       </div>
 
       {user && (
-        <div className="sun-card p-4 sm:p-5 space-y-3 sticky bottom-0 sm:static z-10">
+        <div className="sun-card p-3 sm:p-5 space-y-3 mobile-composer shadow-lg border border-brand-terracotta/15">
           <div className="flex items-center gap-2.5 text-xs font-bold text-gray-500 dark:text-gray-400">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${getAvatarColor(user.full_name)}`}>
               {getInitials(user.full_name)}
             </div>
-            {user.full_name}
+            <span className="truncate">{user.full_name}</span>
           </div>
           <textarea value={replyContent} onChange={e => setReplyContent(e.target.value)}
             rows={3} placeholder="Write your answer... (Andika jibu lako)"
             className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 resize-none transition-shadow" />
           <div className="flex justify-end">
             <button onClick={handleReply} disabled={replying || !replyContent.trim()}
-              className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md transition-all hover:shadow-lg disabled:opacity-50 active:scale-95 min-h-[44px] touch-manipulation">
+              className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white px-6 py-3 rounded-full text-xs font-bold shadow-md disabled:opacity-50 active:scale-95 min-h-[44px] touch-manipulation">
               {replying ? 'Posting...' : 'Post Answer'}
             </button>
           </div>

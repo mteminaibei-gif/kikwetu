@@ -37,8 +37,9 @@ export default function MobileBottomNav() {
   const { user } = useAuth();
   const pathname = usePathname();
 
-  // Hide when logged out or on landing
-  if (!user || pathname === '/') return null;
+  if (!user || pathname === '/' || pathname?.startsWith('/chat') || pathname?.startsWith('/onboarding') || pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   const isActive = (href: string) => {
     if (href === '/feed') return pathname === '/feed' || pathname?.startsWith('/thread');
@@ -49,14 +50,14 @@ export default function MobileBottomNav() {
     return false;
   };
 
-  const profileActive = pathname?.startsWith('/profile');
+  const profileActive = pathname?.startsWith('/profile') || pathname === '/settings' || pathname === '/parent';
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-xl border-t border-gray-200/80 dark:border-gray-800 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 dark:bg-brand-cardDark/95 backdrop-blur-xl border-t border-gray-200/80 dark:border-gray-800 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_24px_rgba(0,0,0,0.08)]"
       aria-label="Primary"
     >
-      <div className="flex items-stretch justify-around h-[3.75rem] px-1 max-w-lg mx-auto">
+      <div className="flex items-stretch justify-around h-14 px-0.5 max-w-lg mx-auto">
         {NAV_ITEMS.map(item => {
           const active = isActive(item.href);
           return (
@@ -64,14 +65,14 @@ export default function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'relative flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] flex-1 rounded-xl transition-colors touch-manipulation',
-                active ? 'text-brand-red' : 'text-gray-400 dark:text-gray-500 active:text-gray-600'
+                'relative flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 rounded-lg transition-colors touch-manipulation py-1',
+                active ? 'text-brand-red' : 'text-gray-400 dark:text-gray-500 active:bg-gray-50 dark:active:bg-gray-900'
               )}
             >
               {active && (
-                <span className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-brand-red/90" aria-hidden />
+                <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-7 h-0.5 rounded-full bg-brand-red" aria-hidden />
               )}
-              <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2.5 : 2} d={item.icon} />
               </svg>
               <span className={cn('text-[10px] leading-none font-semibold truncate max-w-full px-0.5', active && 'font-bold')}>
@@ -83,14 +84,14 @@ export default function MobileBottomNav() {
         <Link
           href={`/profile/${user.id}`}
           className={cn(
-            'relative flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] flex-1 rounded-xl transition-colors touch-manipulation',
-            profileActive ? 'text-brand-red' : 'text-gray-400 dark:text-gray-500 active:text-gray-600'
+            'relative flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 rounded-lg transition-colors touch-manipulation py-1',
+            profileActive ? 'text-brand-red' : 'text-gray-400 dark:text-gray-500 active:bg-gray-50 dark:active:bg-gray-900'
           )}
         >
           {profileActive && (
-            <span className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-brand-red/90" aria-hidden />
+            <span className="absolute top-0.5 left-1/2 -translate-x-1/2 w-7 h-0.5 rounded-full bg-brand-red" aria-hidden />
           )}
-          <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={profileActive ? 2.5 : 2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
           <span className={cn('text-[10px] leading-none font-semibold', profileActive && 'font-bold')}>You</span>
