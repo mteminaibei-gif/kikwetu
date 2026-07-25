@@ -136,7 +136,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { error: error.message };
     }
     await loadReplies(threadId);
-    // Notify thread author
     try {
       const { data: thread } = await sb.from('threads').select('author_id').eq('id', threadId).single();
       if (thread?.author_id && thread.author_id !== user.id) {
@@ -164,7 +163,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
-      // Queue for later if offline; otherwise surface the failure so UI can revert
       if (!navigator.onLine) {
         await Offline.queueAction({
           type: 'vote',
@@ -176,7 +174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message || 'Vote failed');
     }
 
-    // Read the authoritative count after the RPC (handles toggle correctly)
+    // Read authoritative count after RPC (handles toggle correctly)
     let upvotes_count: number | undefined;
     try {
       if (entityType === 'thread') {
@@ -241,7 +239,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const channel = sb.channel('feed-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, async (p) => {
         const newThread = p.new as Thread;
-        // Avoid duplicate
         setState(prev => {
           if (prev.threads.find(t => t.id === newThread.id)) return prev;
           return prev;
@@ -268,7 +265,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           };
         });
       })
-      // IMPORTANT: no broken filter — previous `upvotes_count=neq.-1` prevented most vote updates
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'threads' }, (p) => {
         const updated = p.new as Thread;
         setState(prev => ({
@@ -303,6 +299,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
             t.id === newReply.thread_id
               ? { ...t, reply_count: (t.reply_count || 0) + 1 }
               : t
+          ),
+        }));
+      })
+      // Realtime for reply vote counts (ThreadView + any shared reply lists)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'replies' }, (p) => {
+        const updated = p.new as Reply;
+        setState(prev => ({
+          ...prev,
+          replies: prev.replies.map(r =>
+            r.id === updated.id
+              ? { ...r, upvotes_count: updated.upvotes_count, is_accepted: updated.is_accepted }
+              : r
           ),
         }));
       })

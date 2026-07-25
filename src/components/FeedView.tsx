@@ -81,7 +81,8 @@ export default function FeedView() {
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  // Local optimistic counts so UI feels instant; authoritative value comes from vote() / realtime
+  // Optimistic overrides only while a vote is in flight / until server catches up.
+  // Cleared when context threads.upvotes_count matches so Realtime is never blocked.
   const [localCounts, setLocalCounts] = useState<Record<string, number>>({});
 
   const [savedThreads, setSavedThreads] = useState<Record<string, boolean>>(() => {
@@ -98,6 +99,23 @@ export default function FeedView() {
     const unsub = subscribeToFeed();
     return () => unsub();
   }, [subscribeToFeed]);
+
+  // Drop optimistic overrides once the authoritative context value matches.
+  // This unblocks Realtime updates from other users and loadThreads/poll.
+  useEffect(() => {
+    setLocalCounts(prev => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const t of threads) {
+        if (t.id in next && next[t.id] === (t.upvotes_count ?? 0)) {
+          delete next[t.id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [threads]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -156,7 +174,7 @@ export default function FeedView() {
     if (votingThread === thread.id) return;
 
     const prevCount = getDisplayCount(thread);
-    // Optimistic delta (exact value comes back from RPC / realtime)
+    // Optimistic delta only — toggle_vote may add/remove/switch; server count is authoritative.
     const optimistic = voteType === 'up' ? prevCount + 1 : Math.max(0, prevCount - 1);
     setLocalCounts(c => ({ ...c, [thread.id]: optimistic }));
     setVotingThread(thread.id);
@@ -164,11 +182,18 @@ export default function FeedView() {
     try {
       const result = await vote(thread.id, 'thread', voteType);
       if (typeof result.upvotes_count === 'number') {
+        // Align with server; sync effect will clear once context matches.
         setLocalCounts(c => ({ ...c, [thread.id]: result.upvotes_count! }));
+      } else {
+        // No count returned — drop override so context/Realtime drives UI.
+        setLocalCounts(c => {
+          const next = { ...c };
+          delete next[thread.id];
+          return next;
+        });
       }
-      // Do NOT call loadThreads() here — it resets the list, loses scroll, and races with realtime
+      // Do NOT call loadThreads() — avoids scroll jump and races with Realtime.
     } catch (err: unknown) {
-      // Revert optimistic update
       setLocalCounts(c => ({ ...c, [thread.id]: prevCount }));
       show(err instanceof Error ? err.message : 'Vote failed');
     } finally {
