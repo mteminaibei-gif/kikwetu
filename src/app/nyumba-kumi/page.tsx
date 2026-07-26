@@ -80,8 +80,11 @@ export default function NyumbaKumiPage() {
   const { user } = useAuth();
   const { tr, contentLang } = useLanguage();
   const { show } = useToast();
-  const sbRef = useRef(createClient());
-  const sb = sbRef.current;
+  const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (typeof window !== 'undefined' && !sbRef.current) {
+    sbRef.current = createClient();
+  }
+  const sb = sbRef.current as NonNullable<ReturnType<typeof createClient>>;
 
   const [tab, setTab] = useState<'feed' | 'communities' | 'nearby'>('feed');
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
