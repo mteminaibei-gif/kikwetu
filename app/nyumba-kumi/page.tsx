@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   ShieldCheck, Plus, AlertTriangle, CheckCircle, MapPin,
   Clock, Phone, Users, ChevronRight, Bell, Shield, Eye,
 } from 'lucide-react';
 
-const alerts = [
+const MOCK_ALERTS = [
   {
     id: 1,
     title: 'Water outage reported',
@@ -45,8 +46,59 @@ const emergencyContacts = [
   { label: 'Nyumba Kumi Chair', number: '+254 700 123 456', icon: Users },
 ];
 
+type AlertItem = typeof MOCK_ALERTS[number];
+
 export default function NyumbaKumiPage() {
   const { showToast } = useApp();
+  const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState<AlertItem[]>(MOCK_ALERTS);
+
+  useEffect(() => {
+    async function fetchAlerts() {
+      try {
+        const { data, error } = await supabase
+          .from('safety_alerts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setAlerts(data.map((item: any) => ({
+            id: item.id ?? 0,
+            title: item.title ?? 'Alert',
+            area: item.area ?? '',
+            time: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently',
+            confirmations: item.confirmations ?? 0,
+            type: item.type === 'calm' ? 'calm' : 'urgent',
+            icon: item.type === 'calm' ? Users : AlertTriangle,
+          })));
+        }
+      } catch {
+        // fallback to mock
+      }
+      setLoading(false);
+    }
+    fetchAlerts();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Nyumba Kumi</div>
+            <h1 className="serif">Look out for your neighbourhood.</h1>
+            <p>Community-driven safety alerts and local emergency coordination.</p>
+          </div>
+        </div>
+        <section className="section">
+          <div style={{ opacity: 0.5, padding: 20, textAlign: 'center' }}>Loading alerts...</div>
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

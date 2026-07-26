@@ -1,6 +1,8 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   Pencil,
   HeartHandshake,
@@ -16,8 +18,116 @@ import {
   Edit,
 } from 'lucide-react';
 
+const MOCK_PROFILE = {
+  name: 'Grid Pulse',
+  username: '@gridpulse',
+  location: 'Nairobi',
+  bio: 'I care about useful interfaces, local stories, and making complex things feel obvious.',
+  heshima: '740',
+  followers: '1.2k',
+  questions: '18',
+  badges: '4',
+  initials: 'GP',
+  topics: ['Product design', 'Community tech', 'UX writing', 'Startups'],
+  badgeList: [
+    { name: 'Neighbour', icon: HeartHandshake },
+    { name: 'Useful voice', icon: Sparkles },
+    { name: 'Early builder', icon: Rocket },
+  ],
+};
+
+const MOCK_ACTIVITY = [
+  {
+    icon: MessageCircle,
+    mark: 'Asked',
+    copy: 'How do you design a form that feels friendly on a low-end phone?',
+    time: '2 days ago',
+  },
+  {
+    icon: ThumbsUp,
+    mark: 'Answered',
+    copy: 'Gave a practical answer about offline-first sync for local schools.',
+    time: '4 days ago',
+  },
+  {
+    icon: Bookmark,
+    mark: 'Saved',
+    copy: 'Bookmarked a post on community-led tech onboarding in Kilifi.',
+    time: '1 week ago',
+  },
+  {
+    icon: Award,
+    mark: 'Earned',
+    copy: 'Earned the Early Builder badge for first 10 contributions.',
+    time: '2 weeks ago',
+  },
+];
+
 export default function ProfilePage() {
   const { showToast } = useApp();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(MOCK_PROFILE);
+  const [threadsCount, setThreadsCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
+
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (prof) {
+          setProfile((prev) => ({
+            ...prev,
+            name: prof.full_name || prev.name,
+            username: prof.username ? `@${prof.username}` : prev.username,
+            location: prof.location || prev.location,
+            bio: prof.bio || prev.bio,
+            initials: prof.full_name
+              ? prof.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+              : prev.initials,
+          }));
+        }
+
+        const { count } = await supabase
+          .from('threads')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+
+        if (count !== null) {
+          setProfile((prev) => ({ ...prev, questions: String(count) }));
+        }
+      } catch {
+        // fallback to mock
+      }
+      setLoading(false);
+    }
+    fetchProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout showRightSidebar={false}>
+        <div className="page-head">
+          <div>
+            <span className="eyebrow">Profile</span>
+            <h1 className="serif">Your contribution has a home.</h1>
+          </div>
+        </div>
+        <div className="profile-card" style={{ opacity: 0.5 }}>
+          <div className="profile-top">
+            <div className="avatar lg">...</div>
+            <div><h2>Loading...</h2><p>Please wait</p></div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout showRightSidebar={false}>
@@ -37,10 +147,10 @@ export default function ProfilePage() {
 
       <div className="profile-card">
         <div className="profile-top">
-          <div className="avatar lg">GP</div>
+          <div className="avatar lg">{profile.initials}</div>
           <div>
             <h2>
-              Grid Pulse{' '}
+              {profile.name}{' '}
               <span
                 className="verified"
                 style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 6 }}
@@ -48,29 +158,29 @@ export default function ProfilePage() {
                 ✓
               </span>
             </h2>
-            <p>@gridpulse · Nairobi</p>
+            <p>{profile.username} · {profile.location}</p>
           </div>
         </div>
 
         <p className="profile-bio">
-          I care about useful interfaces, local stories, and making complex things feel obvious.
+          {profile.bio}
         </p>
 
         <div className="profile-stats">
           <div className="profile-stat">
-            <strong>740</strong>
+            <strong>{profile.heshima}</strong>
             <span>Heshima</span>
           </div>
           <div className="profile-stat">
-            <strong>1.2k</strong>
+            <strong>{profile.followers}</strong>
             <span>Followers</span>
           </div>
           <div className="profile-stat">
-            <strong>18</strong>
+            <strong>{profile.questions}</strong>
             <span>Questions</span>
           </div>
           <div className="profile-stat">
-            <strong>4</strong>
+            <strong>{profile.badges}</strong>
             <span>Badges</span>
           </div>
         </div>
@@ -88,10 +198,9 @@ export default function ProfilePage() {
             </button>
           </div>
           <div className="tags">
-            <span className="tag">Product design</span>
-            <span className="tag">Community tech</span>
-            <span className="tag">UX writing</span>
-            <span className="tag">Startups</span>
+            {profile.topics.map((t) => (
+              <span key={t} className="tag">{t}</span>
+            ))}
           </div>
         </div>
 
@@ -103,24 +212,17 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="badge-row">
-            <div className="badge">
-              <div className="badge-icon">
-                <HeartHandshake className="icon" />
-              </div>
-              Neighbour
-            </div>
-            <div className="badge">
-              <div className="badge-icon">
-                <Sparkles className="icon" />
-              </div>
-              Useful voice
-            </div>
-            <div className="badge">
-              <div className="badge-icon">
-                <Rocket className="icon" />
-              </div>
-              Early builder
-            </div>
+            {profile.badgeList.map((b) => {
+              const Icon = b.icon;
+              return (
+                <div key={b.name} className="badge">
+                  <div className="badge-icon">
+                    <Icon className="icon" />
+                  </div>
+                  {b.name}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -133,32 +235,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {[
-          {
-            icon: MessageCircle,
-            mark: 'Asked',
-            copy: 'How do you design a form that feels friendly on a low-end phone?',
-            time: '2 days ago',
-          },
-          {
-            icon: ThumbsUp,
-            mark: 'Answered',
-            copy: 'Gave a practical answer about offline-first sync for local schools.',
-            time: '4 days ago',
-          },
-          {
-            icon: Bookmark,
-            mark: 'Saved',
-            copy: 'Bookmarked a post on community-led tech onboarding in Kilifi.',
-            time: '1 week ago',
-          },
-          {
-            icon: Award,
-            mark: 'Earned',
-            copy: 'Earned the Early Builder badge for first 10 contributions.',
-            time: '2 weeks ago',
-          },
-        ].map((item, i) => {
+        {MOCK_ACTIVITY.map((item, i) => {
           const Icon = item.icon;
           return (
             <div key={i} className="activity">

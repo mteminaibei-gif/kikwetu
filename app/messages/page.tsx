@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   Search, ShieldCheck, MoreHorizontal,
   Send, Paperclip, Smile, Video,
 } from 'lucide-react';
 
-const conversations = [
+const mockConversations = [
   {
-    id: 1,
+    id: '1',
     initials: 'JO',
     color: 'blue',
     name: 'James Otieno',
@@ -17,9 +18,10 @@ const conversations = [
     time: '2m',
     active: true,
     verified: true,
+    last_message_at: new Date().toISOString(),
   },
   {
-    id: 2,
+    id: '2',
     initials: 'NW',
     color: 'earth',
     name: 'Njeri Wambui',
@@ -27,9 +29,10 @@ const conversations = [
     time: '18m',
     active: false,
     verified: false,
+    last_message_at: new Date().toISOString(),
   },
   {
-    id: 3,
+    id: '3',
     initials: 'FA',
     color: 'green',
     name: 'Fatuma Ali',
@@ -37,54 +40,206 @@ const conversations = [
     time: '1h',
     active: false,
     verified: false,
+    last_message_at: new Date().toISOString(),
   },
 ];
 
-const initialMessages = [
-  {
-    id: 1,
-    sender: 'James Otieno',
-    text: 'Hi Grid Pulse. Bring your power bill if you have it.',
-    time: '10:14 AM',
-    mine: false,
-  },
-  {
-    id: 2,
-    sender: 'You',
-    text: 'Perfect. I am trying to avoid buying more system than the shop needs.',
-    time: '10:16 AM',
-    mine: true,
-  },
-  {
-    id: 3,
-    sender: 'James Otieno',
-    text: 'That is the right starting point. We will map essential load first.',
-    time: '10:17 AM',
-    mine: false,
-  },
-];
+const mockMessages: Record<string, Array<{
+  id: string;
+  sender: string;
+  text: string;
+  time: string;
+  mine: boolean;
+  conversation_id: string;
+}>> = {
+  '1': [
+    { id: '1', sender: 'James Otieno', text: 'Hi Grid Pulse. Bring your power bill if you have it.', time: '10:14 AM', mine: false, conversation_id: '1' },
+    { id: '2', sender: 'You', text: 'Perfect. I am trying to avoid buying more system than the shop needs.', time: '10:16 AM', mine: true, conversation_id: '1' },
+    { id: '3', sender: 'James Otieno', text: 'That is the right starting point. We will map essential load first.', time: '10:17 AM', mine: false, conversation_id: '1' },
+  ],
+  '2': [
+    { id: '4', sender: 'Njeri Wambui', text: 'Your grow bag photos are helpful', time: '10:00 AM', mine: false, conversation_id: '2' },
+  ],
+  '3': [
+    { id: '5', sender: 'Fatuma Ali', text: 'Here is the audio transcript', time: '9:30 AM', mine: false, conversation_id: '3' },
+  ],
+};
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function timeSince(dateStr: string) {
+  const now = new Date();
+  const then = new Date(dateStr);
+  const diffMs = now.getTime() - then.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
 
 export default function MessagesPage() {
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const [selectedChat, setSelectedChat] = useState(0);
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState(mockMessages);
   const [input, setInput] = useState('');
-
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const newMsg = {
-      id: messages.length + 1,
-      sender: 'You',
-      text: input.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      mine: true,
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    setInput('');
-    showToast('Message sent');
-  };
+  const [conversations, setConversations] = useState(mockConversations);
+  const [dbMessages, setDbMessages] = useState(mockMessages);
+  const [loading, setLoading] = useState(true);
+  const channelRef = useRef<any>(null);
 
   const active = conversations[selectedChat];
+  const currentMessages = dbMessages[active?.id] || [];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchData() {
+      setLoading(true);
+
+      const { data: convData, error: convError } = await supabase
+        .from('conversations')
+        .select('*')
+        .order('last_message_at', { ascending: false });
+
+      if (cancelled) return;
+
+      if (convError || !convData || convData.length === 0) {
+        setConversations(mockConversations);
+        setDbMessages(mockMessages);
+        setLoading(false);
+        return;
+      }
+
+      const mapped = convData.map((c: any) => ({
+        id: c.id,
+        initials: getInitials(c.name || 'U'),
+        color: c.color || 'blue',
+        name: c.name || 'Unknown',
+        preview: c.preview || '',
+        time: timeSince(c.last_message_at),
+        active: true,
+        verified: c.verified || false,
+        last_message_at: c.last_message_at,
+      }));
+
+      setConversations(mapped);
+
+      const msgMap: typeof mockMessages = {};
+      for (const conv of mapped) {
+        const { data: msgData } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: true });
+
+        if (msgData) {
+          msgMap[conv.id] = msgData.map((m: any) => ({
+            id: String(m.id),
+            sender: m.sender_id === user?.id ? 'You' : (m.sender_name || 'Unknown'),
+            text: m.body,
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            mine: m.sender_id === user?.id,
+            conversation_id: m.conversation_id,
+          }));
+        }
+      }
+
+      if (!cancelled) {
+        setDbMessages(Object.keys(msgMap).length > 0 ? msgMap : mockMessages);
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const newMsg = payload.new as any;
+          const newEntry = {
+            id: String(newMsg.id),
+            sender: newMsg.sender_id === user?.id ? 'You' : (newMsg.sender_name || 'Unknown'),
+            text: newMsg.body,
+            time: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            mine: newMsg.sender_id === user?.id,
+            conversation_id: newMsg.conversation_id,
+          };
+
+          setDbMessages((prev) => {
+            const convId = newMsg.conversation_id;
+            const existing = prev[convId] || [];
+            if (existing.some((m) => m.id === newEntry.id)) return prev;
+            return { ...prev, [convId]: [...existing, newEntry] };
+          });
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [user?.id]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const msgText = input.trim();
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      sender: 'You',
+      text: msgText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      mine: true,
+      conversation_id: active.id,
+    };
+
+    setDbMessages((prev) => ({
+      ...prev,
+      [active.id]: [...(prev[active.id] || []), optimisticMsg],
+    }));
+    setInput('');
+
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: active.id,
+      sender_id: user?.id,
+      body: msgText,
+      sender_name: user?.full_name || 'You',
+    });
+
+    if (error) {
+      showToast('Failed to send — using fallback');
+      setDbMessages((prev) => ({
+        ...prev,
+        [active.id]: (prev[active.id] || []).map((m) =>
+          m.id === tempId ? { ...m, id: `fallback-${Date.now()}` } : m
+        ),
+      }));
+    } else {
+      showToast('Message sent');
+    }
+  };
 
   return (
     <AppLayout showRightSidebar={false}>
@@ -156,7 +311,7 @@ export default function MessagesPage() {
           </div>
 
           <div className="chat-body">
-            {messages.map((msg) => (
+            {currentMessages.map((msg) => (
               <div key={msg.id} className={`message ${msg.mine ? 'mine' : 'theirs'}`}>
                 <span>{msg.text}</span>
                 <small>{msg.time}</small>

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   Store, Plus, MapPin, Star, MessageCircle, Heart, MoreHorizontal,
   Filter, Search, ExternalLink, ChevronRight
@@ -17,7 +18,7 @@ const categories = [
   { key: 'other', label: 'Other' },
 ];
 
-const listings = [
+const MOCK_LISTINGS = [
   {
     id: 1,
     title: 'Fresh sukuma wiki bundle',
@@ -98,6 +99,8 @@ const listings = [
   },
 ];
 
+type Listing = typeof MOCK_LISTINGS[number];
+
 function StarRating({ rating }: { rating: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 6 }}>
@@ -116,7 +119,7 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ListingCard({ listing, onAction }: { listing: typeof listings[0]; onAction: (msg: string) => void }) {
+function ListingCard({ listing, onAction }: { listing: Listing; onAction: (msg: string) => void }) {
   const [liked, setLiked] = useState(false);
 
   return (
@@ -232,6 +235,46 @@ export default function MtaaExchange() {
   const { showToast } = useApp();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [listings, setListings] = useState<Listing[]>(MOCK_LISTINGS);
+
+  useEffect(() => {
+    async function fetchListings() {
+      try {
+        const { data, error } = await supabase
+          .from('listings')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setListings(data.map((item: any, idx: number) => ({
+            id: item.id ?? idx,
+            title: item.title ?? 'Untitled',
+            price: item.price ?? 0,
+            location: item.location ?? '',
+            seller: {
+              name: item.seller_name ?? 'Unknown',
+              initials: item.seller_name ? item.seller_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'U',
+              color: ['earth', 'blue', 'green'][idx % 3] as string,
+            },
+            rating: item.rating ?? 4.5,
+            category: item.category ?? 'other',
+            color: 'var(--greenSoft)',
+            tag: item.category ?? 'Other',
+            tagColor: 'var(--greenSoft)',
+            tagText: 'var(--green)',
+          })));
+        }
+      } catch {
+        // fallback to mock
+      }
+      setLoading(false);
+    }
+    fetchListings();
+  }, []);
 
   const filtered = listings.filter((l) => {
     const matchCategory = activeCategory === 'all' || l.category === activeCategory;
@@ -239,6 +282,23 @@ export default function MtaaExchange() {
       l.location.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCategory && matchSearch;
   });
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Mtaa Exchange</div>
+            <h1 className="serif">Trade local. Keep value close.</h1>
+            <p>Buy and sell goods and services in your neighborhood.</p>
+          </div>
+        </div>
+        <div className="section">
+          <div style={{ opacity: 0.5, padding: 20, textAlign: 'center' }}>Loading listings...</div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

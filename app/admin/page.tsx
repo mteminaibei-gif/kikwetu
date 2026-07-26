@@ -1,15 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   ShieldCheck, Download, BadgeCheck, AlertTriangle, Users,
   TrendingUp, Clock, CheckCircle, XCircle, Eye, MoreHorizontal,
   ChevronRight, FileText, DollarSign, Ban, UserCheck,
 } from 'lucide-react';
 
-const reviewQueue = [
+const MOCK_REVIEW_QUEUE = [
   {
     id: 1,
     type: 'Professional verification',
@@ -64,8 +65,89 @@ const payoutOps = [
   { label: 'Export report', icon: FileText, color: 'var(--text2)' },
 ];
 
+type ReviewItem = typeof MOCK_REVIEW_QUEUE[number];
+
 export default function AdminPage() {
   const { showToast } = useApp();
+  const [loading, setLoading] = useState(true);
+  const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>(MOCK_REVIEW_QUEUE);
+
+  useEffect(() => {
+    async function fetchAdminData() {
+      try {
+        // Fetch audit logs
+        const { data: logs } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        // Fetch pending professionals
+        const { data: pending } = await supabase
+          .from('professionals')
+          .select('*')
+          .eq('status', 'pending');
+
+        if (pending && pending.length > 0) {
+          const professionalItems: ReviewItem[] = pending.map((p: any) => ({
+            id: p.id ?? 0,
+            type: 'Professional verification',
+            subject: p.full_name ?? p.name ?? 'Unknown',
+            detail: p.credential_url ? 'Credentials uploaded' : 'Awaiting credentials',
+            status: 'partial',
+            statusLabel: 'Partial',
+            icon: BadgeCheck,
+            actions: ['Review', 'Decline'],
+          }));
+
+          // Merge: pending professionals first, then keep remaining mock items
+          const mockIds = new Set(professionalItems.map((i) => i.subject));
+          const remainingMock = MOCK_REVIEW_QUEUE.filter(
+            (m) => !mockIds.has(m.subject) && m.type !== 'Professional verification'
+          );
+          setReviewQueue([...professionalItems, ...remainingMock]);
+        }
+
+        // If we got logs, we could use them for stats too
+        // For now the UI stats remain hardcoded
+      } catch {
+        // fallback to mock
+      }
+      setLoading(false);
+    }
+    fetchAdminData();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout showRightSidebar={false}>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Admin dashboard</div>
+            <h1 className="serif">Keep Kikwetu trustworthy.</h1>
+            <p>Review reports, verify professionals, and manage payouts.</p>
+          </div>
+        </div>
+        <div className="audit-grid">
+          <div className="audit-stat" style={{ opacity: 0.5 }}>
+            <div className="avatar"><AlertTriangle className="icon-sm" /></div>
+            <strong>...</strong>
+            <span>Reports awaiting</span>
+          </div>
+          <div className="audit-stat" style={{ opacity: 0.5 }}>
+            <div className="avatar"><BadgeCheck className="icon-sm" /></div>
+            <strong>...</strong>
+            <span>Professional applications</span>
+          </div>
+          <div className="audit-stat" style={{ opacity: 0.5 }}>
+            <div className="avatar"><DollarSign className="icon-sm" /></div>
+            <strong>...</strong>
+            <span>Tips processed</span>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout showRightSidebar={false}>

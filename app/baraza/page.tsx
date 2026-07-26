@@ -1,15 +1,74 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   Plus, Image, MessageCircleQuestion, Video, ThumbsUp,
   MessageCircle, Send, Bookmark, MoreHorizontal, Sprout,
   CircleHelp, BadgeDollarSign, Ellipsis, Filter
 } from 'lucide-react';
 
-const feedPosts = [
+interface Thread {
+  id: string;
+  author_id: string;
+  title: string;
+  body: string | null;
+  type: string;
+  bounty_amount: number | null;
+  tags: string[] | null;
+  likes_count: number;
+  comments_count: number;
+  created_at: string;
+  profiles?: {
+    full_name: string;
+    username: string;
+    avatar_url: string | null;
+    county: string | null;
+    is_verified: boolean;
+  };
+}
+
+type PostContent = {
+  tag: string;
+  title: string;
+  body?: string;
+  translation?: { label: string; text: string };
+  bounty?: string;
+  audio?: { duration: string; elapsed: string; progress: number };
+  options?: { label: string; pct: number }[];
+  tags: string[];
+};
+
+type PostAuthor = {
+  name: string;
+  initials: string;
+  color: string;
+  verified: boolean;
+};
+
+type PostMeta = {
+  handle: string;
+  time: string;
+  county: string;
+};
+
+type PostStats = {
+  likes: number;
+  comments?: number;
+  answers?: number;
+};
+
+type PostType = {
+  type: string;
+  author: PostAuthor;
+  meta: PostMeta;
+  content: PostContent;
+  stats: PostStats;
+};
+
+const feedPosts: PostType[] = [
   {
     type: 'post',
     author: { name: 'Amina Muthoni', initials: 'AM', color: 'earth', verified: true },
@@ -66,7 +125,70 @@ const feedPosts = [
   },
 ];
 
-function PostCard({ post, onAction }: { post: typeof feedPosts[0]; onAction: (action: string) => void }) {
+function getTimeAgo(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function threadToPost(thread: Thread) {
+  const profile = thread.profiles;
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : '??';
+  const type = thread.type === 'question' ? 'question' : 'post';
+
+  const base = {
+    type,
+    author: {
+      name: profile?.full_name || 'Unknown',
+      initials,
+      color: 'earth' as const,
+      verified: profile?.is_verified || false,
+    },
+    meta: {
+      handle: profile?.username ? `@${profile.username}` : '@unknown',
+      time: getTimeAgo(thread.created_at),
+      county: profile?.county || 'Kenya',
+    },
+    stats: { likes: thread.likes_count, comments: thread.comments_count },
+  };
+
+  if (type === 'question') {
+    return {
+      ...base,
+      content: {
+        tag: 'Deep-dive inquiry',
+        title: thread.title,
+        body: thread.body || '',
+        bounty: thread.bounty_amount ? `${thread.bounty_amount} tokens bounty` : '',
+        tags: (thread.tags || []).map(t => `#${t}`),
+      },
+      stats: { likes: thread.likes_count, answers: thread.comments_count },
+    };
+  }
+
+  return {
+    ...base,
+    content: {
+      tag: 'Baraza post',
+      title: thread.title,
+      body: thread.body || '',
+      tags: (thread.tags || []).map(t => `#${t}`),
+    },
+  };
+}
+
+function PostCard({ post, onAction }: { post: PostType; onAction: (action: string) => void }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [voted, setVoted] = useState<number | null>(null);
@@ -187,9 +309,31 @@ function PostCard({ post, onAction }: { post: typeof feedPosts[0]; onAction: (ac
   );
 }
 
+function FeedSkeleton() {
+  return (
+    <div style={{ padding: '19px 0' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div className="avatar" style={{ background: 'var(--surface2)', animation: 'pulse 1.5s infinite' }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 14, width: 120, background: 'var(--surface2)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
+          <div style={{ height: 10, width: 80, background: 'var(--surface2)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+        </div>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ height: 12, width: 60, background: 'var(--surface2)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
+        <div style={{ height: 18, width: '90%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
+        <div style={{ height: 14, width: '100%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
+        <div style={{ height: 14, width: '70%', background: 'var(--surface2)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+      </div>
+    </div>
+  );
+}
+
 export default function BarazaFeed() {
   const { showToast } = useApp();
   const [filter, setFilter] = useState('for-you');
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
 
   const filters = [
     { key: 'for-you', label: 'For You' },
@@ -197,6 +341,50 @@ export default function BarazaFeed() {
     { key: 'spaces', label: 'Spaces' },
     { key: 'trending', label: 'Trending' },
   ];
+
+  useEffect(() => {
+    const fetchThreads = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('threads')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) {
+          console.log('Using mock data:', error.message);
+          setPosts(feedPosts);
+        } else if (data && data.length > 0) {
+          setPosts(data.map(threadToPost));
+        } else {
+          setPosts(feedPosts);
+        }
+      } catch (err) {
+        console.log('Using mock data');
+        setPosts(feedPosts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchThreads();
+
+    const channel = supabase
+      .channel('baraza-feed')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'threads',
+      }, (payload) => {
+        const newPost = threadToPost(payload.new as Thread) as PostType;
+        setPosts(prev => [newPost, ...prev]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <AppLayout>
@@ -242,7 +430,13 @@ export default function BarazaFeed() {
       </section>
 
       <section style={{ marginTop: 14 }}>
-        {feedPosts.map((post, i) => (
+        {loading ? (
+          <>
+            <FeedSkeleton />
+            <FeedSkeleton />
+            <FeedSkeleton />
+          </>
+        ) : posts.map((post, i) => (
           <PostCard key={i} post={post} onAction={showToast} />
         ))}
       </section>

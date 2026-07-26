@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   WalletCards, Plus, CalendarDays, Star, ThumbsUp, MessageCircle,
   ArrowUpRight, ArrowDownLeft, ExternalLink, ChevronRight,
@@ -10,12 +11,26 @@ import {
 
 const tipAmounts = [500, 750, 1000, 1500];
 
-const transactions = [
+const MOCK_TX = [
   { type: 'in', label: 'Wallet top-up via M-Pesa', amount: '+KSh 1,500', time: '2 hours ago', icon: ArrowDownLeft, color: 'var(--green)' },
   { type: 'out', label: 'Tip to Njeri Wambui', amount: '-KSh 750', time: 'Yesterday', icon: ArrowUpRight, color: 'var(--earth)' },
   { type: 'out', label: 'Tip to James Otieno', amount: '-KSh 500', time: '3 days ago', icon: ArrowUpRight, color: 'var(--earth)' },
   { type: 'in', label: 'Wallet top-up via M-Pesa', amount: '+KSh 2,000', time: '5 days ago', icon: ArrowDownLeft, color: 'var(--green)' },
 ];
+
+function relativeTime(dateStr: string) {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
 
 export default function WalletPage() {
   const { showToast } = useApp();
@@ -23,10 +38,111 @@ export default function WalletPage() {
   const [customTip, setCustomTip] = useState('');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [transactions, setTransactions] = useState(MOCK_TX);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTips() {
+      const { data, error } = await supabase
+        .from('tips')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error || !data || data.length === 0) {
+        setTransactions(MOCK_TX);
+      } else {
+        setTransactions(
+          data.map((tip: any) => ({
+            type: 'out',
+            label: `Tip to ${tip.receiver}`,
+            amount: `-KSh ${tip.amount}`,
+            time: relativeTime(tip.created_at),
+            icon: ArrowUpRight,
+            color: 'var(--earth)',
+          }))
+        );
+      }
+      setLoading(false);
+    }
+    fetchTips();
+  }, []);
 
   const tipAmount = selectedTip === null ? (parseInt(customTip) || 0) : selectedTip;
   const platformFee = Math.round(tipAmount * 0.1);
   const netToPro = tipAmount - platformFee;
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Wallet & tips</div>
+            <h1 className="serif">Thank useful guidance.</h1>
+            <p>Top up your wallet, send tips, and track your generosity.</p>
+          </div>
+        </div>
+
+        <div className="grid2">
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Your balance</div>
+                <h2 className="serif">Student wallet.</h2>
+              </div>
+            </div>
+            <div style={{ borderRadius: 16, padding: 24, marginTop: 14, background: 'var(--line)', height: 140 }} />
+            <div className="stats" style={{ marginTop: 16 }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="stat">
+                  <div className="avatar" style={{ background: 'var(--line)' }} />
+                  <div style={{ width: 40, height: 12, borderRadius: 4, background: 'var(--line)' }} />
+                  <div style={{ width: 60, height: 10, borderRadius: 4, background: 'var(--line)' }} />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Close your last session</div>
+                <h2 className="serif">Say thank you.</h2>
+              </div>
+            </div>
+            <div style={{ borderRadius: 12, padding: 16, marginTop: 14, background: 'var(--surface)', border: '1px solid var(--line)', height: 80 }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} style={{ width: 80, height: 40, borderRadius: 12, background: 'var(--line)' }} />
+              ))}
+            </div>
+            <div style={{ borderRadius: 12, padding: 16, marginTop: 16, background: 'var(--line)', height: 120 }} />
+          </section>
+        </div>
+
+        <section className="section" style={{ marginTop: 22 }}>
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Transaction history</div>
+              <h2 className="serif">Recent activity.</h2>
+            </div>
+          </div>
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                <div className="avatar" style={{ background: 'var(--line)' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ width: '60%', height: 10, borderRadius: 4, background: 'var(--line)', marginBottom: 6 }} />
+                  <div style={{ width: '30%', height: 8, borderRadius: 4, background: 'var(--line)' }} />
+                </div>
+                <div style={{ width: 60, height: 12, borderRadius: 4, background: 'var(--line)' }} />
+              </div>
+            ))}
+          </div>
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

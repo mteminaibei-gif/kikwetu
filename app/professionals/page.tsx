@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import {
   BadgeCheck, CalendarDays, FileCheck2, Users,
   SlidersHorizontal, Plus, ChevronRight
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
-const professionals = [
+const MOCK_PROFESSIONALS = [
   {
     initials: 'NW',
     name: 'Njeri Wambui',
@@ -48,7 +49,77 @@ const professionals = [
 ];
 
 export default function ProfessionalsPage() {
+  const [professionals, setProfessionals] = useState(MOCK_PROFESSIONALS);
+  const [loading, setLoading] = useState(true);
   const { showToast } = useApp();
+
+  useEffect(() => {
+    const fetchProfessionals = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('professionals')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+          setProfessionals(MOCK_PROFESSIONALS);
+        } else {
+          const mappedData = data.map((item: any) => ({
+            initials: item.initials,
+            name: item.name,
+            color: item.color,
+            expertise: item.expertise,
+            rating: item.rating,
+            consultations: item.consultations,
+            location: item.location,
+          }));
+          setProfessionals(mappedData);
+        }
+      } catch (err) {
+        setProfessionals(MOCK_PROFESSIONALS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfessionals();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">KikwetuConnect</div>
+            <h1 className="serif">Find someone who has done the work.</h1>
+            <p>Approved professionals verified by credentials and community trust.</p>
+          </div>
+        </div>
+
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Recommended</div>
+              <h2 className="serif">Verified professionals.</h2>
+            </div>
+          </div>
+
+          <div className="pro-list">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="pro-card">
+                <div className="avatar skeleton" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+                <div className="pro-copy" style={{ flex: 1 }}>
+                  <div className="skeleton" style={{ height: 20, width: '60%', marginBottom: 8 }} />
+                  <div className="skeleton" style={{ height: 14, width: '80%', marginBottom: 4 }} />
+                  <div className="skeleton" style={{ height: 14, width: '50%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

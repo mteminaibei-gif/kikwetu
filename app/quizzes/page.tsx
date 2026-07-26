@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   Brain, Trophy, Clock, ChevronRight, Star, Award, Target,
   Zap, CheckCircle, XCircle, ArrowRight,
@@ -17,7 +18,7 @@ const categories = [
   { name: 'Environment', emoji: '🌿', count: 7, color: 'var(--greenSoft)', textColor: 'var(--green)' },
 ];
 
-const featuredQuizzes = [
+const MOCK_QUIZZES = [
   {
     title: 'Kenyan Crops 101',
     questions: 5,
@@ -63,9 +64,60 @@ const stats = [
   { label: 'Day streak', value: '3 days', icon: Zap, color: 'var(--earthSoft)', textColor: 'var(--earth)' },
 ];
 
+type Quiz = typeof MOCK_QUIZZES[number];
+
 export default function QuizzesPage() {
   const { showToast } = useApp();
   const [activeDifficulty, setActiveDifficulty] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [featuredQuizzes, setFeaturedQuizzes] = useState<Quiz[]>(MOCK_QUIZZES);
+
+  useEffect(() => {
+    async function fetchQuizzes() {
+      try {
+        const { data, error } = await supabase
+          .from('quizzes')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setFeaturedQuizzes(data.map((item: any) => ({
+            title: item.title ?? 'Untitled Quiz',
+            questions: item.question_count ?? item.questions ?? 5,
+            duration: item.duration ?? '3 min',
+            category: item.category ?? 'General',
+            difficulty: item.difficulty ?? 'Easy',
+            xp: item.xp ?? 50,
+            description: item.description ?? '',
+          })));
+        }
+      } catch {
+        // fallback to mock
+      }
+      setLoading(false);
+    }
+    fetchQuizzes();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Quizzes</div>
+            <h1 className="serif">Learn something local in five minutes.</h1>
+            <p>Quick quizzes on Kenyan agriculture, culture, rights, health, tech, and environment.</p>
+          </div>
+        </div>
+        <section className="section">
+          <div style={{ opacity: 0.5, padding: 20, textAlign: 'center' }}>Loading quizzes...</div>
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -324,5 +376,3 @@ export default function QuizzesPage() {
     </AppLayout>
   );
 }
-
-

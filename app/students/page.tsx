@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   GraduationCap, BadgeCheck, MessagesSquare, Plus, CircleHelp,
   MessageCircleQuestion, ThumbsUp, Send, Award, BookOpen, Target,
@@ -15,7 +16,7 @@ const stats = [
   { label: 'Badges', value: '4', icon: Award, color: 'var(--earthSoft)', textColor: 'var(--earth)' },
 ];
 
-const professionals = [
+const MOCK_STUDENTS = [
   { name: 'Njeri Wambui', initials: 'NW', color: 'earth', topic: 'Urban farming and climate education', badge: 'Approved professional' },
   { name: 'James Otieno', initials: 'JO', color: 'blue', topic: 'Solar systems for small businesses', badge: 'Approved professional' },
   { name: 'Fatuma Ali', initials: 'FA', color: 'green', topic: 'Swahili heritage and storytelling', badge: 'Approved professional' },
@@ -25,6 +26,116 @@ const professionals = [
 export default function StudentsPage() {
   const { showToast } = useApp();
   const [question, setQuestion] = useState('');
+  const [professionals, setProfessionals] = useState(MOCK_STUDENTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProfessionals() {
+      try {
+        const { data, error } = await supabase
+          .from('professionals')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error || !data || data.length === 0) {
+          setProfessionals(MOCK_STUDENTS);
+        } else {
+          const colors = ['earth', 'blue', 'green'];
+          setProfessionals(
+            data.map((pro: any, i: number) => ({
+              name: pro.name || pro.full_name || 'Unknown',
+              initials: (pro.name || pro.full_name || 'UN')
+                .split(' ')
+                .map((w: string) => w[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase(),
+              color: colors[i % colors.length],
+              topic: pro.topic || pro.specialty || 'General professional',
+              badge: pro.badge || 'Approved professional',
+            }))
+          );
+        }
+      } catch {
+        setProfessionals(MOCK_STUDENTS);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProfessionals();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Students Area</div>
+            <h1 className="serif">From stuck to I can do this.</h1>
+            <p>Ask questions, learn from experts, and track your progress.</p>
+          </div>
+        </div>
+        <div className="grid2">
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Your learning loop</div>
+                <h2 className="serif">Progress so far.</h2>
+              </div>
+            </div>
+            <div className="stats">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="stat">
+                  <div className="avatar skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
+                  <div className="skeleton" style={{ width: 30, height: 14, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ width: 50, height: 10, borderRadius: 4 }} />
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Upcoming</div>
+                <h2 className="serif">Your next session.</h2>
+              </div>
+            </div>
+            <div className="post">
+              <div className="post-head">
+                <div className="avatar skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ width: 80, height: 10, borderRadius: 4, marginTop: 4 }} />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <section className="section" style={{ marginTop: 22 }}>
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Approved professionals</div>
+              <h2 className="serif">Learn from the best.</h2>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 14 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="pro-card">
+                <div className="avatar skeleton" style={{ width: 48, height: 48, borderRadius: 12 }} />
+                <div className="pro-copy">
+                  <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ width: 180, height: 10, borderRadius: 4, marginTop: 6 }} />
+                  <div className="skeleton" style={{ width: 100, height: 10, borderRadius: 4, marginTop: 4 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

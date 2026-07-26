@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
+import { supabase } from '@/lib/supabase';
 import {
   Layers3, Plus, Users, MessageCircle, Calendar,
   TrendingUp, Star, MapPin, MoreHorizontal,
 } from 'lucide-react';
 
-const joinedSpaces = [
+const MOCK_JOINED = [
   {
     icon: '🌾',
     name: 'KilimoSmart',
@@ -40,7 +41,7 @@ const joinedSpaces = [
   },
 ];
 
-const suggestedSpaces = [
+const MOCK_SUGGESTED = [
   {
     icon: '🚀',
     name: 'StartupKE',
@@ -76,6 +77,99 @@ const suggestedSpaces = [
 export default function SpacesPage() {
   const { showToast } = useApp();
   const [filter, setFilter] = useState('All');
+  const [joinedSpaces, setJoinedSpaces] = useState(MOCK_JOINED);
+  const [suggestedSpaces, setSuggestedSpaces] = useState(MOCK_SUGGESTED);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSpaces() {
+      const { data, error } = await supabase
+        .from('spaces')
+        .select('*')
+        .order('members_count', { ascending: false })
+        .limit(20);
+
+      if (error || !data || data.length === 0) {
+        setJoinedSpaces(MOCK_JOINED);
+        setSuggestedSpaces(MOCK_SUGGESTED);
+      } else {
+        const all = data.map((row: any) => ({
+          icon: row.icon || '🏘️',
+          name: row.name,
+          members: row.members_count ? `${(row.members_count / 1000).toFixed(1)}k` : '0',
+          posts: row.posts_count ? `${(row.posts_count / 1000).toFixed(1)}k` : '0',
+          description: row.description || '',
+          tags: row.tags || [],
+          location: row.location || 'Kenya-wide',
+          activity: row.activity || '0 posts today',
+          rating: row.rating,
+        }));
+
+        setJoinedSpaces(all.slice(0, 3));
+        setSuggestedSpaces(all.slice(3));
+      }
+
+      setLoading(false);
+    }
+
+    fetchSpaces();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Spaces</div>
+            <h1 className="serif">Find where your interests meet your county.</h1>
+            <p>Join communities that match what you care about — farming, tech, health, culture, and more.</p>
+          </div>
+        </div>
+
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Your spaces</div>
+              <h2 className="serif">Communities you belong to.</h2>
+            </div>
+          </div>
+          <div className="pro-list">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="pro-card" style={{ opacity: 0.6, pointerEvents: 'none' }}>
+                <div className="avatar green skeleton" />
+                <div className="pro-copy">
+                  <div style={{ background: 'var(--bgAlt)', height: 14, width: 120, borderRadius: 6, marginBottom: 8 }} />
+                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 240, borderRadius: 6, marginBottom: 6 }} />
+                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 160, borderRadius: 6 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="section" style={{ marginTop: 14 }}>
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Discover</div>
+              <h2 className="serif">Suggested for you.</h2>
+            </div>
+          </div>
+          <div className="pro-list">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="pro-card" style={{ opacity: 0.6, pointerEvents: 'none' }}>
+                <div className="avatar skeleton" />
+                <div className="pro-copy">
+                  <div style={{ background: 'var(--bgAlt)', height: 14, width: 120, borderRadius: 6, marginBottom: 8 }} />
+                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 240, borderRadius: 6, marginBottom: 6 }} />
+                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 160, borderRadius: 6 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
