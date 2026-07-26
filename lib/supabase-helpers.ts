@@ -328,3 +328,31 @@ export async function markNotificationRead(notificationId: string) {
 export async function markAllNotificationsRead(userId: string) {
   await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
 }
+
+export async function toggleReaction(userId: string, targetType: 'thread' | 'reply', targetId: string, emoji: string) {
+  const { data: existing } = await supabase
+    .from('reactions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('target_type', targetType)
+    .eq('target_id', targetId)
+    .eq('emoji', emoji)
+    .single();
+
+  if (existing) {
+    await supabase.from('reactions').delete().eq('id', existing.id);
+    return { reacted: false };
+  } else {
+    await supabase.from('reactions').insert({ user_id: userId, target_type: targetType, target_id: targetId, emoji });
+    return { reacted: true };
+  }
+}
+
+export async function getReactions(targetType: 'thread' | 'reply', targetId: string) {
+  const { data } = await supabase
+    .from('reactions')
+    .select('emoji, user_id')
+    .eq('target_type', targetType)
+    .eq('target_id', targetId);
+  return data || [];
+}

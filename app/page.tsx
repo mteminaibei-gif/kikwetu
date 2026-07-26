@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, toggleVote, checkVote, toggleSave, checkSaved, createThread } from '@/lib/supabase-helpers';
+import { getCurrentUser, toggleVote, checkVote, toggleSave, checkSaved, createThread, toggleReaction, getReactions } from '@/lib/supabase-helpers';
 import {
   Plus, Image, MessageCircleQuestion, Video, ThumbsUp,
   MessageCircle, Send, Bookmark, MoreHorizontal, MapPin,
-  Sprout, CircleHelp, BadgeDollarSign, Ellipsis
+  Sprout, CircleHelp, BadgeDollarSign, Ellipsis, Smile
 } from 'lucide-react';
 
 interface Thread {
@@ -199,6 +199,8 @@ function Composer({ onOpenComposer }: { onOpenComposer: () => void }) {
   );
 }
 
+const EMOJI_OPTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
 function FeedPost({
   thread,
   user,
@@ -213,6 +215,8 @@ function FeedPost({
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likeDelta, setLikeDelta] = useState(0);
+  const [reactions, setReactions] = useState<{ emoji: string; user_id: string }[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const { showToast } = useApp();
   const profile = thread.profiles;
   const initials = profile?.full_name
@@ -230,6 +234,25 @@ function FeedPost({
     });
     checkSaved(user.id, 'thread', thread.id).then(s => setSaved(s));
   }, [user, thread.id]);
+
+  useEffect(() => {
+    getReactions('thread', thread.id).then(setReactions);
+  }, [thread.id]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`reactions-${thread.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reactions',
+        filter: `target_id=eq.${thread.id}`,
+      }, () => {
+        getReactions('thread', thread.id).then(setReactions);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [thread.id]);
 
   const handleVote = async () => {
     if (!user) {
@@ -266,6 +289,29 @@ function FeedPost({
     }
   };
 
+  const handleReaction = async (emoji: string) => {
+    if (!user) {
+      showToast('Please sign in to react');
+      return;
+    }
+    try {
+      const result = await toggleReaction(user.id, 'thread', thread.id, emoji);
+      const updated = await getReactions('thread', thread.id);
+      setReactions(updated);
+      setShowEmojiPicker(false);
+    } catch {
+      showToast('Failed to add reaction');
+    }
+  };
+
+  const groupedReactions = EMOJI_OPTIONS
+    .map(emoji => ({
+      emoji,
+      count: reactions.filter(r => r.emoji === emoji).length,
+      reacted: user ? reactions.some(r => r.emoji === emoji && r.user_id === user.id) : false,
+    }))
+    .filter(r => r.count > 0);
+
   return (
     <article className="post animate-rise">
       <div className="post-head">
@@ -301,7 +347,27 @@ function FeedPost({
           </div>
         )}
       </div>
-      <div className="post-actions">
+      {groupedReactions.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, padding: '0 16px', flexWrap: 'wrap' }}>
+          {groupedReactions.map(r => (
+            <button
+              key={r.emoji}
+              onClick={() => handleReaction(r.emoji)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 12, fontSize: '.8rem',
+                border: r.reacted ? '1.5px solid var(--gold)' : '1px solid var(--line)',
+                background: r.reacted ? 'rgba(212,175,55,0.1)' : 'var(--surface2)',
+                cursor: 'pointer', color: 'var(--text)',
+              }}
+            >
+              <span>{r.emoji}</span>
+              <span style={{ fontSize: '.75rem', opacity: 0.7 }}>{r.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="post-actions" style={{ position: 'relative' }}>
         <button className={`action ${liked ? 'active' : ''}`} onClick={handleVote}>
           <ThumbsUp className="icon-sm" /> <span>{thread.likes_count + likeDelta}</span>
         </button>
@@ -314,6 +380,35 @@ function FeedPost({
         <button className={`action ${saved ? 'saved' : ''}`} onClick={handleSave}>
           <Bookmark className="icon-sm" />
         </button>
+        <div style={{ position: 'relative' }}>
+          <button className="action" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
+            <Smile className="icon-sm" />
+          </button>
+          {showEmojiPicker && (
+            <div style={{
+              position: 'absolute', bottom: '100%', left: 0, marginBottom: 8,
+              display: 'flex', gap: 4, padding: '6px 8px', borderRadius: 12,
+              background: 'var(--surface)', border: '1px solid var(--line)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 10,
+            }}>
+              {EMOJI_OPTIONS.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => handleReaction(emoji)}
+                  style={{
+                    fontSize: '1.2rem', padding: '4px 6px', borderRadius: 8,
+                    border: 'none', background: 'transparent', cursor: 'pointer',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button className="action"><Ellipsis className="icon-sm" /></button>
       </div>
     </article>
