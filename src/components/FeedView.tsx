@@ -26,18 +26,18 @@ const PAGE_SIZE = 10;
 
 function ThreadSkeleton() {
   return (
-    <div className="bg-white dark:bg-brand-cardDark p-4 sm:p-5 space-y-4 border-b border-gray-100 dark:border-gray-800 animate-pulse">
+    <div className="post-card mx-3 sm:mx-4 my-2.5 p-5 space-y-4 animate-pulse">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800" />
-        <div className="space-y-2">
-          <div className="h-3 w-24 bg-gray-200 dark:bg-gray-800 rounded" />
-          <div className="h-2 w-16 bg-gray-200 dark:bg-gray-800 rounded" />
+        <div className="w-11 h-11 rounded-full bg-gray-200 dark:bg-gray-800" />
+        <div className="space-y-2 flex-1">
+          <div className="h-3 w-28 bg-gray-200 dark:bg-gray-800 rounded-full" />
+          <div className="h-2.5 w-20 bg-gray-200 dark:bg-gray-800 rounded-full" />
         </div>
       </div>
-      <div className="space-y-2 pt-2">
-        <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-800 rounded" />
-        <div className="h-3 w-full bg-gray-200 dark:bg-gray-800 rounded" />
-        <div className="h-3 w-5/6 bg-gray-200 dark:bg-gray-800 rounded" />
+      <div className="space-y-2 pt-1">
+        <div className="h-4 w-4/5 bg-gray-200 dark:bg-gray-800 rounded-full" />
+        <div className="h-3 w-full bg-gray-200 dark:bg-gray-800 rounded-full" />
+        <div className="h-3 w-5/6 bg-gray-200 dark:bg-gray-800 rounded-full" />
       </div>
     </div>
   );
@@ -112,7 +112,7 @@ export default function FeedView() {
         setLoadingMore(true);
         setDisplayCount(prev => {
           const next = prev + PAGE_SIZE;
-          if (next >= threads.length) loadMoreThreads();
+          if (next >= threads.length) void loadMoreThreads();
           return next;
         });
         setTimeout(() => setLoadingMore(false), 300);
@@ -126,9 +126,8 @@ export default function FeedView() {
     setLoadingMore(true);
     const lastThread = threads[threads.length - 1];
     if (!lastThread) { setHasMore(false); setLoadingMore(false); return; }
-    
     const newThreads = await loadThreads({ cursor: lastThread.created_at });
-    setHasMore(newThreads && newThreads.length >= 30 ? true : false);
+    setHasMore(newThreads && newThreads.length >= 30);
     setLoadingMore(false);
   };
 
@@ -189,14 +188,14 @@ export default function FeedView() {
       if (thread?.author_id && thread.author_id !== user.id) {
         await sb.from('notifications').insert({ user_id: thread.author_id, actor_id: user.id, type: 'emoji', entity_type: 'thread', entity_id: threadId });
       }
-    } catch {}
+    } catch { /* ignore */ }
   }, [emojiReactions, user]);
 
   const shareToSocial = useCallback((platform: string, threadId: string, title: string, content: string) => {
     const origin = window.location.origin;
     const link = `${origin}/thread/${threadId}`;
     if (platform === 'copy') {
-      navigator.clipboard.writeText(link);
+      void navigator.clipboard.writeText(link);
       show('Link copied!');
       return;
     }
@@ -216,7 +215,7 @@ export default function FeedView() {
   const toggleLang = useCallback(() => setContentLang(contentLang === 'en' ? 'sw' : 'en'), [contentLang, setContentLang]);
 
   useEffect(() => {
-    const interval = setInterval(() => { loadThreads(); }, 30000);
+    const interval = setInterval(() => { void loadThreads(); }, 30000);
     return () => clearInterval(interval);
   }, [loadThreads]);
 
@@ -230,49 +229,75 @@ export default function FeedView() {
     <div className="w-full pb-8">
       {view === 'feed' && (
         <div className="space-y-0">
-          <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800">
+          <div className="px-3 sm:px-4 pt-4 pb-3">
             <PostComposer />
           </div>
 
-          <div className="px-4 py-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-b border-gray-100 dark:border-gray-800">
+          <div className="sticky top-16 z-20 glass px-3 sm:px-4 py-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-y border-gray-100/80 dark:border-gray-800/80">
             {FEED_TABS.map(t => (
-              <button key={t.id} onClick={() => setFeedTab(t.id)}
-                className={cn(
-                  'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all',
-                  feedTab === t.id ? 'bg-brand-deep text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                )}>{t.label}</button>
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setFeedTab(t.id)}
+                className={cn('chip whitespace-nowrap', feedTab === t.id && !showSaved ? 'chip-active' : 'chip-idle')}
+              >
+                {t.label}
+              </button>
             ))}
-            <button onClick={() => { setShowSaved(prev => !prev); setFeedTab('all'); }}
-              className={cn('px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all', showSaved ? 'bg-amber-500 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700')}>
-              <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+            <button
+              type="button"
+              onClick={() => { setShowSaved(prev => !prev); setFeedTab('all'); }}
+              className={cn('chip whitespace-nowrap', showSaved ? 'bg-amber-500 text-white shadow-md' : 'chip-idle')}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
               {tr('Imehifadhiwa', 'Saved')}
             </button>
-            <button onClick={toggleLang} className="ml-1 px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-brand-red hover:bg-brand-terracotta/10 transition-all">
+            <button
+              type="button"
+              onClick={toggleLang}
+              className="chip chip-idle ml-auto text-brand-red border border-brand-terracotta/20"
+            >
               {contentLang === 'en' ? 'Kiswahili' : 'English'}
             </button>
           </div>
 
           {feedError ? (
-            <div className="text-center py-16 space-y-4">
-              <div className="text-sm text-red-500 dark:text-red-400 font-medium">
-                {tr('Kuna tatizo kupakia machapisho.', 'There was an error loading the feed.')}
+            <div className="text-center py-16 space-y-4 px-4">
+              <div className="sun-card p-8 max-w-sm mx-auto space-y-4">
+                <p className="text-sm text-red-500 dark:text-red-400 font-medium">
+                  {tr('Kuna tatizo kupakia machapisho.', 'There was an error loading the feed.')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void loadThreads()}
+                  className="sun-btn px-5 py-2.5 rounded-full font-bold text-sm"
+                >
+                  {tr('Jaribu Tena', 'Try Again')}
+                </button>
               </div>
-              <button onClick={() => loadThreads()} className="bg-brand-terracotta text-white px-4 py-2 rounded-full font-bold shadow hover:bg-brand-red transition-all">
-                {tr('Jaribu Tena', 'Try Again')}
-              </button>
             </div>
           ) : loading ? (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="pt-1">
               <ThreadSkeleton />
               <ThreadSkeleton />
               <ThreadSkeleton />
             </div>
           ) : displayedThreads.length === 0 ? (
-            <div className="text-center py-16 text-sm text-gray-500 dark:text-gray-400">
-              {tr('Hakuna machapisho bado. Kuwa wa kwanza kushiriki!', 'No posts yet. Be the first to share!')}
+            <div className="text-center py-16 px-4">
+              <div className="sun-card p-10 max-w-sm mx-auto space-y-3">
+                <p className="text-4xl">✨</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  {tr('Hakuna machapisho bado. Kuwa wa kwanza kushiriki!', 'No posts yet. Be the first to share!')}
+                </p>
+                <button type="button" onClick={goCompose} className="sun-btn px-5 py-2.5 rounded-full text-sm font-bold">
+                  {tr('Andika chapisho', 'Write a post')}
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col pt-1">
               {displayedThreads.map((thread) => (
                 <ThreadCard
                   key={thread.id}
@@ -296,12 +321,12 @@ export default function FeedView() {
 
               <div ref={sentinelRef} className="h-4" />
               {loadingMore && (
-                <div className="flex justify-center py-4">
-                  <div className="w-6 h-6 border-2 border-brand-terracotta border-t-transparent rounded-full animate-spin" />
+                <div className="flex justify-center py-6">
+                  <div className="w-7 h-7 border-2 border-brand-terracotta border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
               {!hasMore && displayedThreads.length > 0 && (
-                <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-400">
+                <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-400">
                   {tr('Umesoma machapisho yote', 'You have seen all posts')}
                 </div>
               )}
@@ -310,17 +335,16 @@ export default function FeedView() {
         </div>
       )}
 
-      {/* Other views logic (spaces, leaderboard, profile) remains similar but stylized */}
       {view === 'spaces' && (
-        <div className="p-4 space-y-6">
-          <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100">{tr('Mitaa & Maarifa', 'Spaces & Knowledge')}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{tr('Jiunge na jamii maalum.', 'Join specialized communities.')}</p>
+        <div className="p-5 space-y-3">
+          <h2 className="text-2xl font-black">{tr('Mitaa & Maarifa', 'Spaces & Knowledge')}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{tr('Jiunge na jamii maalum.', 'Join specialized communities.')}</p>
         </div>
       )}
 
       {view === 'leaderboard' && (
-        <div className="p-4 space-y-6">
-          <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100">{tr('Nyota za Kikwetu', 'Leaderboard & Karma')}</h2>
+        <div className="p-5 space-y-3">
+          <h2 className="text-2xl font-black">{tr('Nyota za Kikwetu', 'Leaderboard & Karma')}</h2>
         </div>
       )}
 
@@ -331,10 +355,12 @@ export default function FeedView() {
       <button
         type="button"
         onClick={goCompose}
-        className="lg:hidden fixed bottom-[80px] right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-brand-terracotta to-brand-red text-white shadow-2xl flex items-center justify-center transition-all active:scale-90 hover:scale-105"
+        className="md:hidden fixed bottom-[88px] right-5 z-40 w-14 h-14 rounded-full sun-btn text-white shadow-2xl flex items-center justify-center active:scale-90"
         aria-label="Compose post"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+        </svg>
       </button>
     </div>
   );
