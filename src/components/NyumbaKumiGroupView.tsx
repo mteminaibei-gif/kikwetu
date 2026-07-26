@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/components/Toast';
@@ -36,7 +36,11 @@ export default function NyumbaKumiGroupView({ community, onBack }: Props) {
   const { user } = useAuth();
   const { tr } = useLanguage();
   const { show } = useToast();
-  const sb = useMemo(() => createClient(), []);
+  const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (typeof window !== 'undefined' && !sbRef.current) {
+    sbRef.current = createClient();
+  }
+  const sb = sbRef.current as NonNullable<ReturnType<typeof createClient>>;
 
   const [tab, setTab] = useState<'feed' | 'members' | 'info'>('feed');
   const [posts, setPosts] = useState<GroupPost[]>([]);

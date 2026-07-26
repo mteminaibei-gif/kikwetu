@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
@@ -11,7 +11,11 @@ import type { Profile, Professional } from '@/types';
 export default function ParentDashboard() {
   const { user, updateProfile } = useAuth();
   const { show } = useToast();
-  const [sb] = useState(() => createClient());
+  const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (typeof window !== 'undefined' && !sbRef.current) {
+    sbRef.current = createClient();
+  }
+  const sb = sbRef.current as NonNullable<ReturnType<typeof createClient>>;
   const [children, setChildren] = useState<{ child_name: string; child_age?: number; child_grade?: string }[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [approvedIds, setApprovedIds] = useState<string[]>([]);

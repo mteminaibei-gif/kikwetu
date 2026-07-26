@@ -53,12 +53,16 @@ export default function StudentPlatform() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [newAnswer, setNewAnswer] = useState('');
   const [answering, setAnswering] = useState(false);
-  const sbRef = useRef(createClient());
+  const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (typeof window !== 'undefined' && !sbRef.current) {
+    sbRef.current = createClient();
+  }
+  const sb = sbRef.current as NonNullable<ReturnType<typeof createClient>>;
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
     try {
-      let query = sbRef.current.from('student_questions')
+      let query = sb.from('student_questions')
         .select('*, author:profiles(full_name, avatar_url, username, county, heshima_score)')
         .order('created_at', { ascending: false })
         .limit(50);
@@ -89,7 +93,7 @@ export default function StudentPlatform() {
   }, [authLoading]);
 
   const loadAnswers = useCallback(async (questionId: string) => {
-    const { data } = await sbRef.current.from('student_answers')
+    const { data } = await sb.from('student_answers')
       .select('*, author:profiles(full_name, avatar_url, username, role, heshima_score)')
       .eq('question_id', questionId)
       .order('is_accepted', { ascending: false })
@@ -101,7 +105,7 @@ export default function StudentPlatform() {
   const handleCreateQuestion = async () => {
     if (!user || !newQuestion.title.trim() || !newQuestion.content.trim()) return;
     setCreating(true);
-    const { error } = await sbRef.current.from('student_questions').insert({
+    const { error } = await sb.from('student_questions').insert({
       author_id: user.id,
       title: newQuestion.title.trim(),
       content: newQuestion.content.trim(),
@@ -119,7 +123,6 @@ export default function StudentPlatform() {
 
   const handleVoteQuestion = async (questionId: string, voteType: 'up' | 'down') => {
     if (!user) return;
-    const sb = sbRef.current;
     const { error } = await sb.rpc('toggle_vote', {
       p_user_id: user.id,
       p_entity_id: questionId,
@@ -131,7 +134,6 @@ export default function StudentPlatform() {
 
   const handleVoteAnswer = async (answerId: string, voteType: 'up' | 'down') => {
     if (!user) return;
-    const sb = sbRef.current;
     const { error } = await sb.rpc('toggle_vote', {
       p_user_id: user.id,
       p_entity_id: answerId,
@@ -145,7 +147,6 @@ export default function StudentPlatform() {
 
   const handleAcceptAnswer = async (answerId: string, questionId: string) => {
     if (!user) return;
-    const sb = sbRef.current;
     await sb.from('student_questions').update({ is_resolved: true, accepted_answer_id: answerId }).eq('id', questionId);
     await sb.from('student_answers').update({ is_accepted: false }).eq('question_id', questionId).neq('id', answerId);
     await sb.from('student_answers').update({ is_accepted: true }).eq('id', answerId);
@@ -162,7 +163,6 @@ export default function StudentPlatform() {
   const handleSubmitAnswer = async () => {
     if (!user || !viewingQuestion || !newAnswer.trim()) return;
     setAnswering(true);
-    const sb = sbRef.current;
     const { error } = await sb.from('student_answers').insert({
       question_id: viewingQuestion.id,
       author_id: user.id,

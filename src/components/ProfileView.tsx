@@ -30,8 +30,11 @@ export default function ProfileView({ profileId }: Props) {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState<'posts' | 'about' | 'activity'>('posts');
 
-  const sbRef = useRef(createClient());
-  const sb = sbRef.current;
+  const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (typeof window !== 'undefined' && !sbRef.current) {
+    sbRef.current = createClient();
+  }
+  const sb = sbRef.current as NonNullable<ReturnType<typeof createClient>>;
 
   const load = useCallback(async () => {
     try {
