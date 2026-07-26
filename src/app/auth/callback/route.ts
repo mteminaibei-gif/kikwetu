@@ -1,37 +1,66 @@
 import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+/**
+ * OAuth + email confirmation callback.
+ * Supabase redirects here with ?code=... after Google OAuth or email verify.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const tokenHash = searchParams.get('token_hash');
+  const type = searchParams.get('type'); // signup | recovery | email_change | magiclink
   const next = searchParams.get('next') ?? '/feed';
 
-  if (code) {
-    const supabase = createServerClient(
-      'https://xzfsthlurdlrnegzejeo.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh6ZnN0aGx1cmRscm5lZ3plamVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3ODg2ODQsImV4cCI6MjEwMDM2NDY4NH0.HFIECpzHhgTjz_Zpi-PURoKI6EN2Eob0G0df-uGGTSM',
-      {
-        cookies: {
-          getAll() {
-            return request.headers.get('cookie')?.split(';').map(c => {
-              const [name, ...value] = c.split('=');
-              return { name: name.trim(), value: value.join('=').trim() };
-            }) ?? [];
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, ...options }) => {
-              request.headers.set('Set-Cookie', `${name}=${value}; Path=/; ${Object.entries(options).map(([k, v]) => `${k}=${v}`).join('; ')}`);
-            });
-          },
-        },
-      }
-    );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}?welcome=true`);
-    }
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.redirect(`${origin}/onboarding?auth_error=config`);
   }
 
-  return NextResponse.redirect(`${origin}/feed?auth_error=true`);
+  const cookieStore = await cookies();
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        } catch {
+          // Called from a context where cookies cannot be set — middleware will refresh.
+        }
+      },
+    },
+  });
+
+  // PKCE / OAuth code exchange
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      const safeNext = next.startsWith('/') ? next : '/feed';
+      return NextResponse.redirect(`${origin}${safeNext}?welcome=true`);
+    }
+    console.error('[auth/callback] exchangeCodeForSession', error.message);
+    return NextResponse.redirect(`${origin}/onboarding?auth_error=exchange`);
+  }
+
+  // Email confirmation / magic link token hash flow
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as 'signup' | 'recovery' | 'email_change' | 'magiclink' | 'email',
+    });
+    if (!error) {
+      return NextResponse.redirect(`${origin}/feed?verified=true`);
+    }
+    console.error('[auth/callback] verifyOtp', error.message);
+    return NextResponse.redirect(`${origin}/auth/verify-email?error=invalid`);
+  }
+
+  return NextResponse.redirect(`${origin}/onboarding?auth_error=missing_code`);
 }
