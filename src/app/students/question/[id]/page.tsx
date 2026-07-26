@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -42,7 +42,11 @@ export default function QuestionDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { tr, contentLang } = useLanguage();
-  const sb = createClient();
+  const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  if (typeof window !== 'undefined' && !sbRef.current) {
+    sbRef.current = createClient();
+  }
+  const sb = sbRef.current!;
 
   const [question, setQuestion] = useState<Question | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
