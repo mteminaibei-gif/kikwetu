@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
@@ -16,26 +16,25 @@ export default function ProfessionalProfile({ professionalId }: Props) {
   const { user } = useAuth();
   const { professionals, loadProfessionals, ratings, loadRatings, createSession, loadSessions } = useApp();
   const { show } = useToast();
-  const [pro, setPro] = useState<Professional | null>(null);
-  const [loading, setLoading] = useState(true);
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [booking, setBooking] = useState(false);
+
+  const pro = useMemo(
+    () => professionals.find(p => p.id === professionalId) ?? null,
+    [professionals, professionalId]
+  );
+  const loading = professionals.length === 0 || (professionals.length > 0 && !pro);
 
   useEffect(() => {
     if (professionals.length === 0) loadProfessionals();
   }, [loadProfessionals, professionals.length]);
 
   useEffect(() => {
-    const found = professionals.find(p => p.id === professionalId);
-    if (found) {
-      setPro(found);
-      loadRatings(found.profile_id);
-      setLoading(false);
-    } else if (professionals.length > 0) {
-      setLoading(false);
+    if (pro) {
+      loadRatings(pro.profile_id);
     }
-  }, [professionalId, professionals, loadRatings]);
+  }, [pro, loadRatings]);
 
   const handleBook = async () => {
     if (!user) { show('Please sign in to book a session.'); return; }

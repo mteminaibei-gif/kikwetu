@@ -50,7 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const sb = supabase();
+    const sb = createClient();
+    setState(prev => ({ ...prev, supabase: sb }));
     sb.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         loadProfile(sb, session.user.id);
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase, loadProfile]);
+  }, [loadProfile]);
 
   const signUp = async (email: string, password: string, metadata: Partial<Profile>): Promise<{ error?: string }> => {
     const sb = state.supabase || createClient();

@@ -3,12 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 
 export default function SavannahBackground() {
-  const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState(0);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     const tick = (t: number) => {
       setTime(t / 1000);
       rafRef.current = requestAnimationFrame(tick);
@@ -16,8 +14,6 @@ export default function SavannahBackground() {
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, []);
-
-  if (!mounted) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">

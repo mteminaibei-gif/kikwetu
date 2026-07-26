@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    // ESLint is optional in CI; do not block production deploys on lint noise.
-    ignoreDuringBuilds: true,
-  },
   async headers() {
     return [
       {

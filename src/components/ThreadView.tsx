@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
@@ -27,8 +27,7 @@ export default function ThreadView({ threadId, initialThread, initialReplies }: 
   const [replying, setReplying] = useState(false);
   const [votingId, setVotingId] = useState<string | null>(null);
 
-  const sbRef = useRef(createClient());
-  const sb = sbRef.current;
+  const sb = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (initialThread) return;

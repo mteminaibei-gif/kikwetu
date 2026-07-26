@@ -89,6 +89,16 @@ export default function FeedView() {
     return () => unsub();
   }, [subscribeToFeed]);
 
+  const loadMoreThreads = async () => {
+    setLoadingMore(true);
+    const lastThread = threads[threads.length - 1];
+    if (!lastThread) { setHasMore(false); setLoadingMore(false); return; }
+
+    const newThreads = await loadThreads({ cursor: lastThread.created_at });
+    setHasMore(newThreads && newThreads.length >= 30 ? true : false);
+    setLoadingMore(false);
+  };
+
   useEffect(() => {
     setLocalCounts(prev => {
       if (Object.keys(prev).length === 0) return prev;
@@ -122,19 +132,13 @@ export default function FeedView() {
     return () => observer.disconnect();
   }, [hasMore, loadingMore, threads.length]);
 
-  const loadMoreThreads = async () => {
-    setLoadingMore(true);
-    const lastThread = threads[threads.length - 1];
-    if (!lastThread) { setHasMore(false); setLoadingMore(false); return; }
-    
-    const newThreads = await loadThreads({ cursor: lastThread.created_at });
-    setHasMore(newThreads && newThreads.length >= 30 ? true : false);
-    setLoadingMore(false);
-  };
-
+  const feedTabRef = useRef(feedTab);
   useEffect(() => {
-    setDisplayCount(PAGE_SIZE);
-    setHasMore(true);
+    if (feedTabRef.current !== feedTab) {
+      feedTabRef.current = feedTab;
+      setDisplayCount(PAGE_SIZE);
+      setHasMore(true);
+    }
   }, [feedTab]);
 
   const filtered = showSaved

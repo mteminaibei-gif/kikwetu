@@ -83,11 +83,10 @@ export default function StudentPlatform() {
   }, [activeFilter, selectedSubject, user]);
 
   useEffect(() => {
-    if (!authLoading) {
-      loadQuestions();
-      loadProfessionals();
-    }
-  }, [authLoading, loadQuestions, loadProfessionals]);
+    if (authLoading) return;
+    loadQuestions();
+    loadProfessionals();
+  }, [authLoading]);
 
   const loadAnswers = useCallback(async (questionId: string) => {
     const { data } = await sbRef.current.from('student_answers')

@@ -483,17 +483,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, update]);
 
   useEffect(() => {
-    if (user) {
-      void loadNotifications();
-      void loadUserVotes();
-      void (async () => {
-        const pending = await Offline.getPendingCount();
-        update({ pendingSyncCount: pending });
-      })();
-    } else {
+    if (!user) {
       update({ userVotes: {} });
+      return;
     }
-  }, [user, loadNotifications, loadUserVotes, update]);
+    const sb = createClient();
+    (async () => {
+      const { data: notifs } = await sb.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+      if (notifs) {
+        const n = notifs as Notification[];
+        setState(prev => ({ ...prev, notifications: n, unreadCount: n.filter(x => !x.is_read).length }));
+      }
+      const { data: votes } = await sb.from('thread_votes').select('entity_id, vote_type').eq('user_id', user.id);
+      if (votes) {
+        const map: Record<string, 'up' | 'down'> = {};
+        (votes as Array<{ entity_id: string; vote_type: 'up' | 'down' }>).forEach(v => { map[v.entity_id] = v.vote_type; });
+        setState(prev => ({ ...prev, userVotes: map }));
+      }
+      const pending = await Offline.getPendingCount();
+      setState(prev => ({ ...prev, pendingSyncCount: pending }));
+    })();
+  }, [user, update]);
 
   useEffect(() => {
     const handleOnline = async () => {

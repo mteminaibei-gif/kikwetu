@@ -20,7 +20,12 @@ export default function Navbar() {
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
   const [online, setOnline] = useState(true);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return stored === 'dark' || (!stored && prefersDark);
+  });
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; title: string; author: { full_name: string } }[]>([]);
@@ -35,9 +40,6 @@ export default function Navbar() {
   useEffect(() => {
     setMounted(true);
     setOnline(navigator.onLine);
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDark(stored === 'dark' || (!stored && prefersDark));
   }, []);
 
   useEffect(() => {

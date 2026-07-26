@@ -20,15 +20,16 @@ const defaultPrefs: ConsentPrefs = {
 };
 
 export default function ConsentBanner() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem(STORAGE_KEY);
+  });
   const [expanded, setExpanded] = useState(false);
   const [prefs, setPrefs] = useState<ConsentPrefs>(defaultPrefs);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      setVisible(true);
-    } else {
+    if (stored) {
       try { setPrefs(JSON.parse(stored)); } catch {}
     }
   }, []);
