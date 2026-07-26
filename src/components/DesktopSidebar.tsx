@@ -24,6 +24,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { label: 'Students Area', href: '/students', icon: 'graduation-cap', badge: '2' },
       { label: 'Professionals', href: '/professionals', icon: 'badge-check' },
       { label: 'Messages', href: '/chat', icon: 'messages-square', badge: '3' },
+      { label: 'Wallet & tips', href: '/wallet', icon: 'wallet-cards' },
     ],
   },
   {

@@ -1,89 +1,228 @@
 'use client';
 
-import { useCallback, useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase';
+import { useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/Toast';
+import Icon from '@/components/Icon';
+import { cn } from '@/lib/utils';
 import Navbar from '@/components/Navbar';
 import DesktopSidebar from '@/components/DesktopSidebar';
 import MobileBottomNav from '@/components/MobileBottomNav';
-import { timeAgo, cn } from '@/lib/utils';
-import type { Thread, Professional, Space, Profile } from '@/types';
+
+interface SearchResult {
+  id: string;
+  title: string;
+  desc: string;
+  meta: string;
+  category: string;
+}
+
+interface TrendingItem {
+  no: string;
+  title: string;
+  desc: string;
+}
+
+interface LiveRoom {
+  host: string;
+  title: string;
+  listeners: string;
+}
+
+interface QuizItem {
+  title: string;
+  desc: string;
+  score: string;
+}
+
+interface SpaceItem {
+  name: string;
+  icon: string;
+  members: string;
+  category: string;
+}
+
+const chips = ['solar for small business', '#KilimoSmart', 'Nairobi bursaries', 'Swahili craft'];
+
+const topics = [
+  { label: 'Agriculture', sub: 'Farming, livestock, crops', icon: 'sprout' },
+  { label: 'Tech & startups', sub: 'Innovation, digital skills', icon: 'cpu' },
+  { label: 'Biashara', sub: 'Business, markets, trade', icon: 'store' },
+  { label: 'Culture', sub: 'Music, art, traditions', icon: 'music-2' },
+];
+
+const trendingData: TrendingItem[] = [
+  { no: '01', title: 'Mombasa county launches free Wi-Fi in 12 markets', desc: '2.4k readers · Digital inclusion' },
+  { no: '02', title: 'Solar irrigation grants open for Kiambu farmers', desc: '1.8k readers · Agriculture' },
+  { no: '03', title: 'Nairobi youth fund disburses KES 45M in Q1', desc: '3.2k readers · Youth & entrepreneurship' },
+];
+
+const mockResults: Record<string, SearchResult[]> = {
+  all: [
+    { id: 'r1', title: 'Best drought-resistant crops for Eastern Kenya?', desc: 'Looking for recommendations on crops that thrive in semi-arid conditions…', meta: 'Thread · Agriculture · 24 replies · 2h ago', category: 'thread' },
+    { id: 'r2', title: 'Jane Mwende — Agricultural Extension Officer', desc: '15 years experience in dryland farming. Verified expert in Makueni county.', meta: 'Professional · Makueni · ★ 4.9', category: 'professional' },
+    { id: 'r3', title: 'KilimoSmart Hub — Knowledge Space', desc: 'A community for smart farming techniques, irrigation tips, and market links.', meta: 'Space · 3.2k members · 148 threads', category: 'space' },
+    { id: 'r4', title: 'Grace Akinyi — Urban farming specialist', desc: 'Vertical farming, hydroponics, and kitchen garden setups.', meta: 'Professional · Nairobi · ★ 4.8', category: 'professional' },
+    { id: 'r5', title: 'Where to find certified seeds in Western Kenya?', desc: 'I need guidance on certified maize and bean seed suppliers…', meta: 'Thread · Agriculture · 12 replies · 5h ago', category: 'thread' },
+  ],
+  threads: [
+    { id: 't1', title: 'Best drought-resistant crops for Eastern Kenya?', desc: 'Looking for recommendations on crops that thrive in semi-arid conditions…', meta: 'Agriculture · 24 replies · 2h ago', category: 'thread' },
+    { id: 't2', title: 'Where to find certified seeds in Western Kenya?', desc: 'I need guidance on certified maize and bean seed suppliers…', meta: 'Agriculture · 12 replies · 5h ago', category: 'thread' },
+    { id: 't3', title: 'M-Pesa transaction fees — are they too high for small businesses?', desc: 'Comparing M-Pesa, Airtel Money, and bank transfer costs for daily operations.', meta: 'Business · 31 replies · 1d ago', category: 'thread' },
+  ],
+  professionals: [
+    { id: 'p1', title: 'Jane Mwende — Agricultural Extension Officer', desc: '15 years experience in dryland farming. Verified expert in Makueni county.', meta: 'Makueni · ★ 4.9', category: 'professional' },
+    { id: 'p2', title: 'Grace Akinyi — Urban farming specialist', desc: 'Vertical farming, hydroponics, and kitchen garden setups.', meta: 'Nairobi · ★ 4.8', category: 'professional' },
+    { id: 'p3', title: 'Dr. Kevin Ochieng — Agronomist', desc: 'Soil science and crop nutrition. PhD in Sustainable Agriculture.', meta: 'Kisumu · ★ 4.9', category: 'professional' },
+  ],
+  spaces: [
+    { id: 's1', title: 'KilimoSmart Hub — Knowledge Space', desc: 'A community for smart farming techniques, irrigation tips, and market links.', meta: '3.2k members · 148 threads', category: 'space' },
+    { id: 's2', title: 'Biashara Network — Business Space', desc: 'Connect with entrepreneurs, find investors, and share market insights.', meta: '2.1k members · 94 threads', category: 'space' },
+    { id: 's3', title: 'Tech Bora — Innovation Space', desc: 'Kenyan tech community discussing software, hardware, and digital skills.', meta: '5.7k members · 312 threads', category: 'space' },
+  ],
+  people: [
+    { id: 'u1', title: 'Peter Kamau', desc: 'Agricultural researcher · Makueni', meta: '@peterkamau', category: 'people' },
+    { id: 'u2', title: 'Faith Njoki', desc: 'Urban farmer & content creator · Nairobi', meta: '@faithnjoki', category: 'people' },
+    { id: 'u3', title: 'Samuel Omondi', desc: 'Agri-tech entrepreneur · Kisumu', meta: '@samomondi', category: 'people' },
+  ],
+};
+
+const liveRoom: LiveRoom = {
+  host: 'Mama Linda',
+  title: 'Growing vegetables in sacks — live from Kibera',
+  listeners: '312 listening',
+};
+
+const quiz: QuizItem = {
+  title: 'KilimoSmart Quiz',
+  desc: 'Test your knowledge on smart farming techniques',
+  score: 'Best: 8/10',
+};
+
+const popularSpaces: SpaceItem[] = [
+  { name: 'KilimoSmart Hub', icon: 'sprout', members: '3.2k', category: 'Agriculture' },
+  { name: 'Biashara Network', icon: 'store', members: '2.1k', category: 'Business' },
+  { name: 'Tech Bora', icon: 'cpu', members: '5.7k', category: 'Technology' },
+];
 
 type Tab = 'all' | 'threads' | 'professionals' | 'spaces' | 'people';
 
-function SearchContent() {
-  const searchParams = useSearchParams();
+export default function SearchPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const initialQ = searchParams.get('q') || '';
-  const [query, setQuery] = useState(initialQ);
+  const { show } = useToast();
+  const [query, setQuery] = useState('');
   const [tab, setTab] = useState<Tab>('all');
-  const [loading, setLoading] = useState(false);
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [people, setPeople] = useState<Profile[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [countyOpen, setCountyOpen] = useState(true);
+  const [lang, setLang] = useState<'EN' | 'SW'>('EN');
 
-  const runSearch = useCallback(async (q: string) => {
-    if (!q.trim()) {
-      setThreads([]); setProfessionals([]); setSpaces([]); setPeople([]);
-      return;
-    }
-    setLoading(true);
-    const sb = createClient();
-    const like = `%${q.trim()}%`;
-
-    const [tRes, pRes, sRes, uRes] = await Promise.all([
-      sb.from('threads')
-        .select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)')
-        .or(`title.ilike.${like},content.ilike.${like}`)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      sb.from('professionals')
-        .select('*, profile:profiles(full_name, avatar_url, county, verified, heshima_score, role)')
-        .eq('verification_status', 'approved')
-        .or(`title.ilike.${like},bio.ilike.${like}`)
-        .limit(12),
-      sb.from('spaces')
-        .select('*')
-        .or(`name.ilike.${like},description.ilike.${like}`)
-        .limit(12),
-      sb.from('profiles')
-        .select('*')
-        .or(`full_name.ilike.${like},username.ilike.${like},bio.ilike.${like}`)
-        .limit(12),
-    ]);
-
-    if (tRes.data) setThreads(tRes.data as Thread[]);
-    if (pRes.data) setProfessionals(pRes.data as Professional[]);
-    if (sRes.data) setSpaces(sRes.data as Space[]);
-    if (uRes.data) setPeople(uRes.data as Profile[]);
-    setLoading(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const html = document.documentElement;
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = stored === 'dark' || (!stored && prefersDark);
+    setTheme(isDark ? 'dark' : 'light');
+    html.setAttribute('data-theme', isDark ? 'dark' : 'light');
   }, []);
 
   useEffect(() => {
-    if (initialQ) runSearch(initialQ);
-  }, [initialQ, runSearch]);
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('lang');
+    if (stored === 'SW' || stored === 'EN') setLang(stored);
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const toggleTheme = useCallback(() => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }, [theme]);
+
+  const toggleLang = useCallback(() => {
+    const next = lang === 'EN' ? 'SW' : 'EN';
+    setLang(next);
+    localStorage.setItem('lang', next);
+    show(`Language switched to ${next}`);
+  }, [lang, show]);
+
+  const runSearch = useCallback((q: string) => {
+    setQuery(q);
+    if (!q.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+    setHasSearched(true);
+    const all = mockResults.all.filter(r =>
+      r.title.toLowerCase().includes(q.toLowerCase()) ||
+      r.desc.toLowerCase().includes(q.toLowerCase())
+    );
+    const filtered = tab === 'all' ? all : mockResults[tab].filter(r =>
+      r.title.toLowerCase().includes(q.toLowerCase()) ||
+      r.desc.toLowerCase().includes(q.toLowerCase())
+    );
+    setResults(filtered.length > 0 ? filtered : all.slice(0, 3));
+  }, [tab]);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    const q = query.trim();
-    router.push(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+    if (!query.trim()) return;
+    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    runSearch(query);
+  }, [query, router, runSearch]);
+
+  const handleChip = useCallback((chip: string) => {
+    setQuery(chip);
+    runSearch(chip);
+  }, [runSearch]);
+
+  const handleTopic = useCallback((topic: string) => {
+    const q = topic.toLowerCase();
+    setQuery(q);
     runSearch(q);
-  };
+  }, [runSearch]);
 
-  const showThreads = tab === 'all' || tab === 'threads';
-  const showPros = tab === 'all' || tab === 'professionals';
-  const showSpaces = tab === 'all' || tab === 'spaces';
-  const showPeople = tab === 'all' || tab === 'people';
+  const handleTabChange = useCallback((t: Tab) => {
+    setTab(t);
+    if (hasSearched) {
+      runSearch(query);
+    }
+  }, [hasSearched, query, runSearch]);
 
-  const total =
-    (showThreads ? threads.length : 0) +
-    (showPros ? professionals.length : 0) +
-    (showSpaces ? spaces.length : 0) +
-    (showPeople ? people.length : 0);
+  const handleCountyToggle = useCallback(() => {
+    setCountyOpen(prev => !prev);
+  }, []);
+
+  const handleJoin = useCallback(() => {
+    show('Joined the live room!');
+  }, [show]);
+
+  const handleQuiz = useCallback(() => {
+    show('Starting quiz...');
+  }, [show]);
+
+  const handleOpenTrend = useCallback((item: TrendingItem) => {
+    show(`Opening: ${item.title}`);
+  }, [show]);
+
+  const handleOpenResult = useCallback((r: SearchResult) => {
+    show(`Opening: ${r.title}`);
+  }, [show]);
+
+  const handleExpertCTA = useCallback(() => {
+    show('Find an expert near you');
+    router.push('/professionals');
+  }, [show, router]);
+
+  const displayResults = hasSearched && results.length > 0 ? results : [];
+  const resultCount = displayResults.length;
+
+  const allTabs: Tab[] = ['all', 'threads', 'professionals', 'spaces', 'people'];
 
   return (
     <div className="min-h-screen bg-brand-bgLight dark:bg-brand-bgDark">
@@ -91,161 +230,287 @@ function SearchContent() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-6 pt-4 pb-24 md:pb-8">
         <DesktopSidebar />
         <main className="flex-1 min-w-0 max-w-3xl mx-auto w-full space-y-6">
-          <div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-1">Tafuta</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Search threads, experts, spaces & people across Kenya</p>
+          <div className="page-head">
+            <div>
+              <div className="eyebrow">Baraza / Explore</div>
+              <h1 className="serif text-3xl font-black text-gray-900 dark:text-white leading-tight">
+                Find your next useful conversation.
+              </h1>
+              <p className="muted">
+                Search across discussions, professionals, spaces, people, live rooms, marketplace, quizzes
+              </p>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="relative">
-            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </span>
-            <input
-              type="search"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search questions, #KilimoSmart, experts, counties…"
-              className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm shadow-sm"
-              autoFocus
-            />
-          </form>
-
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {(['all', 'threads', 'professionals', 'spaces', 'people'] as Tab[]).map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={cn(
-                  'px-4 py-2 rounded-full text-xs font-bold capitalize whitespace-nowrap transition-all',
-                  tab === t
-                    ? 'bg-brand-red text-white shadow-md'
-                    : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
-                )}
-              >
-                {t}
+          <section className="hero-search">
+            <div className="eyebrow" style={{ color: 'oklch(85% .025 94)' }}>Search KikwetuConnect</div>
+            <h2 className="serif">What are you curious about?</h2>
+            <p>Discover knowledge shared by communities across Kenya.</p>
+            <form className="search-form" onSubmit={handleSubmit}>
+              <div className="search-field">
+                <Icon name="search" className="icon-sm" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="e.g. solar, #KilimoSmart, Nairobi..."
+                />
+              </div>
+              <button type="submit" className="search-submit" aria-label="Search">
+                <Icon name="arrow-up-right" />
               </button>
-            ))}
+            </form>
+            <div className="chips">
+              {chips.map(chip => (
+                <button
+                  key={chip}
+                  type="button"
+                  className={cn('chip', query === chip && 'selected')}
+                  onClick={() => handleChip(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Browse by interest</div>
+                <h2 className="serif">Find your community.</h2>
+              </div>
+            </div>
+            <div className="topic-grid">
+              {topics.map(topic => (
+                <button
+                  key={topic.label}
+                  type="button"
+                  className="topic"
+                  onClick={() => handleTopic(topic.label)}
+                >
+                  <div>
+                    <strong>{topic.label}</strong>
+                    <span>{topic.sub}</span>
+                  </div>
+                  <div className="topic-icon">
+                    <Icon name={topic.icon} className="icon-lg" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">County pulse</div>
+                <h2 className="serif">Worth your attention.</h2>
+              </div>
+              <button
+                type="button"
+                className="select-pill"
+                onClick={handleCountyToggle}
+              >
+                {countyOpen ? 'Trending' : 'Hidden'}
+              </button>
+            </div>
+            {countyOpen && (
+              <div className="trend-list">
+                {trendingData.map(item => (
+                  <div key={item.no} className="trend">
+                    <span className="trend-no">{item.no}</span>
+                    <div className="trend-copy">
+                      <strong>{item.title}</strong>
+                      <span>{item.desc}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="result-action"
+                      onClick={() => handleOpenTrend(item)}
+                    >
+                      Open
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Search results</div>
+                <h2 className="serif">
+                  {hasSearched ? `Results for "${query}"` : 'Discover something new.'}
+                </h2>
+              </div>
+            </div>
+            <div className="result-tabs">
+              {allTabs.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  className={cn('result-tab', tab === t && 'active')}
+                  onClick={() => handleTabChange(t)}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+            {hasSearched && resultCount > 0 && (
+              <div className="result-count">{resultCount} result{resultCount !== 1 ? 's' : ''} found</div>
+            )}
+            {hasSearched && resultCount === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <Icon name="search-x" className="icon-lg" />
+                </div>
+                <p>No results found for &ldquo;{query}&rdquo;. Try a different search term.</p>
+              </div>
+            )}
+            {!hasSearched && (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <Icon name="compass" className="icon-lg" />
+                </div>
+                <p>Use the search bar above to explore discussions, professionals, spaces, and more.</p>
+              </div>
+            )}
+            <div>
+              {displayResults.map(r => (
+                <div key={r.id} className="result">
+                  <div className="result-copy">
+                    <h3 className="serif">{r.title}</h3>
+                    <p>{r.desc}</p>
+                    <div className="result-meta">
+                      <span>{r.meta}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="result-action"
+                    onClick={() => handleOpenResult(r)}
+                  >
+                    Open
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="live">
+            <div className="live-icon">
+              <Icon name="radio" />
+            </div>
+            <div className="live-copy">
+              <strong>{liveRoom.title}</strong>
+              <span>Hosted by {liveRoom.host} · {liveRoom.listeners}</span>
+            </div>
+            <button type="button" onClick={handleJoin}>Join room</button>
+          </section>
+
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Test yourself</div>
+                <h2 className="serif">Weekly quiz.</h2>
+              </div>
+            </div>
+            <div className="quiz">
+              <div className="quiz-icon">
+                <Icon name="graduation-cap" />
+              </div>
+              <div className="quiz-copy">
+                <strong>{quiz.title}</strong>
+                <span>{quiz.desc}</span>
+              </div>
+              <span className="score">{quiz.score}</span>
+              <button type="button" className="result-action" onClick={handleQuiz}>
+                Take quiz
+              </button>
+            </div>
+          </section>
+        </main>
+
+        <aside className="hidden lg:block w-64 shrink-0 space-y-4">
+          <div className="right-block">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Popular spaces</div>
+                <h2 className="serif" style={{ fontSize: '1rem' }}>Join the conversation.</h2>
+              </div>
+            </div>
+            <div className="right-list">
+              {popularSpaces.map(s => (
+                <div key={s.name} className="right-item">
+                  <div className="space-icon">
+                    <Icon name={s.icon} className="icon-sm" />
+                  </div>
+                  <div className="right-copy">
+                    <strong>{s.name}</strong>
+                    <span>{s.members} members · {s.category}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="result-action"
+                    onClick={() => show(`Joining ${s.name}`)}
+                  >
+                    Join
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {loading && (
-            <div className="text-center py-12 text-sm text-gray-500">Searching…</div>
-          )}
-
-          {!loading && query.trim() && total === 0 && (
-            <div className="text-center py-16 space-y-2">
-              <p className="text-4xl">🔍</p>
-              <p className="font-bold text-gray-800 dark:text-gray-200">Hakuna matokeo</p>
-              <p className="text-sm text-gray-500">No results for “{query}”. Try a different keyword.</p>
+          <div className="right-block">
+            <div className="tip-card">
+              <div className="eyebrow" style={{ color: 'var(--color-earth)' }}>Useful shortcut</div>
+              <h3 className="serif">Talk to an expert.</h3>
+              <p>Get personalised advice from verified professionals across Kenya.</p>
+              <button type="button" onClick={handleExpertCTA}>
+                Find an expert
+              </button>
             </div>
-          )}
+          </div>
 
-          {!loading && !query.trim() && (
-            <div className="text-center py-16 space-y-2">
-              <p className="text-4xl">🇰🇪</p>
-              <p className="font-bold text-gray-800 dark:text-gray-200">Search KikwetuConnect</p>
-              <p className="text-sm text-gray-500">Find discussions, verified professionals, spaces and people.</p>
+          <div className="right-block">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Appearance</div>
+              </div>
             </div>
-          )}
-
-          {showThreads && threads.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Threads ({threads.length})</h2>
-              {threads.map(t => (
-                <Link
-                  key={t.id}
-                  href={`/thread/${t.id}`}
-                  className="block p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-brand-terracotta/40 transition-all shadow-sm"
-                >
-                  <p className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">{t.title}</p>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{t.content}</p>
-                  <div className="flex items-center gap-2 mt-2 text-[11px] text-gray-400">
-                    <span>{t.author?.full_name || 'Anonymous'}</span>
-                    {t.county && <span>· {t.county}</span>}
-                    <span>· {timeAgo(t.created_at)}</span>
-                    <span>· ▲ {t.upvotes_count}</span>
-                  </div>
-                </Link>
-              ))}
-            </section>
-          )}
-
-          {showPros && professionals.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Professionals ({professionals.length})</h2>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {professionals.map(p => (
-                  <Link
-                    key={p.id}
-                    href={`/professionals/${p.profile_id}`}
-                    className="p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-emerald-400/40 transition-all shadow-sm"
-                  >
-                    <p className="font-bold text-gray-900 dark:text-gray-100">{p.profile?.full_name || p.title}</p>
-                    <p className="text-xs text-emerald-600 font-medium">{p.title}</p>
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{p.bio}</p>
-                    <div className="flex gap-2 mt-2 text-[11px] text-gray-400">
-                      {p.profile?.county && <span>{p.profile.county}</span>}
-                      <span>★ {p.avg_rating?.toFixed(1) || '—'}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {showSpaces && spaces.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Spaces ({spaces.length})</h2>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {spaces.map(s => (
-                  <Link
-                    key={s.id}
-                    href={`/feed?space=${s.id}`}
-                    className="p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-brand-red/30 transition-all shadow-sm"
-                  >
-                    <p className="font-bold text-gray-900 dark:text-gray-100">{s.icon} {s.name}</p>
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{s.description}</p>
-                    <p className="text-[11px] text-gray-400 mt-2">{s.member_count} members · {s.thread_count} threads</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {showPeople && people.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">People ({people.length})</h2>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {people.map(p => (
-                  <Link
-                    key={p.id}
-                    href={`/profile/${p.id}`}
-                    className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-brand-terracotta/40 transition-all shadow-sm"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-terracotta to-brand-red flex items-center justify-center text-white font-bold shrink-0">
-                      {p.full_name?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{p.full_name}</p>
-                      <p className="text-xs text-gray-500">@{p.username}{p.county ? ` · ${p.county}` : ''}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-        </main>
+            <div className="mode">
+              <button
+                type="button"
+                className={cn(theme === 'light' && 'active')}
+                onClick={() => theme !== 'light' && toggleTheme()}
+                aria-label="Light mode"
+              >
+                <Icon name="sun" className="icon-sm" />
+              </button>
+              <button
+                type="button"
+                className={cn(theme === 'dark' && 'active')}
+                onClick={() => theme !== 'dark' && toggleTheme()}
+                aria-label="Dark mode"
+              >
+                <Icon name="moon" className="icon-sm" />
+              </button>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="select-pill"
+                onClick={toggleLang}
+              >
+                {lang}
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
       <MobileBottomNav />
     </div>
-  );
-}
-
-export default function SearchPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm text-gray-500">Loading search…</div>}>
-      <SearchContent />
-    </Suspense>
   );
 }
