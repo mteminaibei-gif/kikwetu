@@ -97,6 +97,17 @@ export default function Navbar() {
     router.push(`/thread/${id}`);
   }, [router]);
 
+  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    setSearchOpen(false);
+    if (q) {
+      router.push(`/search?q=${encodeURIComponent(q)}`);
+    } else {
+      router.push('/search');
+    }
+  }, [searchQuery, router]);
+
   return (
     <header className={cn(
       'sticky top-0 z-[9999] backdrop-blur-xl border-b transition-all duration-300',
@@ -105,7 +116,6 @@ export default function Navbar() {
         : 'bg-white/70 dark:bg-[#0a0a0a]/70 border-transparent'
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Left: Branding */}
         <Link href={user ? '/feed' : '/'} className="flex items-center gap-2.5 shrink-0 group md:w-64">
           <img src="/logo-icon.svg" alt="KikwetuConnect" className="h-8 w-auto group-hover:scale-105 transition-transform" />
           <span className="text-xl font-black font-logo text-brand-deep dark:text-white leading-none hidden sm:block">
@@ -113,14 +123,15 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Middle: Search Bar */}
         {user && pathname !== '/' && (
           <div className="flex-1 max-w-2xl relative hidden md:block" ref={searchRef}>
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </span>
-            <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..." 
-              className="w-full pl-10 pr-10 py-2.5 rounded-full border-0 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-500" />
+            <form onSubmit={handleSearchSubmit}>
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </span>
+              <input type="text" value={searchQuery} onChange={e => handleSearchChange(e.target.value)} placeholder="Tafuta (Search) questions, #KilimoSmart, or spaces..."
+                className="w-full pl-10 pr-10 py-2.5 rounded-full border-0 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-terracotta/50 text-sm transition-all placeholder:text-gray-500" />
+            </form>
             {searchOpen && (
               <div className="absolute top-full mt-2 left-0 right-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-50 py-2 max-h-72 overflow-y-auto">
                 {searchResults.map(r => (
@@ -131,12 +142,19 @@ export default function Navbar() {
                     <span className="text-[10px] text-gray-400 shrink-0 ml-auto">{r.author?.full_name || ''}</span>
                   </button>
                 ))}
+                {searchQuery.trim() && (
+                  <button
+                    onClick={() => handleSearchSubmit({ preventDefault: () => {} } as React.FormEvent)}
+                    className="w-full text-left px-4 py-2.5 text-xs font-bold text-brand-red hover:bg-gray-50 dark:hover:bg-gray-800 border-t border-gray-100 dark:border-gray-800"
+                  >
+                    See all results for “{searchQuery.trim()}” →
+                  </button>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* Right: Actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:w-80 justify-end">
           <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all active:scale-90" aria-label="Theme">
             {dark ? <SunIcon /> : <MoonIcon />}
