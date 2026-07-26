@@ -108,11 +108,13 @@ export interface Vote {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'upvote' | 'reply' | 'follow' | 'accept' | 'badge';
-  title: string;
+  type: 'upvote' | 'reply' | 'follow' | 'accept' | 'badge' | 'emoji' | 'session' | 'tip' | 'system';
+  title?: string;
   body?: string;
   related_id?: string;
   actor_id?: string;
+  entity_type?: string;
+  entity_id?: string;
   is_read: boolean;
   created_at: string;
 }
@@ -132,11 +134,16 @@ export interface Report {
 export interface LiveRoom {
   id: string;
   title: string;
+  description?: string;
   host_id: string;
   language: string;
+  topic?: string;
+  county?: string;
   is_active: boolean;
   participant_count: number;
+  max_participants?: number;
   created_at: string;
+  host?: Pick<Profile, 'full_name' | 'avatar_url' | 'username' | 'verified'>;
 }
 
 export interface Quiz {
@@ -148,6 +155,8 @@ export interface Quiz {
   correct_answer: number;
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
+  category?: string;
+  language?: string;
   created_at: string;
 }
 
@@ -163,6 +172,26 @@ export interface QuizResult {
   score: number;
   answers: number[];
   completed_at: string;
+}
+
+export interface MarketplaceListing {
+  id: string;
+  seller_id: string;
+  title: string;
+  description: string;
+  category: 'produce' | 'services' | 'crafts' | 'livestock' | 'tools' | 'other';
+  price: number;
+  currency: string;
+  county: string;
+  location?: string;
+  image_urls?: string[];
+  contact_phone?: string;
+  contact_whatsapp?: string;
+  status: 'active' | 'sold' | 'expired' | 'removed';
+  views_count: number;
+  created_at: string;
+  updated_at?: string;
+  seller?: Pick<Profile, 'full_name' | 'avatar_url' | 'username' | 'county' | 'verified'>;
 }
 
 export interface Professional {
