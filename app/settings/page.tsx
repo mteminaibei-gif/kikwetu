@@ -59,9 +59,6 @@ export default function SettingsPage() {
           language: user.language || 'en',
           avatar: user.avatar_url || '/avatar.jpg'
         })
-        if (user.mpesa_number) {
-          setPayments((p) => ({ ...p, mpesaNumber: user.mpesa_number }))
-        }
       }
       const savedNotif = localStorage.getItem('kikwetu_notifications')
       if (savedNotif) setNotifications(JSON.parse(savedNotif))

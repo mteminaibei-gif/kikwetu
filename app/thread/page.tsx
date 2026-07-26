@@ -68,7 +68,7 @@ export default function ThreadPage() {
 
       const { data: replyData } = await fetchReplies(threadId);
       if (replyData) {
-        setReplies(replyData as Reply[]);
+        setReplies(replyData as unknown as Reply[]);
         setReplyCount(replyData.length);
       }
     }

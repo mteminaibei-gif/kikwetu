@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { getCurrentUser } from '@/lib/supabase-helpers';
 import {
   Radio, Play, Pause, Volume2, VolumeX, Heart, Share2,
-  Star, Wifi, Clock,
+  Star, Wifi, Clock, ExternalLink,
 } from 'lucide-react';
 
 /* ---------- types ---------- */
@@ -21,46 +21,47 @@ interface Station {
   initials: string;
   nowPlaying: string;
   signal: 1 | 2 | 3;
+  streamUrl: string | null;
 }
 
 /* ---------- simulated catalogue ---------- */
 const STATIONS: Station[] = [
   // National
-  { id: 'capital-fm', name: 'Capital FM', city: 'Nairobi', genre: 'Pop / Hits', category: 'National', color: '#d42027', initials: 'CF', nowPlaying: 'Bien – Inauma', signal: 3 },
-  { id: 'classic-105', name: 'Classic 105', city: 'Nairobi', genre: 'Classic Hits', category: 'National', color: '#1a1a2e', initials: 'C1', nowPlaying: 'Lionel Richie – Hello', signal: 3 },
-  { id: 'kiss-fm', name: 'Kiss FM', city: 'Nairobi', genre: 'Urban', category: 'National', color: '#e91e8c', initials: 'KF', nowPlaying: 'Sauti Sol – Suzanna', signal: 3 },
-  { id: 'nrg-fm', name: 'NRG FM', city: 'Nairobi', genre: 'Gen Z / Urban', category: 'National', color: '#ff6b00', initials: 'NR', nowPlaying: 'Otile Brown – Dusuma', signal: 3 },
-  { id: 'homeboyz', name: 'Homeboyz Radio', city: 'Nairobi', genre: 'Reggae / Hip Hop', category: 'National', color: '#8b0000', initials: 'HR', nowPlaying: 'Chronicle – Reggae Life', signal: 2 },
-  { id: 'radio-jambo', name: 'Radio Jambo', city: 'Nairobi', genre: 'Entertainment', category: 'National', color: '#00843d', initials: 'RJ', nowPlaying: 'DJ Creme – Mix Session', signal: 3 },
-  { id: 'nation-fm', name: 'Nation FM', city: 'Nairobi', genre: 'News / Talk', category: 'National', color: '#003580', initials: 'NF', nowPlaying: 'Jeff Koinange Live', signal: 3 },
-  { id: 'ktn-news', name: 'KTN News', city: 'Nairobi', genre: 'News', category: 'National', color: '#cc0000', initials: 'KN', nowPlaying: 'KTN Prime Time', signal: 3 },
-  { id: 'kiss-tv', name: 'Kiss TV', city: 'Nairobi', genre: 'Entertainment', category: 'National', color: '#e91e8c', initials: 'KT', nowPlaying: 'The Trend', signal: 2 },
-  { id: 'ntv', name: 'NTV', city: 'Nairobi', genre: 'News', category: 'National', color: '#0066cc', initials: 'NT', nowPlaying: 'NTV At One', signal: 3 },
+  { id: 'capital-fm', name: 'Capital FM', city: 'Nairobi', genre: 'Pop / Hits', category: 'National', color: '#d42027', initials: 'CF', nowPlaying: 'Bien – Inauma', signal: 3, streamUrl: 'https://streaming.capitalfm.co.ke/capital' },
+  { id: 'classic-105', name: 'Classic 105', city: 'Nairobi', genre: 'Classic Hits', category: 'National', color: '#1a1a2e', initials: 'C1', nowPlaying: 'Lionel Richie – Hello', signal: 3, streamUrl: 'https://streaming.classic105.com/classic105' },
+  { id: 'kiss-fm', name: 'Kiss FM', city: 'Nairobi', genre: 'Urban', category: 'National', color: '#e91e8c', initials: 'KF', nowPlaying: 'Sauti Sol – Suzanna', signal: 3, streamUrl: 'https://stream.kissfm.co.ke/kiss' },
+  { id: 'nrg-fm', name: 'NRG FM', city: 'Nairobi', genre: 'Gen Z / Urban', category: 'National', color: '#ff6b00', initials: 'NR', nowPlaying: 'Otile Brown – Dusuma', signal: 3, streamUrl: 'https://streaming.nrg.fm/nrg' },
+  { id: 'homeboyz', name: 'Homeboyz Radio', city: 'Nairobi', genre: 'Reggae / Hip Hop', category: 'National', color: '#8b0000', initials: 'HR', nowPlaying: 'Chronicle – Reggae Life', signal: 2, streamUrl: 'https://stream.homeboyzradio.com/homeboyz' },
+  { id: 'radio-jambo', name: 'Radio Jambo', city: 'Nairobi', genre: 'Entertainment', category: 'National', color: '#00843d', initials: 'RJ', nowPlaying: 'DJ Creme – Mix Session', signal: 3, streamUrl: 'https://streaming.radiojambo.co.ke/jambo' },
+  { id: 'nation-fm', name: 'Nation FM', city: 'Nairobi', genre: 'News / Talk', category: 'National', color: '#003580', initials: 'NF', nowPlaying: 'Jeff Koinange Live', signal: 3, streamUrl: 'https://streaming.nation.africa/nationfm' },
+  { id: 'ktn-news', name: 'KTN News', city: 'Nairobi', genre: 'News', category: 'National', color: '#cc0000', initials: 'KN', nowPlaying: 'KTN Prime Time', signal: 3, streamUrl: null },
+  { id: 'kiss-tv', name: 'Kiss TV', city: 'Nairobi', genre: 'Entertainment', category: 'National', color: '#e91e8c', initials: 'KT', nowPlaying: 'The Trend', signal: 2, streamUrl: null },
+  { id: 'ntv', name: 'NTV', city: 'Nairobi', genre: 'News', category: 'National', color: '#0066cc', initials: 'NT', nowPlaying: 'NTV At One', signal: 3, streamUrl: null },
 
   // County
-  { id: 'radio-lake-victoria', name: 'Radio Lake Victoria', city: 'Kisumu', genre: 'Luo Music', category: 'County', color: '#2196f3', initials: 'LV', nowPlaying: 'Otile Brown – Malaika', signal: 2 },
-  { id: 'musyi-fm', name: 'Musyi FM', city: 'Central', genre: 'Kikuyu', category: 'County', color: '#4caf50', initials: 'MF', nowPlaying: 'Kamene Goro Show', signal: 2 },
-  { id: 'ramogi-fm', name: 'Ramogi FM', city: 'Nairobi', genre: 'Luo', category: 'County', color: '#ff9800', initials: 'RF', nowPlaying: 'Rogi Dhe Bwo', signal: 3 },
-  { id: 'egesa-fm', name: 'Egesa FM', city: 'Western', genre: 'Luhya', category: 'County', color: '#795548', initials: 'EF', nowPlaying: 'Bukusu Vibes', signal: 2 },
-  { id: 'coro-fm', name: 'Coro FM', city: 'Central', genre: 'Kikuyu', category: 'County', color: '#009688', initials: 'CR', nowPlaying: 'Ngemi ya Muthoni', signal: 2 },
-  { id: 'mwago-fm', name: 'Mwago FM', city: 'Rift Valley', genre: 'Kalenjin', category: 'County', color: '#607d8b', initials: 'MG', nowPlaying: 'Kalenjin Hits Mix', signal: 2 },
-  { id: 'bahari-fm', name: 'Bahari FM', city: 'Coast', genre: 'Swahili', category: 'County', color: '#00bcd4', initials: 'BF', nowPlaying: 'Taarab za Mjini', signal: 2 },
-  { id: 'pwani-tv', name: 'Pwani TV', city: 'Coast', genre: 'Swahili', category: 'County', color: '#ff5722', initials: 'PT', nowPlaying: 'Coast Business Hub', signal: 2 },
+  { id: 'radio-lake-victoria', name: 'Radio Lake Victoria', city: 'Kisumu', genre: 'Luo Music', category: 'County', color: '#2196f3', initials: 'LV', nowPlaying: 'Otile Brown – Malaika', signal: 2, streamUrl: null },
+  { id: 'musyi-fm', name: 'Musyi FM', city: 'Central', genre: 'Kikuyu', category: 'County', color: '#4caf50', initials: 'MF', nowPlaying: 'Kamene Goro Show', signal: 2, streamUrl: null },
+  { id: 'ramogi-fm', name: 'Ramogi FM', city: 'Nairobi', genre: 'Luo', category: 'County', color: '#ff9800', initials: 'RF', nowPlaying: 'Rogi Dhe Bwo', signal: 3, streamUrl: null },
+  { id: 'egesa-fm', name: 'Egesa FM', city: 'Western', genre: 'Luhya', category: 'County', color: '#795548', initials: 'EF', nowPlaying: 'Bukusu Vibes', signal: 2, streamUrl: null },
+  { id: 'coro-fm', name: 'Coro FM', city: 'Central', genre: 'Kikuyu', category: 'County', color: '#009688', initials: 'CR', nowPlaying: 'Ngemi ya Muthoni', signal: 2, streamUrl: null },
+  { id: 'mwago-fm', name: 'Mwago FM', city: 'Rift Valley', genre: 'Kalenjin', category: 'County', color: '#607d8b', initials: 'MG', nowPlaying: 'Kalenjin Hits Mix', signal: 2, streamUrl: null },
+  { id: 'bahari-fm', name: 'Bahari FM', city: 'Coast', genre: 'Swahili', category: 'County', color: '#00bcd4', initials: 'BF', nowPlaying: 'Taarab za Mjini', signal: 2, streamUrl: null },
+  { id: 'pwani-tv', name: 'Pwani TV', city: 'Coast', genre: 'Swahili', category: 'County', color: '#ff5722', initials: 'PT', nowPlaying: 'Coast Business Hub', signal: 2, streamUrl: null },
 
   // Religious
-  { id: 'inooro-fm', name: 'Inooro FM', city: 'Central', genre: 'Christian / Kikuyu', category: 'Religious', color: '#ffd600', initials: 'IF', nowPlaying: 'Mwathi wa Kiria', signal: 3 },
-  { id: 'bahari-radio', name: 'Bahari Radio', city: 'Coast', genre: 'Islamic', category: 'Religious', color: '#00695c', initials: 'BR', nowPlaying: 'Quran Recitation', signal: 2 },
-  { id: 'trm-tv', name: 'TRM TV', city: 'Nairobi', genre: 'Christian', category: 'Religious', color: '#7c4dff', initials: 'TR', nowPlaying: 'Gospel Sunday', signal: 3 },
+  { id: 'inooro-fm', name: 'Inooro FM', city: 'Central', genre: 'Christian / Kikuyu', category: 'Religious', color: '#ffd600', initials: 'IF', nowPlaying: 'Mwathi wa Kiria', signal: 3, streamUrl: null },
+  { id: 'bahari-radio', name: 'Bahari Radio', city: 'Coast', genre: 'Islamic', category: 'Religious', color: '#00695c', initials: 'BR', nowPlaying: 'Quran Recitation', signal: 2, streamUrl: null },
+  { id: 'trm-tv', name: 'TRM TV', city: 'Nairobi', genre: 'Christian', category: 'Religious', color: '#7c4dff', initials: 'TR', nowPlaying: 'Gospel Sunday', signal: 3, streamUrl: null },
 
   // Music
-  { id: 'capital-xtra', name: 'Capital Xtra', city: 'Nairobi', genre: 'Afrobeats', category: 'Music', color: '#ff1744', initials: 'CX', nowPlaying: 'Burna Boy – City Boys', signal: 3 },
-  { id: 'soundcity', name: 'Soundcity Radio', city: 'Nairobi', genre: 'Afrobeats', category: 'Music', color: '#651fff', initials: 'SR', nowPlaying: 'Tyla – Water', signal: 3 },
-  { id: '4408', name: '4408', city: 'Nairobi', genre: 'Gen Z', category: 'Music', color: '#00e676', initials: '48', nowPlaying: 'Sauti Sol – Midnightrain', signal: 3 },
+  { id: 'capital-xtra', name: 'Capital Xtra', city: 'Nairobi', genre: 'Afrobeats', category: 'Music', color: '#ff1744', initials: 'CX', nowPlaying: 'Burna Boy – City Boys', signal: 3, streamUrl: null },
+  { id: 'soundcity', name: 'Soundcity Radio', city: 'Nairobi', genre: 'Afrobeats', category: 'Music', color: '#651fff', initials: 'SR', nowPlaying: 'Tyla – Water', signal: 3, streamUrl: null },
+  { id: '4408', name: '4408', city: 'Nairobi', genre: 'Gen Z', category: 'Music', color: '#00e676', initials: '48', nowPlaying: 'Sauti Sol – Midnightrain', signal: 3, streamUrl: null },
 
   // News
-  { id: 'kbc-radio', name: 'KBC Radio', city: 'Nairobi', genre: 'National', category: 'News', color: '#1565c0', initials: 'KB', nowPlaying: 'KBC English Service', signal: 3 },
-  { id: 'kameme-fm', name: 'Kameme FM', city: 'Central', genre: 'Kikuyu News', category: 'News', color: '#2e7d32', initials: 'KM', nowPlaying: 'Gikuyu News Hour', signal: 3 },
-  { id: 'musyi-news', name: 'Musyi FM News', city: 'Central', genre: 'Kikuyu News', category: 'News', color: '#4caf50', initials: 'MN', nowPlaying: 'Haki FM Express', signal: 2 },
+  { id: 'kbc-radio', name: 'KBC Radio', city: 'Nairobi', genre: 'National', category: 'News', color: '#1565c0', initials: 'KB', nowPlaying: 'KBC English Service', signal: 3, streamUrl: 'https://stream.kbc.co.ke/kbc' },
+  { id: 'kameme-fm', name: 'Kameme FM', city: 'Central', genre: 'Kikuyu News', category: 'News', color: '#2e7d32', initials: 'KM', nowPlaying: 'Gikuyu News Hour', signal: 3, streamUrl: 'https://streaming.kameme.co.ke/kameme' },
+  { id: 'musyi-news', name: 'Musyi FM News', city: 'Central', genre: 'Kikuyu News', category: 'News', color: '#4caf50', initials: 'MN', nowPlaying: 'Haki FM Express', signal: 2, streamUrl: null },
 ];
 
 const CATEGORIES = ['All', 'National', 'County', 'Religious', 'Music', 'News'] as const;
@@ -476,10 +477,16 @@ export default function RadioPage() {
                   <div className="card-actions">
                     <button
                       className={`play-btn ${isPlaying ? 'pause' : 'play'}`}
-                      onClick={() => play(station.id)}
+                      onClick={() => {
+                        if (station.streamUrl) {
+                          window.open(station.streamUrl, '_blank');
+                        } else {
+                          play(station.id);
+                        }
+                      }}
                     >
-                      {isPlaying ? <Pause size={15} /> : <Play size={15} />}
-                      {isPlaying ? 'Pause' : 'Play'}
+                      {isPlaying ? <Pause size={15} /> : station.streamUrl ? <ExternalLink size={15} /> : <Play size={15} />}
+                      {isPlaying ? 'Pause' : station.streamUrl ? 'Open Stream' : 'Play'}
                     </button>
                     <button
                       className={`fav-btn ${isFav ? 'is-fav' : ''}`}
@@ -517,7 +524,13 @@ export default function RadioPage() {
             <div className="player-center">
               <button
                 className={`big-play ${playingId ? 'on' : 'off'}`}
-                onClick={() => play(activeStation.id)}
+                onClick={() => {
+                  if (activeStation.streamUrl) {
+                    window.open(activeStation.streamUrl, '_blank');
+                  } else {
+                    play(activeStation.id);
+                  }
+                }}
               >
                 {playingId ? <Pause size={18} /> : <Play size={18} />}
               </button>

@@ -181,7 +181,7 @@ function ReplySection({
 
   const loadReplies = async () => {
     const { data } = await fetchReplies(threadId);
-    if (data) setReplies(data);
+    if (data) setReplies(data as unknown as Reply[]);
   };
 
   useEffect(() => {
@@ -219,7 +219,7 @@ function ReplySection({
     setSubmitting(true);
     try {
       const { data, error } = await createReply(threadId, user.id, replyBody.trim());
-      if (error) {
+      if (error || !data) {
         showToast('Failed to post reply');
         console.error(error);
         return;
@@ -624,7 +624,7 @@ export default function BarazaFeed() {
       return;
     }
     const { data, error } = await createThread(user.id, title, body, type, tags);
-    if (error) {
+    if (error || !data) {
       showToast('Failed to create post');
       console.error(error);
       return;

@@ -84,7 +84,7 @@ export default function AdminPage() {
       try {
         const user = await getCurrentUser();
         setCurrentUser(user);
-        setIsAdmin(user?.role === 'admin' || user?.is_admin === true);
+        setIsAdmin(user?.role === 'admin');
       } catch {
         // not logged in or no profile
       }

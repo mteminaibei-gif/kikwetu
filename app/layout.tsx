@@ -43,13 +43,23 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_KE",
     url: "https://kikwetuconnect.com",
+    siteName: "KikwetuConnect",
     title: "KikwetuConnect - Our Knowledge, Our Stories, Our Future",
     description: "Kenya's premier education and community platform for knowledge sharing and professional growth",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "KikwetuConnect - Our Knowledge, Our Stories, Our Future",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "KikwetuConnect",
     description: "Our Knowledge, Our Stories, Our Future",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -63,7 +73,7 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f0ece4" },
+    { media: "(prefers-color-scheme: light)", color: "#2d6a1e" },
     { media: "(prefers-color-scheme: dark)", color: "#1a261e" },
   ],
 };
@@ -82,6 +92,9 @@ export default function RootLayout({
     >
       <head>
         <meta charSet="utf-8" />
+        <meta name="theme-color" content="#2d6a1e" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
         {children}

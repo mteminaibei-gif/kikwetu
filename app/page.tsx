@@ -419,17 +419,17 @@ function FeedSkeleton() {
   return (
     <div style={{ padding: '19px 0' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <div className="avatar" style={{ background: 'var(--surface2)', animation: 'pulse 1.5s infinite' }} />
+        <div className="avatar skeleton-shimmer" style={{ background: 'var(--surface2)' }} />
         <div style={{ flex: 1 }}>
-          <div style={{ height: 14, width: 120, background: 'var(--surface2)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
-          <div style={{ height: 10, width: 80, background: 'var(--surface2)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+          <div className="skeleton-shimmer" style={{ height: 14, width: 120, background: 'var(--surface2)', borderRadius: 6, marginBottom: 6 }} />
+          <div className="skeleton-shimmer" style={{ height: 10, width: 80, background: 'var(--surface2)', borderRadius: 6 }} />
         </div>
       </div>
       <div style={{ marginTop: 12 }}>
-        <div style={{ height: 12, width: 60, background: 'var(--surface2)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
-        <div style={{ height: 18, width: '90%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
-        <div style={{ height: 14, width: '100%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
-        <div style={{ height: 14, width: '70%', background: 'var(--surface2)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+        <div className="skeleton-shimmer" style={{ height: 12, width: 60, background: 'var(--surface2)', borderRadius: 6, marginBottom: 8 }} />
+        <div className="skeleton-shimmer" style={{ height: 18, width: '90%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 8 }} />
+        <div className="skeleton-shimmer" style={{ height: 14, width: '100%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 6 }} />
+        <div className="skeleton-shimmer" style={{ height: 14, width: '70%', background: 'var(--surface2)', borderRadius: 6 }} />
       </div>
     </div>
   );
@@ -538,7 +538,7 @@ export default function Home() {
       return;
     }
     const { data, error } = await createThread(user.id, title, body, type, tags);
-    if (error) {
+    if (error || !data) {
       showToast('Failed to create post');
       console.error(error);
       return;

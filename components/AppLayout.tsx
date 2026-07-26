@@ -372,7 +372,7 @@ function NotificationDropdown({
 }
 
 // ===== Topbar =====
-function Topbar() {
+const Topbar = React.memo(function Topbar() {
   const { theme, toggleTheme, lang, toggleLang, user, setUser, unreadCount, setUnreadCount, showToast, signOut } = useApp();
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
@@ -430,7 +430,7 @@ function Topbar() {
 
   const handleLogout = async () => {
     await signOut();
-    router.push('/login');
+    router.push('/landing');
     showToast('Signed out');
   };
 
@@ -560,10 +560,10 @@ function Topbar() {
       </div>
     </header>
   );
-}
+});
 
 // ===== Left Sidebar =====
-function LeftSidebar({ activeRoute }: { activeRoute: string }) {
+const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRoute: string }) {
   const { user, signOut, showToast } = useApp();
   const router = useRouter();
   const heshima = user?.heshima || 740;
@@ -575,7 +575,7 @@ function LeftSidebar({ activeRoute }: { activeRoute: string }) {
 
   const handleLogout = async () => {
     await signOut();
-    router.push('/login');
+    router.push('/landing');
     showToast('Signed out');
   };
 
@@ -631,10 +631,10 @@ function LeftSidebar({ activeRoute }: { activeRoute: string }) {
       </div>
     </aside>
   );
-}
+});
 
 // ===== Right Sidebar =====
-function RightSidebar() {
+const RightSidebar = React.memo(function RightSidebar() {
   const { showToast } = useApp();
 
   return (
@@ -699,7 +699,7 @@ function RightSidebar() {
       </div>
     </aside>
   );
-}
+});
 
 // ===== Mobile Nav =====
 function MobileNav({ activeRoute }: { activeRoute: string }) {

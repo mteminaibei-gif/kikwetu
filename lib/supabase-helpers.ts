@@ -3,7 +3,11 @@ import { supabase } from './supabase';
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, user_id, username, full_name, avatar_url, bio, county, language, role, heshima, is_verified, is_online, created_at, updated_at')
+    .eq('user_id', user.id)
+    .single();
   return profile;
 }
 
@@ -109,7 +113,7 @@ export async function createThread(authorId: string, title: string, body: string
       bounty_amount: bountyAmount || null,
       space_id: spaceId || null,
     })
-    .select()
+    .select('id, author_id, title, body, type, bounty_amount, tags, likes_count, comments_count, created_at')
     .single();
   return { data, error };
 }
@@ -118,7 +122,7 @@ export async function createReply(threadId: string, authorId: string, body: stri
   const { data, error } = await supabase
     .from('replies')
     .insert({ thread_id: threadId, author_id: authorId, body })
-    .select()
+    .select('id, thread_id, author_id, body, likes_count, created_at')
     .single();
   return { data, error };
 }
@@ -126,10 +130,7 @@ export async function createReply(threadId: string, authorId: string, body: stri
 export async function fetchReplies(threadId: string) {
   const { data, error } = await supabase
     .from('replies')
-    .select(`
-      *,
-      profiles:author_id (full_name, username, avatar_url, county, is_verified)
-    `)
+    .select('id, thread_id, author_id, body, likes_count, created_at, profiles:author_id (full_name, username, avatar_url, county, is_verified)')
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true });
   return { data, error };
@@ -139,7 +140,7 @@ export async function sendMessage(conversationId: string, senderId: string, body
   const { data, error } = await supabase
     .from('messages')
     .insert({ conversation_id: conversationId, sender_id: senderId, body })
-    .select()
+    .select('id, conversation_id, sender_id, body, created_at')
     .single();
 
   if (!error) {
@@ -156,7 +157,7 @@ export async function createConversation(participantIds: string[], firstMessage?
   const { data: conv, error: convError } = await supabase
     .from('conversations')
     .insert({ last_message: firstMessage || null, last_message_at: firstMessage ? new Date().toISOString() : null })
-    .select()
+    .select('id, last_message, last_message_at, created_at')
     .single();
 
   if (convError || !conv) return { data: null, error: convError };
@@ -221,7 +222,7 @@ export async function sendTip(fromUserId: string, toUserId: string, amount: numb
       session_id: sessionId || null,
       status: 'completed',
     })
-    .select()
+    .select('id, from_user_id, to_user_id, amount, platform_fee, net_amount, rating, comment, session_id, status, created_at')
     .single();
   return { data, error };
 }
@@ -230,7 +231,7 @@ export async function createListing(sellerId: string, title: string, description
   const { data, error } = await supabase
     .from('marketplace_listings')
     .insert({ seller_id: sellerId, title, description, price, category, location: location || null })
-    .select()
+    .select('id, seller_id, title, description, price, category, location, is_available, created_at')
     .single();
   return { data, error };
 }
@@ -247,7 +248,7 @@ export async function createAlert(reporterId: string, type: string, title: strin
   const { data, error } = await supabase
     .from('nyumba_kumi_alerts')
     .insert({ reporter_id: reporterId, type, title, description, location, county })
-    .select()
+    .select('id, reporter_id, type, title, description, location, county, confirmations_count, created_at')
     .single();
   return { data, error };
 }
@@ -279,7 +280,7 @@ export async function submitQuizResult(quizId: string, userId: string, score: nu
       total_questions: totalQuestions,
       time_taken_seconds: timeTaken || null,
     })
-    .select()
+    .select('id, quiz_id, user_id, score, total_questions, time_taken_seconds, created_at')
     .single();
   return { data, error };
 }
@@ -293,7 +294,7 @@ export async function requestSession(studentId: string, professionalId: string, 
       title,
       description: description || null,
     })
-    .select()
+    .select('id, student_id, professional_id, title, description, status, created_at')
     .single();
   return { data, error };
 }
@@ -316,7 +317,7 @@ export async function createReport(reporterId: string, targetType: string, targe
       reason,
       description: description || null,
     })
-    .select()
+    .select('id, reporter_id, target_type, target_id, reason, description, created_at')
     .single();
   return { data, error };
 }
