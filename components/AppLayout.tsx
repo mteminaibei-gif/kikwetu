@@ -611,14 +611,34 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <Link href="/profile" className="profile-pill">
-          <Avatar src={user?.avatar_url} initials={initials} size="md" />
+        <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <Avatar src={user?.avatar_url} initials={initials} size="md" />
+            <span style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              background: 'oklch(24% .034 158 / .45)',
+              display: 'grid',
+              placeItems: 'center',
+              opacity: 0,
+              transition: 'opacity .18s ease',
+              pointerEvents: 'none',
+            }} className="avatar-upload-overlay">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </span>
+          </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Grid Pulse'}</strong>
             <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'gridpulse'}</span>
           </div>
           <Settings className="icon-sm" style={{ color: 'var(--text3)' }} />
         </Link>
+        <style>{`.profile-pill:hover .avatar-upload-overlay { opacity: 1 !important; }`}</style>
         <button
           className="icon-btn"
           onClick={handleLogout}

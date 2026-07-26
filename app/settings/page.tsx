@@ -1,26 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import AppLayout, { useApp } from '@/components/AppLayout'
 import { getCurrentUser, updateProfile } from '@/lib/supabase-helpers'
+import { supabase } from '@/lib/supabase'
 import {
   Settings, User, Bell, Shield, CreditCard, Globe, Moon, Sun,
   Smartphone, Download, Trash2, ChevronRight, Eye, EyeOff,
-  Lock, Mail, MapPin, CheckCircle
+  Lock, Mail, MapPin, CheckCircle, Camera, Loader2
 } from 'lucide-react'
 
 export default function SettingsPage() {
   const { theme, toggleTheme, showToast } = useApp()
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const [profile, setProfile] = useState({
-    name: 'Wanjiku Kamau',
-    username: '@wanjiku',
-    county: 'Nairobi',
-    bio: 'Digital storyteller & community builder',
+    name: '',
+    username: '',
+    county: '',
+    bio: '',
     language: 'en',
-    avatar: '/avatar.jpg'
+    avatar: ''
   })
 
   const [notifications, setNotifications] = useState({
@@ -36,7 +40,7 @@ export default function SettingsPage() {
   })
 
   const [payments, setPayments] = useState({
-    mpesaNumber: '+254 712 345 678',
+    mpesaNumber: '',
     tipPreferences: 'enabled',
     showTransactionHistory: true
   })
@@ -52,23 +56,51 @@ export default function SettingsPage() {
       if (user) {
         setCurrentUser(user)
         setProfile({
-          name: user.full_name || 'Wanjiku Kamau',
-          username: user.username ? `@${user.username}` : '@wanjiku',
-          county: user.county || 'Nairobi',
-          bio: user.bio || 'Digital storyteller & community builder',
+          name: user.full_name || '',
+          username: user.username ? `@${user.username}` : '',
+          county: user.county || '',
+          bio: user.bio || '',
           language: user.language || 'en',
-          avatar: user.avatar_url || '/avatar.jpg'
+          avatar: user.avatar_url || ''
         })
+        setPayments(p => ({ ...p, mpesaNumber: (user as any).mpesa_number || '' }))
       }
       const savedNotif = localStorage.getItem('kikwetu_notifications')
       if (savedNotif) setNotifications(JSON.parse(savedNotif))
       const savedPrivacy = localStorage.getItem('kikwetu_privacy')
       if (savedPrivacy) setPrivacy(JSON.parse(savedPrivacy))
       const savedPayments = localStorage.getItem('kikwetu_payments')
-      if (savedPayments) setPayments((p) => ({ ...p, ...JSON.parse(savedPayments) }))
+      if (savedPayments) setPayments(p => ({ ...p, ...JSON.parse(savedPayments) }))
     }
     init()
   }, [])
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser) return
+    setAvatarUploading(true)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const filePath = `${currentUser.user_id}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      const publicUrl = urlData.publicUrl
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', currentUser.user_id)
+      if (updateError) throw updateError
+      setProfile(p => ({ ...p, avatar: publicUrl }))
+      showToast('Avatar updated')
+    } catch {
+      showToast('Upload failed')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
 
   const toggleNotification = (key: keyof typeof notifications) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
@@ -84,6 +116,7 @@ export default function SettingsPage() {
 
   async function handleSaveAll() {
     setSaving(true)
+    setSaveSuccess(false)
     try {
       if (currentUser) {
         const { error } = await updateProfile(currentUser.id, {
@@ -98,7 +131,9 @@ export default function SettingsPage() {
       localStorage.setItem('kikwetu_notifications', JSON.stringify(notifications))
       localStorage.setItem('kikwetu_privacy', JSON.stringify(privacy))
       localStorage.setItem('kikwetu_payments', JSON.stringify(payments))
+      setSaveSuccess(true)
       showToast('Settings saved successfully')
+      setTimeout(() => setSaveSuccess(false), 2000)
     } catch {
       showToast('Failed to save settings. Try again.')
     } finally {
@@ -185,30 +220,50 @@ export default function SettingsPage() {
             <h1 className="serif">Make Kikwetu fit you.</h1>
             <p className="eyebrow">Customize your experience</p>
           </div>
-          <button className="primary" onClick={handleSaveAll} disabled={saving}>
-            <CheckCircle size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          <button className="save-btn" onClick={handleSaveAll} disabled={saving}>
+            {saving ? <Loader2 size={16} className="spin" /> : saveSuccess ? <CheckCircle size={16} className="check-pulse" /> : <CheckCircle size={16} />}
+            {saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Changes'}
           </button>
+        </div>
+
+        {/* Profile Header */}
+        <div className="profile-header">
+          <div className="profile-avatar-wrap" onClick={() => avatarInputRef.current?.click()}>
+            <img src={profile.avatar || '/avatar.jpg'} alt={profile.name || 'Profile'} className="profile-avatar" />
+            <div className="profile-avatar-overlay">
+              {avatarUploading ? <Loader2 size={20} className="spin" /> : <Camera size={20} />}
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              style={{ display: 'none' }}
+            />
+          </div>
+          <div className="profile-header-info">
+            <h2>{profile.name || 'Your Name'}</h2>
+            <p className="profile-bio-preview">{profile.bio || 'Add a bio to tell people about yourself'}</p>
+            <span className="profile-username">{profile.username || '@username'}</span>
+          </div>
         </div>
 
         <div className="grid2">
           {/* Profile Settings */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               <User size={20} />
               <h2>Profile</h2>
             </div>
             <div className="section-body">
-              <div className="avatar-upload">
-                <img src={profile.avatar} alt={profile.name} className="avatar" />
-                <button className="secondary">Change Photo</button>
-              </div>
-
               <div className="field">
                 <label>Full Name</label>
                 <input
                   type="text"
                   value={profile.name}
                   onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Your full name"
                 />
               </div>
 
@@ -218,6 +273,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profile.username}
                   onChange={e => setProfile(p => ({ ...p, username: e.target.value }))}
+                  placeholder="@username"
                 />
               </div>
 
@@ -229,6 +285,7 @@ export default function SettingsPage() {
                     type="text"
                     value={profile.county}
                     onChange={e => setProfile(p => ({ ...p, county: e.target.value }))}
+                    placeholder="Your county"
                   />
                 </div>
               </div>
@@ -239,10 +296,11 @@ export default function SettingsPage() {
                   value={profile.bio}
                   onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
                   rows={3}
+                  placeholder="Tell people about yourself"
                 />
               </div>
 
-              <button className="primary" onClick={handleSaveProfile} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+              <button className="secondary" onClick={handleSaveProfile} disabled={saving} style={{ alignSelf: 'flex-start' }}>
                 Save Profile
               </button>
             </div>
@@ -250,6 +308,7 @@ export default function SettingsPage() {
 
           {/* Appearance */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
               <h2>Appearance</h2>
@@ -295,6 +354,7 @@ export default function SettingsPage() {
 
           {/* Notifications */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               <Bell size={20} />
               <h2>Notifications</h2>
@@ -345,7 +405,7 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <button className="primary" onClick={handleSaveNotifications} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+              <button className="secondary" onClick={handleSaveNotifications} disabled={saving} style={{ alignSelf: 'flex-start' }}>
                 Save Notifications
               </button>
             </div>
@@ -353,6 +413,7 @@ export default function SettingsPage() {
 
           {/* Privacy */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               <Shield size={20} />
               <h2>Privacy</h2>
@@ -403,7 +464,7 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <button className="primary" onClick={handleSavePrivacy} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+              <button className="secondary" onClick={handleSavePrivacy} disabled={saving} style={{ alignSelf: 'flex-start' }}>
                 Save Privacy
               </button>
             </div>
@@ -411,6 +472,7 @@ export default function SettingsPage() {
 
           {/* Payments */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               <CreditCard size={20} />
               <h2>Payments</h2>
@@ -422,6 +484,7 @@ export default function SettingsPage() {
                   type="tel"
                   value={payments.mpesaNumber}
                   onChange={e => setPayments(p => ({ ...p, mpesaNumber: e.target.value }))}
+                  placeholder="+254 7XX XXX XXX"
                 />
               </div>
 
@@ -461,7 +524,7 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <button className="primary" onClick={handleSavePayments} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+              <button className="secondary" onClick={handleSavePayments} disabled={saving} style={{ alignSelf: 'flex-start' }}>
                 Save Payments
               </button>
             </div>
@@ -469,6 +532,7 @@ export default function SettingsPage() {
 
           {/* Offline & Sync */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               <Download size={20} />
               <h2>Offline & Sync</h2>
@@ -516,6 +580,7 @@ export default function SettingsPage() {
 
           {/* Account */}
           <section className="section">
+            <div className="section-gold-line" />
             <div className="section-head">
               <Settings size={20} />
               <h2>Account</h2>
@@ -533,8 +598,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="save-bottom">
-          <button className="primary" onClick={handleSaveAll} disabled={saving}>
-            <CheckCircle size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          <button className="save-btn" onClick={handleSaveAll} disabled={saving}>
+            {saving ? <Loader2 size={16} className="spin" /> : saveSuccess ? <CheckCircle size={16} className="check-pulse" /> : <CheckCircle size={16} />}
+            {saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -566,6 +632,95 @@ export default function SettingsPage() {
           margin-top: 0.25rem;
         }
 
+        .profile-header {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem;
+          background: var(--surface);
+          border: 1px solid var(--line);
+          border-radius: 18px;
+          padding: 2rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 8px 24px oklch(24% .034 158 / .06);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .profile-header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: var(--gold);
+        }
+
+        .profile-header:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 32px oklch(24% .034 158 / .1);
+        }
+
+        .profile-avatar-wrap {
+          position: relative;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .profile-avatar {
+          width: 96px;
+          height: 96px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid var(--line);
+          transition: border-color 0.2s ease;
+        }
+
+        .profile-avatar-wrap:hover .profile-avatar {
+          border-color: var(--gold);
+        }
+
+        .profile-avatar-overlay {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: oklch(0% 0 0 / 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+          color: white;
+        }
+
+        .profile-avatar-wrap:hover .profile-avatar-overlay {
+          opacity: 1;
+        }
+
+        .profile-header-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.375rem;
+        }
+
+        .profile-header-info h2 {
+          margin: 0;
+          font-size: 1.375rem;
+          font-weight: 600;
+        }
+
+        .profile-bio-preview {
+          color: var(--text2);
+          font-size: 0.9375rem;
+          margin: 0;
+        }
+
+        .profile-username {
+          color: var(--text3);
+          font-size: 0.8125rem;
+        }
+
         .grid2 {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -576,13 +731,35 @@ export default function SettingsPage() {
           .grid2 {
             grid-template-columns: 1fr;
           }
+          .profile-header {
+            flex-direction: column;
+            text-align: center;
+          }
         }
 
         .section {
           background: var(--surface);
           border: 1px solid var(--line);
-          border-radius: 12px;
+          border-radius: 18px;
           padding: 1.5rem;
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 8px 24px oklch(24% .034 158 / .06);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .section:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 32px oklch(24% .034 158 / .1);
+        }
+
+        .section-gold-line {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: var(--gold);
         }
 
         .section-head {
@@ -605,20 +782,6 @@ export default function SettingsPage() {
           gap: 1rem;
         }
 
-        .avatar-upload {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .avatar {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 2px solid var(--line);
-        }
-
         .field {
           display: flex;
           flex-direction: column;
@@ -636,13 +799,14 @@ export default function SettingsPage() {
         .field select {
           padding: 0.625rem 0.75rem;
           border: 1px solid var(--line);
-          border-radius: 8px;
+          border-radius: 10px;
           background: var(--bg);
           color: var(--text);
           font-size: 0.9375rem;
           font-family: inherit;
           width: 100%;
           box-sizing: border-box;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .field input:focus,
@@ -650,6 +814,7 @@ export default function SettingsPage() {
         .field select:focus {
           outline: none;
           border-color: var(--green);
+          box-shadow: 0 0 0 3px oklch(65% .19 155 / .15);
         }
 
         .field-with-icon {
@@ -685,12 +850,12 @@ export default function SettingsPage() {
           gap: 0.375rem;
           padding: 0.5rem 0.875rem;
           border: 1px solid var(--line);
-          border-radius: 8px;
+          border-radius: 10px;
           background: var(--bg);
           color: var(--text2);
           font-size: 0.875rem;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
         }
 
         .toggle-buttons button:hover {
@@ -739,7 +904,7 @@ export default function SettingsPage() {
           right: 0;
           bottom: 0;
           background: var(--line);
-          transition: 0.3s;
+          transition: 0.3s ease;
           border-radius: 24px;
         }
 
@@ -751,7 +916,7 @@ export default function SettingsPage() {
           left: 3px;
           bottom: 3px;
           background: white;
-          transition: 0.3s;
+          transition: 0.3s ease;
           border-radius: 50%;
         }
 
@@ -766,11 +931,44 @@ export default function SettingsPage() {
         select {
           padding: 0.5rem 0.75rem;
           border: 1px solid var(--line);
-          border-radius: 8px;
+          border-radius: 10px;
           background: var(--bg);
           color: var(--text);
           font-size: 0.875rem;
           cursor: pointer;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        select:focus {
+          outline: none;
+          border-color: var(--green);
+          box-shadow: 0 0 0 3px oklch(65% .19 155 / .15);
+        }
+
+        .save-btn {
+          background: var(--gold);
+          color: #1a1a1a;
+          border: none;
+          padding: 0.625rem 1.25rem;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 0.9375rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .save-btn:hover {
+          filter: brightness(1.1);
+          transform: translateY(-1px);
+        }
+
+        .save-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
         }
 
         .primary {
@@ -778,11 +976,11 @@ export default function SettingsPage() {
           color: white;
           border: none;
           padding: 0.625rem 1.25rem;
-          border-radius: 8px;
+          border-radius: 10px;
           font-weight: 600;
           font-size: 0.9375rem;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: all 0.2s ease;
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
@@ -790,11 +988,13 @@ export default function SettingsPage() {
 
         .primary:hover {
           background: var(--green2);
+          transform: translateY(-1px);
         }
 
         .primary:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+          transform: none;
         }
 
         .secondary {
@@ -802,11 +1002,11 @@ export default function SettingsPage() {
           color: var(--text);
           border: 1px solid var(--line);
           padding: 0.625rem 1.25rem;
-          border-radius: 8px;
+          border-radius: 10px;
           font-weight: 500;
           font-size: 0.9375rem;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
@@ -814,6 +1014,7 @@ export default function SettingsPage() {
 
         .secondary:hover {
           border-color: var(--text2);
+          transform: translateY(-1px);
         }
 
         .full-width {
@@ -839,19 +1040,23 @@ export default function SettingsPage() {
           justify-content: flex-end;
         }
 
-        .tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
+        .spin {
+          animation: spin 1s linear infinite;
         }
 
-        .tag {
-          padding: 0.25rem 0.625rem;
-          background: var(--greenSoft);
-          color: var(--green);
-          border-radius: 100px;
-          font-size: 0.75rem;
-          font-weight: 500;
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .check-pulse {
+          animation: checkPulse 0.6s ease;
+        }
+
+        @keyframes checkPulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+          100% { transform: scale(1); }
         }
       `}</style>
     </AppLayout>
