@@ -26,18 +26,18 @@ const PAGE_SIZE = 10;
 
 function ThreadSkeleton() {
   return (
-    <div className="bg-white dark:bg-brand-cardDark p-4 sm:p-5 space-y-4 border-b border-gray-100 dark:border-gray-800 animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800" />
-        <div className="space-y-2">
-          <div className="h-3 w-24 bg-gray-200 dark:bg-gray-800 rounded" />
-          <div className="h-2 w-16 bg-gray-200 dark:bg-gray-800 rounded" />
+    <div style={{ padding: '19px 0', opacity: 0.5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-surface-3)' }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 14, width: 120, borderRadius: 4, background: 'var(--color-surface-3)', marginBottom: 6 }} />
+          <div style={{ height: 10, width: 80, borderRadius: 4, background: 'var(--color-surface-3)' }} />
         </div>
       </div>
-      <div className="space-y-2 pt-2">
-        <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-800 rounded" />
-        <div className="h-3 w-full bg-gray-200 dark:bg-gray-800 rounded" />
-        <div className="h-3 w-5/6 bg-gray-200 dark:bg-gray-800 rounded" />
+      <div style={{ marginTop: 15 }}>
+        <div style={{ height: 16, width: '70%', borderRadius: 4, background: 'var(--color-surface-3)', marginBottom: 8 }} />
+        <div style={{ height: 12, width: '100%', borderRadius: 4, background: 'var(--color-surface-3)', marginBottom: 4 }} />
+        <div style={{ height: 12, width: '85%', borderRadius: 4, background: 'var(--color-surface-3)' }} />
       </div>
     </div>
   );
@@ -231,87 +231,95 @@ export default function FeedView() {
   };
 
   return (
-    <div className="w-full pb-8">
+    <div>
       {view === 'feed' && (
-        <div className="space-y-0">
-          <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800">
-            <PostComposer />
+        <>
+          <div className="page-head">
+            <div>
+              <div className="eyebrow">{new Date().toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+              <h1 className="serif">{tr('Baraza', 'The Baraza')}</h1>
+              <p>{tr('Maswali, mawazo na maarifa kutoka kwa watu walio karibu nawe.', 'Questions, ideas, and local knowledge from people near you.')}</p>
+            </div>
+            <button className="select-pill"><i data-lucide="map-pin" className="icon-sm" />Nairobi</button>
           </div>
 
-          <div className="px-4 py-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide border-b border-gray-100 dark:border-gray-800">
+          <section className="section-card composer">
+            <div className="composer-top">
+              <div className="avatar">{user?.full_name?.[0]?.toUpperCase() || 'U'}</div>
+              <PostComposer />
+            </div>
+          </section>
+
+          <div className="tags" style={{ marginTop: 14, marginBottom: 4 }}>
             {FEED_TABS.map(t => (
               <button key={t.id} onClick={() => setFeedTab(t.id)}
-                className={cn(
-                  'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all',
-                  feedTab === t.id ? 'bg-brand-deep text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                )}>{t.label}</button>
+                className={cn('tag', feedTab === t.id && 'gold')}>{t.label}</button>
             ))}
             <button onClick={() => { setShowSaved(prev => !prev); setFeedTab('all'); }}
-              className={cn('px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all', showSaved ? 'bg-amber-500 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700')}>
-              <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+              className={cn('tag', showSaved && 'gold')}>
               {tr('Imehifadhiwa', 'Saved')}
             </button>
-            <button onClick={toggleLang} className="ml-1 px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-brand-red hover:bg-brand-terracotta/10 transition-all">
+            <button onClick={toggleLang} className="tag gold">
               {contentLang === 'en' ? 'Kiswahili' : 'English'}
             </button>
           </div>
 
-          {feedError ? (
-            <div className="text-center py-16 space-y-4">
-              <div className="text-sm text-red-500 dark:text-red-400 font-medium">
-                {tr('Kuna tatizo kupakia machapisho.', 'There was an error loading the feed.')}
+          <section className="section-card" style={{ marginTop: 14 }}>
+            {feedError ? (
+              <div className="empty-state">
+                <div className="empty-icon"><i data-lucide="alert-circle" className="icon-lg" /></div>
+                <h3>{tr('Kuna tatizo', 'Something went wrong')}</h3>
+                <p>{tr('Kuna tatizo kupakia machapisho.', 'There was an error loading the feed.')}</p>
+                <button className="primary-btn" onClick={() => loadThreads()} style={{ marginTop: 14 }}>
+                  {tr('Jaribu Tena', 'Try Again')}
+                </button>
               </div>
-              <button onClick={() => loadThreads()} className="bg-brand-terracotta text-white px-4 py-2 rounded-full font-bold shadow hover:bg-brand-red transition-all">
-                {tr('Jaribu Tena', 'Try Again')}
-              </button>
-            </div>
-          ) : loading ? (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            ) : loading ? (
               <ThreadSkeleton />
-              <ThreadSkeleton />
-              <ThreadSkeleton />
-            </div>
-          ) : displayedThreads.length === 0 ? (
-            <div className="text-center py-16 text-sm text-gray-500 dark:text-gray-400">
-              {tr('Hakuna machapisho bado. Kuwa wa kwanza kushiriki!', 'No posts yet. Be the first to share!')}
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {displayedThreads.map((thread) => (
-                <ThreadCard
-                  key={thread.id}
-                  thread={thread}
-                  userVote={userVotes[thread.id]}
-                  saved={!!savedThreads[thread.id]}
-                  emojiReaction={emojiReactions[thread.id]}
-                  displayCount={localCounts[thread.id] ?? thread.upvotes_count ?? 0}
-                  voting={votingThread === thread.id}
-                  onVote={handleVote}
-                  onSave={toggleSave}
-                  onEmoji={addEmoji}
-                  onShare={(id) => setOpenShare(openShare === id ? null : id)}
-                  showShareMenu={openShare === thread.id}
-                  onShareSelect={(platform, id, title, content) => {
-                    shareToSocial(platform, id, title, content);
-                    setOpenShare(null);
-                  }}
-                />
-              ))}
+            ) : displayedThreads.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon"><i data-lucide="message-circle" className="icon-lg" /></div>
+                <h3>{tr('Hakuna machapisho bado.', 'No posts yet.')}</h3>
+                <p>{tr('Kuwa wa kwanza kushiriki!', 'Be the first to share!')}</p>
+              </div>
+            ) : (
+              <div>
+                {displayedThreads.map((thread) => (
+                  <ThreadCard
+                    key={thread.id}
+                    thread={thread}
+                    userVote={userVotes[thread.id]}
+                    saved={!!savedThreads[thread.id]}
+                    emojiReaction={emojiReactions[thread.id]}
+                    displayCount={localCounts[thread.id] ?? thread.upvotes_count ?? 0}
+                    voting={votingThread === thread.id}
+                    onVote={handleVote}
+                    onSave={toggleSave}
+                    onEmoji={addEmoji}
+                    onShare={(id) => setOpenShare(openShare === id ? null : id)}
+                    showShareMenu={openShare === thread.id}
+                    onShareSelect={(platform, id, title, content) => {
+                      shareToSocial(platform, id, title, content);
+                      setOpenShare(null);
+                    }}
+                  />
+                ))}
 
-              <div ref={sentinelRef} className="h-4" />
-              {loadingMore && (
-                <div className="flex justify-center py-4">
-                  <div className="w-6 h-6 border-2 border-brand-terracotta border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-              {!hasMore && displayedThreads.length > 0 && (
-                <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-400">
-                  {tr('Umesoma machapisho yote', 'You have seen all posts')}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                <div ref={sentinelRef} style={{ height: 4 }} />
+                {loadingMore && (
+                  <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-text-3)', fontSize: '.74rem' }}>
+                    {tr('Inapakia...', 'Loading...')}
+                  </div>
+                )}
+                {!hasMore && displayedThreads.length > 0 && (
+                  <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-text-3)', fontSize: '.72rem' }}>
+                    {tr('Umesoma machapisho yote', 'You have seen all posts')}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {/* Other views logic (spaces, leaderboard, profile) remains similar but stylized */}
@@ -335,10 +343,11 @@ export default function FeedView() {
       <button
         type="button"
         onClick={goCompose}
-        className="lg:hidden fixed bottom-[80px] right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-brand-terracotta to-brand-red text-white shadow-2xl flex items-center justify-center transition-all active:scale-90 hover:scale-105"
+        className="lg:hidden fixed bottom-[80px] right-5 z-40"
+        style={{ width: 48, height: 48, borderRadius: '50%', border: 0, color: 'var(--color-surface)', background: 'var(--color-green-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)' }}
         aria-label="Compose post"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+        <i data-lucide="plus" className="icon-lg" />
       </button>
     </div>
   );

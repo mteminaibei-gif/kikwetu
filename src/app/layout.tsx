@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
+import { DM_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-import SavannahBackground from "@/components/SavannahBackground";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const poppins = Poppins({ weight: ["600", "700", "800", "900"], subsets: ["latin"], variable: "--font-poppins" });
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const fraunces = Fraunces({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-serif", display: "swap" });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kikwetuconnect.vercel.app';
 
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#cc5b47",
+  themeColor: "#3A7D44",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -46,7 +45,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${dmSans.variable} ${fraunces.variable}`} data-theme="light" suppressHydrationWarning>
       <head>
         <link rel="alternate" hrefLang="en" href={siteUrl} />
         <link rel="alternate" hrefLang="sw" href={`${siteUrl}/sw`} />
@@ -65,8 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }),
         }} />
       </head>
-      <body className="font-sans min-h-screen flex flex-col text-gray-900 dark:text-gray-100 transition-colors duration-300 selection:bg-brand-red selection:text-white touch-manipulation antialiased">
-        <SavannahBackground />
+      <body className="min-h-screen">
         <Providers>
           {children}
         </Providers>

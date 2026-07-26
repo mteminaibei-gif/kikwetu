@@ -7,40 +7,70 @@ import { useAuth } from '@/context/AuthContext';
 export default function RightSidebar() {
   const { spaces } = useApp();
   const { user } = useAuth();
-  
+
   if (!user) return null;
 
   return (
-    <aside className="hidden lg:flex flex-col w-80 sticky top-[80px] h-[calc(100vh-80px)] overflow-y-auto pl-4 lg:pl-8 py-4">
-      {/* Trending Spaces Widget */}
-      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4 text-lg">Trending Spaces</h3>
-        <div className="space-y-4">
-          {spaces.slice(0, 4).map(space => (
-            <Link key={space.id} href={`/feed?view=spaces&space=${space.id}`} className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-terracotta to-brand-red flex shrink-0 items-center justify-center text-white font-bold shadow-sm group-hover:scale-105 transition-transform">
-                {space.name[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-brand-red transition-colors">{space.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{space.description}</p>
-              </div>
-            </Link>
-          ))}
+    <aside className="sidebar right-sidebar">
+      <section className="right-block">
+        <div className="eyebrow">County pulse</div>
+        <h3 className="serif">Worth your attention.</h3>
+        <div className="right-list">
+          <div className="right-item">
+            <div className="quick-icon" style={{ width: 28, height: 28 }}><i data-lucide="droplets" className="icon-sm" /></div>
+            <div className="right-copy">
+              <strong>Water-saving tips</strong>
+              <span>2.4k readers &middot; Makueni</span>
+            </div>
+          </div>
+          <div className="right-item">
+            <div className="quick-icon" style={{ width: 28, height: 28 }}><i data-lucide="graduation-cap" className="icon-sm" /></div>
+            <div className="right-copy">
+              <strong>Bursary deadlines</strong>
+              <span>1.8k readers &middot; Education</span>
+            </div>
+          </div>
+          <div className="right-item">
+            <div className="quick-icon" style={{ width: 28, height: 28 }}><i data-lucide="ship-wheel" className="icon-sm" /></div>
+            <div className="right-copy">
+              <strong>Mombasa port update</strong>
+              <span>940 readers &middot; Mombasa</span>
+            </div>
+          </div>
         </div>
-        <Link href="/feed?view=spaces" className="block text-brand-red text-sm font-semibold hover:underline mt-4">
-          Show more
-        </Link>
-      </div>
+      </section>
 
-      {/* Footer Links */}
-      <nav className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400 mt-auto pt-4 border-t border-gray-200 dark:border-gray-800">
-        <Link href="/about" className="hover:underline">About</Link>
-        <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-        <Link href="/terms" className="hover:underline">Terms of Service</Link>
-        <Link href="/advertise" className="hover:underline">Advertise</Link>
-        <span>&copy; {new Date().getFullYear()} KikwetuConnect</span>
-      </nav>
+      <section className="right-block">
+        <div className="tip-card">
+          <div className="eyebrow" style={{ color: 'var(--color-earth)' }}>Good guidance is mutual</div>
+          <h3 className="serif">Remember to tip well.</h3>
+          <p>Tips thank professionals and help keep expert time accessible across Kenya.</p>
+          <button data-route="wallet">Open wallet</button>
+        </div>
+      </section>
+
+      <section className="right-block">
+        <div className="eyebrow">Approved voices</div>
+        <h3 className="serif">People students trust.</h3>
+        <div className="right-list">
+          <div className="right-item">
+            <div className="avatar sm earth">NW</div>
+            <div className="right-copy">
+              <strong>Njeri Wambui <span className="verified">&#10003;</span></strong>
+              <span>Urban farming &middot; 4.9</span>
+            </div>
+            <button className="follow-btn">Follow</button>
+          </div>
+          <div className="right-item">
+            <div className="avatar sm blue">JO</div>
+            <div className="right-copy">
+              <strong>James Otieno <span className="verified">&#10003;</span></strong>
+              <span>Solar systems &middot; 4.8</span>
+            </div>
+            <button className="follow-btn">Follow</button>
+          </div>
+        </div>
+      </section>
     </aside>
   );
 }
