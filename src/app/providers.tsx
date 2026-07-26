@@ -43,16 +43,42 @@ function TutorialGate() {
   );
 }
 
+import DesktopSidebar from '@/components/DesktopSidebar';
+import RightSidebar from '@/components/RightSidebar';
+
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
   const isLanding = pathname === '/';
+  
+  if (isLanding || isAdmin) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        {!isAdmin && <Navbar />}
+        <TutorialGate />
+        <ConsentBanner />
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        {!isAdmin && <MobileBottomNav />}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {!isAdmin && <Navbar />}
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[#0a0a0a]">
+      <Navbar />
       <TutorialGate />
       <ConsentBanner />
-      <main className={cn('flex-1', !isLanding && 'pb-20 md:pb-0')}>{children}</main>
+      
+      <div className="flex-1 max-w-7xl mx-auto w-full flex justify-center">
+        <DesktopSidebar />
+        
+        <main className="flex-1 min-w-0 max-w-[600px] w-full pb-20 md:pb-0 px-0 md:px-4 lg:px-8 border-x-0 md:border-x border-gray-100 dark:border-gray-800/50 bg-white dark:bg-brand-cardDark min-h-[calc(100vh-64px)] shadow-sm">
+          {children}
+        </main>
+        
+        <RightSidebar />
+      </div>
+      
       <MobileBottomNav />
     </div>
   );
