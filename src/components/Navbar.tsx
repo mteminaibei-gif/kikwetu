@@ -159,7 +159,7 @@ export default function Navbar() {
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:w-80 justify-end">
           <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-all active:scale-90" aria-label="Theme">
-            {dark ? <SunIcon /> : <MoonIcon />}
+            {mounted ? (dark ? <SunIcon /> : <MoonIcon />) : <div className="w-5 h-5" />}
           </button>
 
           {user ? (

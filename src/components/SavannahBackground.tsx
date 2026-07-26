@@ -219,7 +219,7 @@ function GrassField({ time }: { time: number }) {
           return (
             <g key={i} transform={`translate(${b.x}, 0)`}>
               <path
-                d={`M0 40 Q${sway} ${40 - b.h * 0.5} ${sway * 0.7} ${40 - b.h}`}
+                d={`M0 40 Q${sway.toFixed(6)} ${(40 - b.h * 0.5).toFixed(6)} ${(sway * 0.7).toFixed(6)} ${(40 - b.h).toFixed(6)}`}
                 fill="none"
                 stroke={b.color}
                 strokeWidth="1.2"
@@ -228,7 +228,7 @@ function GrassField({ time }: { time: number }) {
               />
               {/* Second blade in tuft */}
               <path
-                d={`M1.5 40 Q${sway + 1.5} ${40 - b.h * 0.4} ${sway * 0.5 + 2} ${40 - b.h * 0.85}`}
+                d={`M1.5 40 Q${(sway + 1.5).toFixed(6)} ${(40 - b.h * 0.4).toFixed(6)} ${(sway * 0.5 + 2).toFixed(6)} ${(40 - b.h * 0.85).toFixed(6)}`}
                 fill="none"
                 stroke={b.color}
                 strokeWidth="0.8"
