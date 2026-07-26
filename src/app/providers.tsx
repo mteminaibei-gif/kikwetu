@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { AppProvider } from '@/context/AppContext';
@@ -12,6 +11,8 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import ConsentBanner from '@/components/ConsentBanner';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import DesktopSidebar from '@/components/DesktopSidebar';
+import RightSidebar from '@/components/RightSidebar';
 
 function TutorialGate() {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ function TutorialGate() {
         if (data && !data.tutorial_completed && data.heshima_score <= 100) {
           setShow(true);
         }
-      } catch {}
+      } catch { /* ignore */ }
       setChecked(true);
     })();
   }, [user]);
@@ -43,15 +44,15 @@ function TutorialGate() {
   );
 }
 
-import DesktopSidebar from '@/components/DesktopSidebar';
-import RightSidebar from '@/components/RightSidebar';
-
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
   const isLanding = pathname === '/';
-  
-  if (isLanding || isAdmin) {
+  const isAuth = pathname?.startsWith('/auth') || pathname === '/onboarding';
+  const isProfile = pathname?.startsWith('/profile');
+
+  // Full-bleed layouts (landing, admin, auth, profile FB-style)
+  if (isLanding || isAdmin || isAuth || isProfile) {
     return (
       <div className="flex flex-col min-h-screen">
         {!isAdmin && <Navbar />}
@@ -64,21 +65,21 @@ function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-[#0a0a0a]">
+    <div className="flex flex-col min-h-screen">
       <Navbar />
       <TutorialGate />
       <ConsentBanner />
-      
-      <div className="flex-1 max-w-7xl mx-auto w-full flex justify-center">
+
+      <div className="flex-1 max-w-7xl mx-auto w-full flex justify-center gap-0 lg:gap-2">
         <DesktopSidebar />
-        
-        <main className="flex-1 min-w-0 max-w-[600px] w-full pb-20 md:pb-0 px-0 md:px-4 lg:px-8 border-x-0 md:border-x border-gray-100 dark:border-gray-800/50 bg-white dark:bg-brand-cardDark min-h-[calc(100vh-64px)] shadow-sm">
+
+        <main className="flex-1 min-w-0 max-w-[640px] w-full pb-24 md:pb-8 border-x border-gray-100/90 dark:border-gray-800/60 bg-white/40 dark:bg-brand-cardDark/40 backdrop-blur-[2px] min-h-[calc(100vh-64px)]">
           {children}
         </main>
-        
+
         <RightSidebar />
       </div>
-      
+
       <MobileBottomNav />
     </div>
   );
