@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser, createThread, requestSession } from '@/lib/supabase-helpers';
 import {
   GraduationCap, BadgeCheck, MessagesSquare, Plus, CircleHelp,
   MessageCircleQuestion, ThumbsUp, Send, Award, BookOpen, Target,
-  ChevronRight, Tag,
+  ChevronRight, Tag, X,
 } from 'lucide-react';
 
 const stats = [
@@ -17,20 +18,36 @@ const stats = [
 ];
 
 const MOCK_STUDENTS = [
-  { name: 'Njeri Wambui', initials: 'NW', color: 'earth', topic: 'Urban farming and climate education', badge: 'Approved professional' },
-  { name: 'James Otieno', initials: 'JO', color: 'blue', topic: 'Solar systems for small businesses', badge: 'Approved professional' },
-  { name: 'Fatuma Ali', initials: 'FA', color: 'green', topic: 'Swahili heritage and storytelling', badge: 'Approved professional' },
-  { name: 'Ruth Kilonzo', initials: 'RK', color: 'earth', topic: 'County procurement and tenders', badge: 'Approved professional' },
+  { name: 'Njeri Wambui', initials: 'NW', color: 'earth', topic: 'Urban farming and climate education', badge: 'Approved professional', user_id: 'mock-nw' },
+  { name: 'James Otieno', initials: 'JO', color: 'blue', topic: 'Solar systems for small businesses', badge: 'Approved professional', user_id: 'mock-jo' },
+  { name: 'Fatuma Ali', initials: 'FA', color: 'green', topic: 'Swahili heritage and storytelling', badge: 'Approved professional', user_id: 'mock-fa' },
+  { name: 'Ruth Kilonzo', initials: 'RK', color: 'earth', topic: 'County procurement and tenders', badge: 'Approved professional', user_id: 'mock-rk' },
 ];
+
+type Professional = typeof MOCK_STUDENTS[number];
 
 export default function StudentsPage() {
   const { showToast } = useApp();
   const [question, setQuestion] = useState('');
-  const [professionals, setProfessionals] = useState(MOCK_STUDENTS);
+  const [questionTitle, setQuestionTitle] = useState('');
+  const [professionals, setProfessionals] = useState<Professional[]>(MOCK_STUDENTS);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [sessionModalPro, setSessionModalPro] = useState<Professional | null>(null);
+  const [sessionTitle, setSessionTitle] = useState('');
+  const [sessionDesc, setSessionDesc] = useState('');
+  const [sessionSubmitting, setSessionSubmitting] = useState(false);
 
   useEffect(() => {
-    async function fetchProfessionals() {
+    async function init() {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch {}
+
       try {
         const { data, error } = await supabase
           .from('professionals')
@@ -54,6 +71,7 @@ export default function StudentsPage() {
               color: colors[i % colors.length],
               topic: pro.topic || pro.specialty || 'General professional',
               badge: pro.badge || 'Approved professional',
+              user_id: pro.user_id || pro.id || String(i),
             }))
           );
         }
@@ -64,8 +82,56 @@ export default function StudentsPage() {
       }
     }
 
-    fetchProfessionals();
+    init();
   }, []);
+
+  async function handlePublishQuestion() {
+    if (!question.trim() || !questionTitle.trim()) {
+      showToast('Please add a title and question');
+      return;
+    }
+    if (!currentUser) {
+      showToast('Please log in to ask a question');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await createThread(currentUser.id, questionTitle, question, 'question');
+      if (error) throw error;
+      showToast('Question published!');
+      setQuestion('');
+      setQuestionTitle('');
+      setShowQuestionForm(false);
+    } catch {
+      showToast('Failed to publish. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRequestSession() {
+    if (!sessionModalPro || !sessionTitle.trim()) {
+      showToast('Please enter a session title');
+      return;
+    }
+    if (!currentUser) {
+      showToast('Please log in to request a session');
+      return;
+    }
+    setSessionSubmitting(true);
+    try {
+      const { error } = await requestSession(currentUser.id, sessionModalPro.user_id, sessionTitle, sessionDesc);
+      if (error) throw error;
+      showToast(`Session request sent to ${sessionModalPro.name}`);
+      setSessionTitle('');
+      setSessionDesc('');
+      setSessionModalPro(null);
+    } catch {
+      showToast('Failed to send request. Try again.');
+    } finally {
+      setSessionSubmitting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -139,6 +205,58 @@ export default function StudentsPage() {
 
   return (
     <AppLayout>
+      {sessionModalPro && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{
+            background: 'var(--bg)', borderRadius: 16, border: '1px solid var(--line)',
+            width: '100%', maxWidth: 420, padding: 24, position: 'relative',
+          }}>
+            <button onClick={() => setSessionModalPro(null)} style={{
+              position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
+              cursor: 'pointer', color: 'var(--text3)',
+            }}>
+              <X size={20} />
+            </button>
+            <h2 className="serif" style={{ marginBottom: 16 }}>Request Session</h2>
+            <p style={{ fontSize: '.82rem', color: 'var(--text2)', marginBottom: 16 }}>
+              Send a session request to <strong>{sessionModalPro.name}</strong>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input
+                type="text"
+                placeholder="Session title (e.g. Solar basics)"
+                value={sessionTitle}
+                onChange={(e) => setSessionTitle(e.target.value)}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.88rem',
+                }}
+              />
+              <textarea
+                placeholder="Brief description of what you want to learn..."
+                value={sessionDesc}
+                onChange={(e) => setSessionDesc(e.target.value)}
+                rows={3}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.88rem',
+                  fontFamily: 'inherit', resize: 'vertical',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button className="secondary" onClick={() => setSessionModalPro(null)}>Cancel</button>
+                <button className="primary" onClick={handleRequestSession} disabled={sessionSubmitting}>
+                  {sessionSubmitting ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-head">
         <div>
           <div className="eyebrow">Students Area</div>
@@ -150,7 +268,7 @@ export default function StudentsPage() {
       <section className="hero">
         <div className="hero-content">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="primary" onClick={() => showToast('Ask a question')}>
+            <button className="primary" onClick={() => setShowQuestionForm(true)}>
               <Plus className="icon-sm" /> Ask a question
             </button>
             <button className="secondary" onClick={() => showToast('Browse experts')}>
@@ -162,6 +280,58 @@ export default function StudentsPage() {
           </div>
         </div>
       </section>
+
+      {showQuestionForm && (
+        <section className="section" style={{ marginBottom: 22 }}>
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Ask the community</div>
+              <h2 className="serif">Post your question.</h2>
+            </div>
+            <button className="secondary" onClick={() => setShowQuestionForm(false)}>Cancel</button>
+          </div>
+          <div style={{ marginTop: 14 }}>
+            <input
+              type="text"
+              placeholder="Question title (e.g. How do I start urban farming?)"
+              value={questionTitle}
+              onChange={(e) => setQuestionTitle(e.target.value)}
+              style={{
+                width: '100%', padding: 12, borderRadius: 10,
+                border: '1px solid var(--line)', background: 'var(--surface)',
+                color: 'var(--text)', fontSize: '.88rem', marginBottom: 10, boxSizing: 'border-box',
+              }}
+            />
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="What are you stuck on? Be specific and someone from the community or an expert will help."
+              style={{
+                width: '100%',
+                minHeight: 100,
+                padding: 12,
+                borderRadius: 10,
+                border: '1px solid var(--line)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: '.82rem',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+              <button className="secondary" onClick={() => setShowQuestionForm(false)}>Cancel</button>
+              <button
+                className="primary"
+                onClick={handlePublishQuestion}
+                disabled={submitting}
+              >
+                <Send className="icon-sm" /> {submitting ? 'Publishing...' : 'Publish'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="grid2">
         <section className="section">
@@ -303,7 +473,7 @@ export default function StudentsPage() {
               </div>
               <div className="pro-actions">
                 <button className="follow" onClick={(e) => { e.stopPropagation(); showToast(`Following ${pro.name}`); }}>Follow</button>
-                <button className="primary" onClick={(e) => { e.stopPropagation(); showToast(`Request sent to ${pro.name}`); }}>Request consult</button>
+                <button className="primary" onClick={(e) => { e.stopPropagation(); setSessionModalPro(pro); }}>Request consult</button>
               </div>
             </div>
           ))}
@@ -349,8 +519,7 @@ export default function StudentsPage() {
               className="primary"
               onClick={() => {
                 if (question.trim()) {
-                  showToast('Question published!');
-                  setQuestion('');
+                  setShowQuestionForm(true);
                 } else {
                   showToast('Please write your question first');
                 }

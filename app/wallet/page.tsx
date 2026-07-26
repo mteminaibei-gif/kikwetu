@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser, sendTip } from '@/lib/supabase-helpers';
 import {
   WalletCards, Plus, CalendarDays, Star, ThumbsUp, MessageCircle,
   ArrowUpRight, ArrowDownLeft, ExternalLink, ChevronRight,
@@ -16,6 +17,11 @@ const MOCK_TX = [
   { type: 'out', label: 'Tip to Njeri Wambui', amount: '-KSh 750', time: 'Yesterday', icon: ArrowUpRight, color: 'var(--earth)' },
   { type: 'out', label: 'Tip to James Otieno', amount: '-KSh 500', time: '3 days ago', icon: ArrowUpRight, color: 'var(--earth)' },
   { type: 'in', label: 'Wallet top-up via M-Pesa', amount: '+KSh 2,000', time: '5 days ago', icon: ArrowDownLeft, color: 'var(--green)' },
+];
+
+const MOCK_RECIPIENTS = [
+  { id: 'njeri-wambui', name: 'Njeri Wambui', initials: 'NW', verified: true, session: 'Completed yesterday · Urban farming and climate education', suggested: 1000 },
+  { id: 'james-otieno', name: 'James Otieno', initials: 'JO', verified: true, session: 'Completed 3 days ago · Digital marketing strategy', suggested: 750 },
 ];
 
 function relativeTime(dateStr: string) {
@@ -40,9 +46,16 @@ export default function WalletPage() {
   const [hoverRating, setHoverRating] = useState(0);
   const [transactions, setTransactions] = useState(MOCK_TX);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState(MOCK_RECIPIENTS[0]);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    async function fetchTips() {
+    async function init() {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+
       const { data, error } = await supabase
         .from('tips')
         .select('*')
@@ -65,12 +78,77 @@ export default function WalletPage() {
       }
       setLoading(false);
     }
-    fetchTips();
+    init();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('tips-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tips' },
+        (payload) => {
+          const tip = payload.new as any;
+          if (tip.from_user_id === user.id) return;
+          const newTx = {
+            type: 'in',
+            label: `Tip received from ${tip.from_user_id}`,
+            amount: `+KSh ${tip.amount}`,
+            time: 'Just now',
+            icon: ArrowDownLeft,
+            color: 'var(--green)',
+          };
+          setTransactions((prev) => [newTx, ...prev]);
+          showToast(`You received a KSh ${tip.amount} tip!`);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const tipAmount = selectedTip === null ? (parseInt(customTip) || 0) : selectedTip;
   const platformFee = Math.round(tipAmount * 0.1);
   const netToPro = tipAmount - platformFee;
+
+  async function handleSendTip() {
+    if (!user || tipAmount <= 0 || rating <= 0) return;
+
+    setSending(true);
+    const { data, error } = await sendTip(
+      user.id,
+      selectedRecipient.id,
+      tipAmount,
+      rating,
+      '',
+    );
+    setSending(false);
+    setShowConfirm(false);
+
+    if (error) {
+      showToast('Failed to send tip. Please try again.');
+      return;
+    }
+
+    const newTx = {
+      type: 'out' as const,
+      label: `Tip to ${selectedRecipient.name}`,
+      amount: `-KSh ${tipAmount.toLocaleString()}`,
+      time: 'Just now',
+      icon: ArrowUpRight,
+      color: 'var(--earth)',
+    };
+    setTransactions((prev) => [newTx, ...prev]);
+    showToast(`Tip of KSh ${tipAmount.toLocaleString()} sent! Fee: KSh ${platformFee}. Net: KSh ${netToPro}.`);
+
+    setSelectedTip(1000);
+    setCustomTip('');
+    setRating(0);
+  }
 
   if (loading) {
     return (
@@ -195,7 +273,7 @@ export default function WalletPage() {
             <button
               className="secondary"
               style={{ marginTop: 16, background: 'oklch(100% 0 0 / .15)', border: 'none', color: '#fff' }}
-              onClick={() => showToast('Add funds via M-Pesa')}
+              onClick={() => showToast('M-Pesa prompt sent. Check your phone.')}
             >
               <Plus className="icon-sm" /> Add via M-Pesa
             </button>
@@ -387,7 +465,7 @@ export default function WalletPage() {
             style={{ marginTop: 16, width: '100%' }}
             onClick={() => {
               if (tipAmount > 0 && rating > 0) {
-                showToast(`Tip of KSh ${tipAmount.toLocaleString()} sent! Thank you.`);
+                setShowConfirm(true);
               } else if (tipAmount === 0) {
                 showToast('Please select or enter a tip amount');
               } else {
@@ -453,6 +531,75 @@ export default function WalletPage() {
           })}
         </div>
       </section>
+
+      {showConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'oklch(0% 0 0 / .5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 16,
+              padding: 24,
+              width: '90%',
+              maxWidth: 380,
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="serif" style={{ marginBottom: 8 }}>Confirm tip</h3>
+            <p style={{ fontSize: '.85rem', color: 'var(--text2)', marginBottom: 16 }}>
+              Send KSh {tipAmount.toLocaleString()} to {selectedRecipient.name}?
+            </p>
+            <div style={{
+              padding: 14,
+              borderRadius: 12,
+              background: 'var(--bgAlt)',
+              marginBottom: 16,
+              fontSize: '.82rem',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--text2)' }}>Tip</span>
+                <strong>KSh {tipAmount.toLocaleString()}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--text2)' }}>Fee (10%)</span>
+                <span style={{ color: 'var(--text3)' }}>KSh {platformFee.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+                <span style={{ fontWeight: 700 }}>Professional receives</span>
+                <strong style={{ color: 'var(--green)' }}>KSh {netToPro.toLocaleString()}</strong>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="secondary"
+                style={{ flex: 1 }}
+                onClick={() => setShowConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary"
+                style={{ flex: 1 }}
+                onClick={handleSendTip}
+                disabled={sending}
+              >
+                {sending ? 'Sending...' : 'Send tip'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

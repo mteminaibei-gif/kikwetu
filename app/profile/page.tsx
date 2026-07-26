@@ -4,6 +4,12 @@ import React, { useState, useEffect } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
 import {
+  getCurrentUser,
+  updateProfile,
+  toggleFollow,
+  checkFollowing,
+} from '@/lib/supabase-helpers';
+import {
   Pencil,
   HeartHandshake,
   Sparkles,
@@ -69,30 +75,45 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(MOCK_PROFILE);
   const [threadsCount, setThreadsCount] = useState<number | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editCounty, setEditCounty] = useState('');
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
-
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (prof) {
-          setProfile((prev) => ({
-            ...prev,
-            name: prof.full_name || prev.name,
-            username: prof.username ? `@${prof.username}` : prev.username,
-            location: prof.location || prev.location,
-            bio: prof.bio || prev.bio,
-            initials: prof.full_name
-              ? prof.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-              : prev.initials,
-          }));
+        const user = await getCurrentUser();
+        if (!user) {
+          setLoading(false);
+          return;
         }
+
+        setCurrentUser(user);
+        setProfileUserId(user.id);
+        setIsOwnProfile(true);
+
+        setProfile((prev) => ({
+          ...prev,
+          name: user.full_name || prev.name,
+          username: user.username ? `@${user.username}` : prev.username,
+          location: user.county || prev.location,
+          bio: user.bio || prev.bio,
+          heshima: String(user.heshima ?? prev.heshima),
+          initials: user.full_name
+            ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+            : prev.initials,
+        }));
+
+        setEditName(user.full_name || '');
+        setEditBio(user.bio || '');
+        setEditCounty(user.county || '');
 
         const { count } = await supabase
           .from('threads')
@@ -109,6 +130,39 @@ export default function ProfilePage() {
     }
     fetchProfile();
   }, []);
+
+  async function handleSaveProfile() {
+    if (!currentUser) return;
+    setSaving(true);
+    const { error } = await updateProfile(currentUser.id, {
+      full_name: editName,
+      bio: editBio,
+      county: editCounty,
+    });
+    setSaving(false);
+    if (!error) {
+      setProfile((prev) => ({
+        ...prev,
+        name: editName,
+        bio: editBio,
+        location: editCounty,
+        initials: editName
+          ? editName.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+          : prev.initials,
+      }));
+      setEditMode(false);
+      showToast('Profile updated');
+    } else {
+      showToast('Failed to update profile');
+    }
+  }
+
+  async function handleFollow() {
+    if (!currentUser || !profileUserId) return;
+    const result = await toggleFollow(currentUser.id, profileUserId);
+    setIsFollowing(result);
+    showToast(result ? 'Following' : 'Unfollowed');
+  }
 
   if (loading) {
     return (
@@ -136,35 +190,84 @@ export default function ProfilePage() {
           <span className="eyebrow">Profile</span>
           <h1 className="serif">Your contribution has a home.</h1>
         </div>
-        <button
-          className="secondary"
-          onClick={() => showToast('Edit profile coming soon')}
-        >
-          <Edit className="icon-sm" />
-          Edit profile
-        </button>
+        {isOwnProfile ? (
+          <button
+            className="secondary"
+            onClick={() => setEditMode(!editMode)}
+          >
+            <Edit className="icon-sm" />
+            {editMode ? 'Cancel' : 'Edit profile'}
+          </button>
+        ) : (
+          <button
+            className={isFollowing ? 'secondary' : 'primary'}
+            onClick={handleFollow}
+          >
+            {isFollowing ? 'Unfollow' : 'Follow'}
+          </button>
+        )}
       </div>
 
       <div className="profile-card">
-        <div className="profile-top">
-          <div className="avatar lg">{profile.initials}</div>
-          <div>
-            <h2>
-              {profile.name}{' '}
-              <span
-                className="verified"
-                style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 6 }}
-              >
-                ✓
-              </span>
-            </h2>
-            <p>{profile.username} · {profile.location}</p>
+        {editMode ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Full name</label>
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--text)' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Bio</label>
+              <textarea
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                rows={3}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--text)', resize: 'vertical' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>County</label>
+              <input
+                value={editCounty}
+                onChange={(e) => setEditCounty(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--text)' }}
+              />
+            </div>
+            <button
+              className="primary"
+              onClick={handleSaveProfile}
+              disabled={saving}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              {saving ? 'Saving...' : 'Save changes'}
+            </button>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="profile-top">
+              <div className="avatar lg">{profile.initials}</div>
+              <div>
+                <h2>
+                  {profile.name}{' '}
+                  <span
+                    className="verified"
+                    style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: 6 }}
+                  >
+                    ✓
+                  </span>
+                </h2>
+                <p>{profile.username} · {profile.location}</p>
+              </div>
+            </div>
 
-        <p className="profile-bio">
-          {profile.bio}
-        </p>
+            <p className="profile-bio">
+              {profile.bio}
+            </p>
+          </>
+        )}
 
         <div className="profile-stats">
           <div className="profile-stat">

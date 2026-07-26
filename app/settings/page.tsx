@@ -1,15 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AppLayout, { useApp } from '@/components/AppLayout'
+import { getCurrentUser, updateProfile } from '@/lib/supabase-helpers'
 import {
   Settings, User, Bell, Shield, CreditCard, Globe, Moon, Sun,
   Smartphone, Download, Trash2, ChevronRight, Eye, EyeOff,
-  Lock, Mail, MapPin
+  Lock, Mail, MapPin, CheckCircle
 } from 'lucide-react'
 
 export default function SettingsPage() {
-  const { theme, toggleTheme } = useApp()
+  const { theme, toggleTheme, showToast } = useApp()
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
+
   const [profile, setProfile] = useState({
     name: 'Wanjiku Kamau',
     username: '@wanjiku',
@@ -42,6 +46,33 @@ export default function SettingsPage() {
     wifiOnly: true
   })
 
+  useEffect(() => {
+    async function init() {
+      const user = await getCurrentUser()
+      if (user) {
+        setCurrentUser(user)
+        setProfile({
+          name: user.full_name || 'Wanjiku Kamau',
+          username: user.username ? `@${user.username}` : '@wanjiku',
+          county: user.county || 'Nairobi',
+          bio: user.bio || 'Digital storyteller & community builder',
+          language: user.language || 'en',
+          avatar: user.avatar_url || '/avatar.jpg'
+        })
+        if (user.mpesa_number) {
+          setPayments((p) => ({ ...p, mpesaNumber: user.mpesa_number }))
+        }
+      }
+      const savedNotif = localStorage.getItem('kikwetu_notifications')
+      if (savedNotif) setNotifications(JSON.parse(savedNotif))
+      const savedPrivacy = localStorage.getItem('kikwetu_privacy')
+      if (savedPrivacy) setPrivacy(JSON.parse(savedPrivacy))
+      const savedPayments = localStorage.getItem('kikwetu_payments')
+      if (savedPayments) setPayments((p) => ({ ...p, ...JSON.parse(savedPayments) }))
+    }
+    init()
+  }, [])
+
   const toggleNotification = (key: keyof typeof notifications) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
   }
@@ -54,6 +85,101 @@ export default function SettingsPage() {
     setSync(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  async function handleSaveAll() {
+    setSaving(true)
+    try {
+      if (currentUser) {
+        const { error } = await updateProfile(currentUser.id, {
+          full_name: profile.name,
+          bio: profile.bio,
+          county: profile.county,
+          language: profile.language,
+          mpesa_number: payments.mpesaNumber,
+        })
+        if (error) throw error
+      }
+      localStorage.setItem('kikwetu_notifications', JSON.stringify(notifications))
+      localStorage.setItem('kikwetu_privacy', JSON.stringify(privacy))
+      localStorage.setItem('kikwetu_payments', JSON.stringify(payments))
+      showToast('Settings saved successfully')
+    } catch {
+      showToast('Failed to save settings. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveProfile() {
+    setSaving(true)
+    try {
+      if (currentUser) {
+        const { error } = await updateProfile(currentUser.id, {
+          full_name: profile.name,
+          bio: profile.bio,
+          county: profile.county,
+          language: profile.language,
+        })
+        if (error) throw error
+      }
+      showToast('Profile updated')
+    } catch {
+      showToast('Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveNotifications() {
+    localStorage.setItem('kikwetu_notifications', JSON.stringify(notifications))
+    if (currentUser) {
+      setSaving(true)
+      try {
+        await updateProfile(currentUser.id, { notification_prefs: notifications })
+        showToast('Notification preferences saved')
+      } catch {
+        showToast('Notification preferences saved locally')
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      showToast('Notification preferences saved')
+    }
+  }
+
+  async function handleSavePrivacy() {
+    localStorage.setItem('kikwetu_privacy', JSON.stringify(privacy))
+    if (currentUser) {
+      setSaving(true)
+      try {
+        await updateProfile(currentUser.id, { privacy_prefs: privacy })
+        showToast('Privacy settings saved')
+      } catch {
+        showToast('Privacy settings saved locally')
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      showToast('Privacy settings saved')
+    }
+  }
+
+  async function handleSavePayments() {
+    localStorage.setItem('kikwetu_payments', JSON.stringify(payments))
+    if (currentUser) {
+      setSaving(true)
+      try {
+        await updateProfile(currentUser.id, { mpesa_number: payments.mpesaNumber })
+        showToast('Payment settings saved')
+      } catch {
+        showToast('Payment settings saved locally')
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      showToast('Payment settings saved')
+    }
+  }
+
   return (
     <AppLayout>
       <div className="page">
@@ -62,7 +188,9 @@ export default function SettingsPage() {
             <h1 className="serif">Make Kikwetu fit you.</h1>
             <p className="eyebrow">Customize your experience</p>
           </div>
-          <button className="primary">Save Changes</button>
+          <button className="primary" onClick={handleSaveAll} disabled={saving}>
+            <CheckCircle size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
 
         <div className="grid2">
@@ -116,6 +244,10 @@ export default function SettingsPage() {
                   rows={3}
                 />
               </div>
+
+              <button className="primary" onClick={handleSaveProfile} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+                Save Profile
+              </button>
             </div>
           </section>
 
@@ -215,6 +347,10 @@ export default function SettingsPage() {
                   <span className="slider"></span>
                 </label>
               </div>
+
+              <button className="primary" onClick={handleSaveNotifications} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+                Save Notifications
+              </button>
             </div>
           </section>
 
@@ -269,6 +405,10 @@ export default function SettingsPage() {
                   <span className="slider"></span>
                 </label>
               </div>
+
+              <button className="primary" onClick={handleSavePrivacy} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+                Save Privacy
+              </button>
             </div>
           </section>
 
@@ -323,6 +463,10 @@ export default function SettingsPage() {
                   <span className="slider"></span>
                 </label>
               </div>
+
+              <button className="primary" onClick={handleSavePayments} disabled={saving} style={{ alignSelf: 'flex-start' }}>
+                Save Payments
+              </button>
             </div>
           </section>
 
@@ -392,7 +536,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="save-bottom">
-          <button className="primary">Save Changes</button>
+          <button className="primary" onClick={handleSaveAll} disabled={saving}>
+            <CheckCircle size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </div>
 
@@ -647,6 +793,11 @@ export default function SettingsPage() {
 
         .primary:hover {
           background: var(--green2);
+        }
+
+        .primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .secondary {

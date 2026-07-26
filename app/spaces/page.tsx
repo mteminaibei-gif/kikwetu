@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser, joinSpace, checkSpaceMember } from '@/lib/supabase-helpers';
 import {
   Layers3, Plus, Users, MessageCircle, Calendar,
-  TrendingUp, Star, MapPin, MoreHorizontal,
+  TrendingUp, Star, MapPin, MoreHorizontal, X,
 } from 'lucide-react';
 
 const MOCK_JOINED = [
   {
+    id: 'mock-j1',
     icon: '🌾',
     name: 'KilimoSmart',
     members: '2.8k',
@@ -20,6 +22,7 @@ const MOCK_JOINED = [
     activity: '12 posts today',
   },
   {
+    id: 'mock-j2',
     icon: '💻',
     name: 'NairobiTech',
     members: '1.5k',
@@ -30,6 +33,7 @@ const MOCK_JOINED = [
     activity: '8 posts today',
   },
   {
+    id: 'mock-j3',
     icon: '🏥',
     name: 'Health KE',
     members: '980',
@@ -43,6 +47,7 @@ const MOCK_JOINED = [
 
 const MOCK_SUGGESTED = [
   {
+    id: 'mock-s1',
     icon: '🚀',
     name: 'StartupKE',
     members: '3.2k',
@@ -53,6 +58,7 @@ const MOCK_SUGGESTED = [
     rating: 4.8,
   },
   {
+    id: 'mock-s2',
     icon: '🎤',
     name: 'Sheng Life',
     members: '1.8k',
@@ -63,6 +69,7 @@ const MOCK_SUGGESTED = [
     rating: 4.6,
   },
   {
+    id: 'mock-s3',
     icon: '⚖️',
     name: 'Legal Kenya',
     members: '650',
@@ -80,9 +87,18 @@ export default function SpacesPage() {
   const [joinedSpaces, setJoinedSpaces] = useState(MOCK_JOINED);
   const [suggestedSpaces, setSuggestedSpaces] = useState(MOCK_SUGGESTED);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [memberStatus, setMemberStatus] = useState<Record<string, boolean>>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newIcon, setNewIcon] = useState('🏘️');
 
   useEffect(() => {
-    async function fetchSpaces() {
+    async function init() {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+
       const { data, error } = await supabase
         .from('spaces')
         .select('*')
@@ -94,9 +110,11 @@ export default function SpacesPage() {
         setSuggestedSpaces(MOCK_SUGGESTED);
       } else {
         const all = data.map((row: any) => ({
+          id: row.id,
           icon: row.icon || '🏘️',
           name: row.name,
           members: row.members_count ? `${(row.members_count / 1000).toFixed(1)}k` : '0',
+          membersCount: row.members_count || 0,
           posts: row.posts_count ? `${(row.posts_count / 1000).toFixed(1)}k` : '0',
           description: row.description || '',
           tags: row.tags || [],
@@ -107,13 +125,98 @@ export default function SpacesPage() {
 
         setJoinedSpaces(all.slice(0, 3));
         setSuggestedSpaces(all.slice(3));
+
+        if (currentUser) {
+          const status: Record<string, boolean> = {};
+          await Promise.all(
+            all.map(async (s: any) => {
+              if (s.id) {
+                status[s.id] = await checkSpaceMember(s.id, currentUser.id);
+              }
+            })
+          );
+          setMemberStatus(status);
+        }
       }
 
       setLoading(false);
     }
 
-    fetchSpaces();
+    init();
   }, []);
+
+  async function handleJoinToggle(space: any) {
+    if (!user) {
+      showToast('Please log in to join spaces');
+      return;
+    }
+    if (!space.id) return;
+
+    const wasMember = memberStatus[space.id] || false;
+    const newStatus = await joinSpace(space.id, user.id);
+
+    setMemberStatus((prev) => ({ ...prev, [space.id]: newStatus }));
+
+    if (newStatus) {
+      setJoinedSpaces((prev) => {
+        if (prev.some((s) => s.id === space.id)) return prev;
+        return [{ ...space, members: `${((space.membersCount + 1) / 1000).toFixed(1)}k`, membersCount: space.membersCount + 1 }, ...prev];
+      });
+      setSuggestedSpaces((prev) => prev.filter((s) => s.id !== space.id));
+      showToast(`Joined ${space.name}`);
+    } else {
+      setJoinedSpaces((prev) => prev.filter((s) => s.id !== space.id));
+      setSuggestedSpaces((prev) => {
+        if (prev.some((s) => s.id === space.id)) return prev;
+        return [...prev, { ...space, members: `${((space.membersCount - 1) / 1000).toFixed(1)}k`, membersCount: space.membersCount - 1 }];
+      });
+      showToast(`Left ${space.name}`);
+    }
+  }
+
+  async function handleCreateSpace(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || !newName.trim()) return;
+
+    const { data, error } = await supabase
+      .from('spaces')
+      .insert({
+        name: newName.trim(),
+        description: newDesc.trim(),
+        icon: newIcon || '🏘️',
+        created_by: user.id,
+        members_count: 1,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      showToast('Failed to create space');
+      return;
+    }
+
+    const created = {
+      id: data.id,
+      icon: data.icon || '🏘️',
+      name: data.name,
+      members: '0',
+      membersCount: 1,
+      posts: '0',
+      description: data.description || '',
+      tags: data.tags || [],
+      location: data.location || 'Kenya-wide',
+      activity: '0 posts today',
+      rating: data.rating,
+    };
+
+    setJoinedSpaces((prev) => [created, ...prev]);
+    setMemberStatus((prev) => ({ ...prev, [data.id]: true }));
+    setShowCreate(false);
+    setNewName('');
+    setNewDesc('');
+    setNewIcon('🏘️');
+    showToast(`Created ${data.name}`);
+  }
 
   if (loading) {
     return (
@@ -190,9 +293,14 @@ export default function SpacesPage() {
             <div className="eyebrow">Your spaces</div>
             <h2 className="serif">Communities you belong to.</h2>
           </div>
-          <button className="secondary" onClick={() => showToast('Browse all spaces')}>
-            <Plus className="icon-sm" /> Join new
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="secondary" onClick={() => setShowCreate(true)}>
+              <Plus className="icon-sm" /> Create Space
+            </button>
+            <button className="secondary" onClick={() => showToast('Browse all spaces')}>
+              <Plus className="icon-sm" /> Join new
+            </button>
+          </div>
         </div>
 
         <div className="pro-list">
@@ -220,7 +328,12 @@ export default function SpacesPage() {
                 </span>
               </div>
               <div className="pro-actions">
-                <button className="follow following">Joined</button>
+                <button
+                  className={`follow ${memberStatus[space.id] ? 'following' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleJoinToggle(space); }}
+                >
+                  {memberStatus[space.id] ? 'Joined' : 'Join'}
+                </button>
               </div>
             </div>
           ))}
@@ -266,7 +379,12 @@ export default function SpacesPage() {
                 </span>
               </div>
               <div className="pro-actions">
-                <button className="follow" onClick={(e) => { e.stopPropagation(); showToast(`Joined ${space.name}`); }}>Join</button>
+                <button
+                  className={`follow ${memberStatus[space.id] ? 'following' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleJoinToggle(space); }}
+                >
+                  {memberStatus[space.id] ? 'Joined' : 'Join'}
+                </button>
               </div>
             </div>
           ))}
@@ -330,6 +448,77 @@ export default function SpacesPage() {
           <TrendingUp className="icon-sm" /> Read full guidelines
         </button>
       </section>
+
+      {showCreate && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'oklch(0% 0 0 / .5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 16,
+              padding: 24,
+              width: '90%',
+              maxWidth: 420,
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowCreate(false)}
+              style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}
+            >
+              <X className="icon-sm" />
+            </button>
+            <h3 className="serif" style={{ marginBottom: 16 }}>Create a Space</h3>
+            <form onSubmit={handleCreateSpace}>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: '.82rem', fontWeight: 600, display: 'block', marginBottom: 4 }}>Icon</label>
+                <input
+                  type="text"
+                  value={newIcon}
+                  onChange={(e) => setNewIcon(e.target.value)}
+                  maxLength={2}
+                  style={{ width: 60, fontSize: '1.2rem', textAlign: 'center', padding: '6px 8px' }}
+                />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: '.82rem', fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. KilimoSmart"
+                  required
+                  style={{ fontSize: '.85rem', width: '100%' }}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: '.82rem', fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+                <input
+                  type="text"
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="What is this space about?"
+                  style={{ fontSize: '.85rem', width: '100%' }}
+                />
+              </div>
+              <button className="primary" type="submit" style={{ width: '100%' }}>
+                Create Space
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

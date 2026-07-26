@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser, sendMessage, createConversation } from '@/lib/supabase-helpers';
 import {
   Search, ShieldCheck, MoreHorizontal,
   Send, Paperclip, Smile, Video,
@@ -96,15 +97,29 @@ export default function MessagesPage() {
   const [dbMessages, setDbMessages] = useState(mockMessages);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<any>(null);
+  const chatBodyRef = useRef<HTMLDivElement>(null);
 
   const active = conversations[selectedChat];
   const currentMessages = dbMessages[active?.id] || [];
+
+  const scrollToBottom = () => {
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentMessages.length]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchData() {
       setLoading(true);
+
+      const currentUser = await getCurrentUser();
+      if (cancelled) return;
 
       const { data: convData, error: convError } = await supabase
         .from('conversations')
@@ -145,10 +160,10 @@ export default function MessagesPage() {
         if (msgData) {
           msgMap[conv.id] = msgData.map((m: any) => ({
             id: String(m.id),
-            sender: m.sender_id === user?.id ? 'You' : (m.sender_name || 'Unknown'),
+            sender: m.sender_id === currentUser?.user_id ? 'You' : (m.sender_name || 'Unknown'),
             text: m.body,
             time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            mine: m.sender_id === user?.id,
+            mine: m.sender_id === currentUser?.user_id,
             conversation_id: m.conversation_id,
           }));
         }
@@ -167,10 +182,10 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('messages')
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${active?.id}` },
         (payload) => {
           const newMsg = payload.new as any;
           const newEntry = {
@@ -199,10 +214,10 @@ export default function MessagesPage() {
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [user?.id]);
+  }, [active?.id, user?.id]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !user?.id) return;
 
     const msgText = input.trim();
     const tempId = `temp-${Date.now()}`;
@@ -221,12 +236,7 @@ export default function MessagesPage() {
     }));
     setInput('');
 
-    const { error } = await supabase.from('messages').insert({
-      conversation_id: active.id,
-      sender_id: user?.id,
-      body: msgText,
-      sender_name: user?.full_name || 'You',
-    });
+    const { error } = await sendMessage(active.id, user.id, msgText);
 
     if (error) {
       showToast('Failed to send — using fallback');
@@ -238,6 +248,28 @@ export default function MessagesPage() {
       }));
     } else {
       showToast('Message sent');
+    }
+  };
+
+  const handleNewConversation = async (participantIds: string[], firstMessage: string) => {
+    if (!user?.id) return;
+
+    const { data: conv } = await createConversation([...participantIds, user.id], firstMessage);
+    if (conv) {
+      const newConv = {
+        id: conv.id,
+        initials: getInitials('New'),
+        color: 'blue',
+        name: 'New Conversation',
+        preview: firstMessage,
+        time: 'now',
+        active: true,
+        verified: false,
+        last_message_at: new Date().toISOString(),
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      setSelectedChat(0);
+      showToast('Conversation created');
     }
   };
 
@@ -310,7 +342,7 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          <div className="chat-body">
+          <div className="chat-body" ref={chatBodyRef}>
             {currentMessages.map((msg) => (
               <div key={msg.id} className={`message ${msg.mine ? 'mine' : 'theirs'}`}>
                 <span>{msg.text}</span>

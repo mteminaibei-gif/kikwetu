@@ -5,6 +5,10 @@ import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
 import {
+  getCurrentUser, toggleVote, checkVote, toggleSave, checkSaved,
+  createThread, createReply, fetchReplies,
+} from '@/lib/supabase-helpers';
+import {
   Plus, Image, MessageCircleQuestion, Video, ThumbsUp,
   MessageCircle, Send, Bookmark, MoreHorizontal, Sprout,
   CircleHelp, BadgeDollarSign, Ellipsis, Filter
@@ -30,100 +34,29 @@ interface Thread {
   };
 }
 
-type PostContent = {
-  tag: string;
-  title: string;
-  body?: string;
-  translation?: { label: string; text: string };
-  bounty?: string;
-  audio?: { duration: string; elapsed: string; progress: number };
-  options?: { label: string; pct: number }[];
-  tags: string[];
-};
+interface User {
+  id: string;
+  full_name: string;
+  username: string;
+  avatar_url: string | null;
+  county: string | null;
+  is_verified: boolean;
+}
 
-type PostAuthor = {
-  name: string;
-  initials: string;
-  color: string;
-  verified: boolean;
-};
-
-type PostMeta = {
-  handle: string;
-  time: string;
-  county: string;
-};
-
-type PostStats = {
-  likes: number;
-  comments?: number;
-  answers?: number;
-};
-
-type PostType = {
-  type: string;
-  author: PostAuthor;
-  meta: PostMeta;
-  content: PostContent;
-  stats: PostStats;
-};
-
-const feedPosts: PostType[] = [
-  {
-    type: 'post',
-    author: { name: 'Amina Muthoni', initials: 'AM', color: 'earth', verified: true },
-    meta: { handle: '@aminam', time: '38m', county: 'Kiambu' },
-    content: {
-      tag: 'Baraza post',
-      title: 'What are you planting before the short rains?',
-      body: 'I am trialling sukuma wiki in grow bags this season. The first batch is holding up nicely on a small balcony in Ruiru.',
-      translation: { label: 'Read in Kiswahili', text: '"Unapanda nini kabla ya mvua fupi?"' },
-      tags: ['#KilimoSmart', '#Kiambu'],
-    },
-    stats: { likes: 48, comments: 12 },
-  },
-  {
-    type: 'question',
-    author: { name: 'Grid Pulse', initials: 'GP', color: 'default', verified: false },
-    meta: { handle: '@gridpulse', time: '1h', county: 'Nairobi' },
-    content: {
-      tag: 'Deep-dive inquiry',
-      title: 'What should a small business check before going solar?',
-      body: 'Looking for practical advice from someone who has sized a system for a shop or workshop in Nakuru.',
-      bounty: '120 tokens bounty',
-      tags: ['#NakuruTech', '#Biashara'],
-    },
-    stats: { likes: 31, answers: 8 },
-  },
-  {
-    type: 'poll',
-    author: { name: 'Njeri Wambui', initials: 'NW', color: 'green', verified: true },
-    meta: { handle: '@njeri_w', time: '1h', county: 'Nairobi' },
-    content: {
-      tag: 'Community poll',
-      title: 'Should we organize a community seed swap before the rains?',
-      options: [
-        { label: 'Yes, definitely', pct: 62 },
-        { label: 'Maybe, need more info', pct: 24 },
-        { label: 'No, not relevant', pct: 14 },
-      ],
-      tags: ['#KilimoSmart', '#Nairobi'],
-    },
-    stats: { likes: 24, comments: 8 },
-  },
-  {
-    type: 'audio',
-    author: { name: 'James Otieno', initials: 'JO', color: 'blue', verified: true },
-    meta: { handle: '@james_o', time: '2h', county: 'Kisumu' },
-    content: {
-      tag: 'Audio note',
-      title: 'Quick tip: how to clean your solar panels during the dry season',
-      audio: { duration: '3:58', elapsed: '1:24', progress: 35 },
-      tags: ['#KilimoSmart', '#SolarKE'],
-    },
-    stats: { likes: 56, comments: 14 },
-  },
-];
+interface Reply {
+  id: string;
+  thread_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  profiles?: {
+    full_name: string;
+    username: string;
+    avatar_url: string | null;
+    county: string | null;
+    is_verified: boolean;
+  };
+}
 
 function getTimeAgo(dateStr: string): string {
   const now = new Date();
@@ -140,58 +73,299 @@ function getTimeAgo(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function threadToPost(thread: Thread) {
-  const profile = thread.profiles;
-  const initials = profile?.full_name
-    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-    : '??';
-  const type = thread.type === 'question' ? 'question' : 'post';
+function ComposerModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (title: string, body: string, type: string, tags: string[]) => Promise<void>;
+}) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [type, setType] = useState('post');
+  const [tagsInput, setTagsInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const base = {
-    type,
-    author: {
-      name: profile?.full_name || 'Unknown',
-      initials,
-      color: 'earth' as const,
-      verified: profile?.is_verified || false,
-    },
-    meta: {
-      handle: profile?.username ? `@${profile.username}` : '@unknown',
-      time: getTimeAgo(thread.created_at),
-      county: profile?.county || 'Kenya',
-    },
-    stats: { likes: thread.likes_count, comments: thread.comments_count },
+  const handleSubmit = async () => {
+    if (!title.trim()) return;
+    setSubmitting(true);
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+    try {
+      await onSubmit(title.trim(), body.trim(), type, tags);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  if (type === 'question') {
-    return {
-      ...base,
-      content: {
-        tag: 'Deep-dive inquiry',
-        title: thread.title,
-        body: thread.body || '',
-        bounty: thread.bounty_amount ? `${thread.bounty_amount} tokens bounty` : '',
-        tags: (thread.tags || []).map(t => `#${t}`),
-      },
-      stats: { likes: thread.likes_count, answers: thread.comments_count },
-    };
-  }
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--bg)', borderRadius: 16, padding: 24, width: '90%', maxWidth: 520,
+        maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h2 className="serif" style={{ margin: 0, fontSize: '1.2rem' }}>New thread</h2>
+          <button onClick={onClose} className="icon-btn" style={{ fontSize: 18 }}>✕</button>
+        </div>
 
-  return {
-    ...base,
-    content: {
-      tag: 'Baraza post',
-      title: thread.title,
-      body: thread.body || '',
-      tags: (thread.tags || []).map(t => `#${t}`),
-    },
-  };
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {['post', 'question'].map(t => (
+            <button key={t} onClick={() => setType(t)} className={type === t ? 'primary' : 'secondary'}>
+              {t === 'post' ? <Sprout className="icon-sm" /> : <CircleHelp className="icon-sm" />}
+              {t === 'post' ? ' Post' : ' Question'}
+            </button>
+          ))}
+        </div>
+
+        <input
+          placeholder="Title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)',
+            background: 'var(--surface2)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 10,
+            boxSizing: 'border-box',
+          }}
+        />
+        <textarea
+          placeholder="What's on your mind?"
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          rows={4}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)',
+            background: 'var(--surface2)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 10,
+            resize: 'vertical', boxSizing: 'border-box',
+          }}
+        />
+        <input
+          placeholder="Tags (comma separated)"
+          value={tagsInput}
+          onChange={e => setTagsInput(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)',
+            background: 'var(--surface2)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 16,
+            boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="secondary" onClick={onClose}>Cancel</button>
+          <button className="primary" onClick={handleSubmit} disabled={submitting || !title.trim()}>
+            {submitting ? 'Posting...' : 'Post'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function PostCard({ post, onAction }: { post: PostType; onAction: (action: string) => void }) {
+function ReplySection({
+  threadId,
+  user,
+  replyCount,
+  onReplyAdded,
+}: {
+  threadId: string;
+  user: User | null;
+  replyCount: number;
+  onReplyAdded: (threadId: string) => void;
+}) {
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [showReplies, setShowReplies] = useState(false);
+  const [replyBody, setReplyBody] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { showToast } = useApp();
+
+  const loadReplies = async () => {
+    const { data } = await fetchReplies(threadId);
+    if (data) setReplies(data);
+  };
+
+  useEffect(() => {
+    if (showReplies) loadReplies();
+  }, [showReplies, threadId]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`replies-${threadId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'replies',
+        filter: `thread_id=eq.${threadId}`,
+      }, (payload) => {
+        const newReply = payload.new as Reply;
+        setReplies(prev => {
+          if (prev.some(r => r.id === newReply.id)) return prev;
+          return [...prev, newReply];
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [threadId]);
+
+  const handleSubmitReply = async () => {
+    if (!user) {
+      showToast('Please sign in to reply');
+      return;
+    }
+    if (!replyBody.trim()) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await createReply(threadId, user.id, replyBody.trim());
+      if (error) {
+        showToast('Failed to post reply');
+        console.error(error);
+        return;
+      }
+      const { data: fullReply } = await supabase
+        .from('replies')
+        .select(`*, profiles:author_id (full_name, username, avatar_url, county, is_verified)`)
+        .eq('id', data.id)
+        .single();
+      if (fullReply) {
+        setReplies(prev => {
+          if (prev.some(r => r.id === fullReply.id)) return prev;
+          return [...prev, fullReply];
+        });
+      }
+      setReplyBody('');
+      onReplyAdded(threadId);
+      showToast('Reply posted!');
+    } catch {
+      showToast('Failed to post reply');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid var(--line)', padding: '10px 16px' }}>
+      <button
+        className="action"
+        onClick={() => setShowReplies(!showReplies)}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}
+      >
+        <MessageCircle className="icon-sm" />
+        <span>{replyCount} {replyCount === 1 ? 'reply' : 'replies'}</span>
+      </button>
+
+      {showReplies && (
+        <div style={{ marginTop: 8 }}>
+          {replies.map(r => {
+            const rp = r.profiles;
+            const rInitials = rp?.full_name
+              ? rp.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+              : '??';
+            return (
+              <div key={r.id} style={{
+                padding: '8px 0', borderTop: '1px solid var(--line)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="avatar earth" style={{ width: 24, height: 24, fontSize: '.5rem' }}>{rInitials}</div>
+                  <strong style={{ fontSize: '.75rem' }}>{rp?.full_name || 'Unknown'}</strong>
+                  <span style={{ fontSize: '.65rem', color: 'var(--text3)' }}>{getTimeAgo(r.created_at)}</span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '.8rem' }}>{r.body}</p>
+              </div>
+            );
+          })}
+
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <input
+              placeholder="Write a reply..."
+              value={replyBody}
+              onChange={e => setReplyBody(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitReply(); } }}
+              style={{
+                flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)',
+                background: 'var(--surface2)', color: 'var(--text)', fontSize: '.8rem',
+              }}
+            />
+            <button className="primary" onClick={handleSubmitReply} disabled={submitting || !replyBody.trim()}
+              style={{ padding: '6px 12px', fontSize: '.78rem' }}>
+              <Send className="icon-sm" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PostCard({
+  post,
+  threadId,
+  user,
+  onAction,
+  onVoteChange,
+  onSaveChange,
+  onReplyAdded,
+}: {
+  post: PostType;
+  threadId: string | null;
+  user: User | null;
+  onAction: (msg: string) => void;
+  onVoteChange: (threadId: string, delta: number, liked: boolean) => void;
+  onSaveChange: (threadId: string, saved: boolean) => void;
+  onReplyAdded: (threadId: string) => void;
+}) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [voted, setVoted] = useState<number | null>(null);
+  const [likeDelta, setLikeDelta] = useState(0);
+
+  useEffect(() => {
+    if (!user || !threadId) return;
+    checkVote(user.id, 'thread', threadId).then(v => {
+      if (v) {
+        setLiked(true);
+        setLikeDelta(v.value === 1 ? 0 : -1);
+      }
+    });
+    checkSaved(user.id, 'thread', threadId).then(s => setSaved(s));
+  }, [user, threadId]);
+
+  const handleVote = async () => {
+    if (!user || !threadId) {
+      onAction('Please sign in to vote');
+      return;
+    }
+    const prevLiked = liked;
+    const delta = liked ? -1 : 1;
+    setLiked(!liked);
+    setLikeDelta(ld => liked ? ld - 1 : ld + 1);
+    onVoteChange(threadId, delta, !liked);
+    try {
+      await toggleVote(user.id, 'thread', threadId, 1);
+    } catch {
+      setLiked(prevLiked);
+      onVoteChange(threadId, -delta, liked);
+      onAction('Failed to update vote');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user || !threadId) {
+      onAction('Please sign in to save');
+      return;
+    }
+    setSaved(!saved);
+    onSaveChange(threadId, !saved);
+    try {
+      await toggleSave(user.id, 'thread', threadId);
+    } catch {
+      setSaved(saved);
+      onSaveChange(threadId, saved);
+      onAction('Failed to update save');
+    }
+  };
 
   return (
     <article className="post">
@@ -290,8 +464,8 @@ function PostCard({ post, onAction }: { post: PostType; onAction: (action: strin
       </div>
 
       <div className="post-actions">
-        <button className={`action ${liked ? 'active' : ''}`} onClick={() => { setLiked(!liked); onAction(liked ? 'Vote removed' : 'Marked useful'); }}>
-          <ThumbsUp className="icon-sm" /> <span>{post.stats.likes}</span>
+        <button className={`action ${liked ? 'active' : ''}`} onClick={handleVote}>
+          <ThumbsUp className="icon-sm" /> <span>{post.stats.likes + likeDelta}</span>
         </button>
         <button className="action" onClick={() => onAction('Comments opened')}>
           <MessageCircle className="icon-sm" />
@@ -300,11 +474,20 @@ function PostCard({ post, onAction }: { post: PostType; onAction: (action: strin
         <button className="action" onClick={() => onAction('Share link copied')}>
           <Send className="icon-sm" /> <span>Share</span>
         </button>
-        <button className={`action ${saved ? 'saved' : ''}`} onClick={() => { setSaved(!saved); onAction(saved ? 'Removed from saved' : 'Saved'); }}>
+        <button className={`action ${saved ? 'saved' : ''}`} onClick={handleSave}>
           <Bookmark className="icon-sm" />
         </button>
         <button className="action"><Ellipsis className="icon-sm" /></button>
       </div>
+
+      {threadId && (
+        <ReplySection
+          threadId={threadId}
+          user={user}
+          replyCount={'answers' in post.stats ? (post.stats.answers || 0) : (post.stats.comments || 0)}
+          onReplyAdded={onReplyAdded}
+        />
+      )}
     </article>
   );
 }
@@ -331,9 +514,11 @@ function FeedSkeleton() {
 
 export default function BarazaFeed() {
   const { showToast } = useApp();
+  const [user, setUser] = useState<User | null>(null);
   const [filter, setFilter] = useState('for-you');
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const filters = [
     { key: 'for-you', label: 'For You' },
@@ -341,6 +526,10 @@ export default function BarazaFeed() {
     { key: 'spaces', label: 'Spaces' },
     { key: 'trending', label: 'Trending' },
   ];
+
+  useEffect(() => {
+    getCurrentUser().then(u => setUser(u));
+  }, []);
 
   useEffect(() => {
     const fetchThreads = async () => {
@@ -379,6 +568,23 @@ export default function BarazaFeed() {
         const newPost = threadToPost(payload.new as Thread) as PostType;
         setPosts(prev => [newPost, ...prev]);
       })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'replies',
+      }, (payload) => {
+        const newReply = payload.new as { thread_id: string };
+        setPosts(prev => prev.map(p => {
+          if (!p._threadId) return p;
+          if (p._threadId === newReply.thread_id) {
+            const stats = { ...p.stats };
+            if ('answers' in stats) stats.answers = (stats.answers || 0) + 1;
+            else stats.comments = (stats.comments || 0) + 1;
+            return { ...p, stats };
+          }
+          return p;
+        }));
+      })
       .subscribe();
 
     return () => {
@@ -386,8 +592,61 @@ export default function BarazaFeed() {
     };
   }, []);
 
+  const handleVoteChange = (threadId: string, delta: number) => {
+    setPosts(prev => prev.map(p => {
+      if (p._threadId === threadId) {
+        const stats = { ...p.stats, likes: p.stats.likes + delta };
+        return { ...p, stats };
+      }
+      return p;
+    }));
+  };
+
+  const handleSaveChange = (threadId: string, saved: boolean) => {
+    showToast(saved ? 'Saved' : 'Removed from saved');
+  };
+
+  const handleReplyAdded = (threadId: string) => {
+    setPosts(prev => prev.map(p => {
+      if (p._threadId === threadId) {
+        const stats = { ...p.stats };
+        if ('answers' in stats) stats.answers = (stats.answers || 0) + 1;
+        else stats.comments = (stats.comments || 0) + 1;
+        return { ...p, stats };
+      }
+      return p;
+    }));
+  };
+
+  const handleCreateThread = async (title: string, body: string, type: string, tags: string[]) => {
+    if (!user) {
+      showToast('Please sign in to post');
+      return;
+    }
+    const { data, error } = await createThread(user.id, title, body, type, tags);
+    if (error) {
+      showToast('Failed to create post');
+      console.error(error);
+      return;
+    }
+    const { data: fullThread } = await supabase
+      .from('threads')
+      .select('*')
+      .eq('id', data.id)
+      .single();
+    if (fullThread) {
+      setPosts(prev => [threadToPost(fullThread), ...prev]);
+    }
+    setComposerOpen(false);
+    showToast('Posted successfully!');
+  };
+
   return (
     <AppLayout>
+      {composerOpen && (
+        <ComposerModal onClose={() => setComposerOpen(false)} onSubmit={handleCreateThread} />
+      )}
+
       <div className="page-head">
         <div>
           <div className="eyebrow">Baraza feed</div>
@@ -412,18 +671,18 @@ export default function BarazaFeed() {
       <section className="composer">
         <div className="composer-top">
           <div className="avatar">GP</div>
-          <button className="composer-open" onClick={() => showToast('Composer opened')}>
+          <button className="composer-open" onClick={() => setComposerOpen(true)}>
             Share something useful with your county...
           </button>
         </div>
         <div className="composer-actions">
-          <button className="composer-action" onClick={() => showToast('Photo/video')}>
+          <button className="composer-action" onClick={() => setComposerOpen(true)}>
             <Image className="icon" /> Photo / video
           </button>
-          <button className="composer-action" onClick={() => showToast('Ask a question')}>
+          <button className="composer-action" onClick={() => setComposerOpen(true)}>
             <MessageCircleQuestion className="icon" /> Ask a question
           </button>
-          <button className="composer-action" onClick={() => showToast('Offer a session')}>
+          <button className="composer-action" onClick={() => null}>
             <Video className="icon" /> Offer a session
           </button>
         </div>
@@ -437,9 +696,163 @@ export default function BarazaFeed() {
             <FeedSkeleton />
           </>
         ) : posts.map((post, i) => (
-          <PostCard key={i} post={post} onAction={showToast} />
+          <PostCard
+            key={i}
+            post={post}
+            threadId={(post as any)._threadId || null}
+            user={user}
+            onAction={showToast}
+            onVoteChange={handleVoteChange}
+            onSaveChange={handleSaveChange}
+            onReplyAdded={handleReplyAdded}
+          />
         ))}
       </section>
     </AppLayout>
   );
+}
+
+type PostContent = {
+  tag: string;
+  title: string;
+  body?: string;
+  translation?: { label: string; text: string };
+  bounty?: string;
+  audio?: { duration: string; elapsed: string; progress: number };
+  options?: { label: string; pct: number }[];
+  tags: string[];
+};
+
+type PostAuthor = {
+  name: string;
+  initials: string;
+  color: string;
+  verified: boolean;
+};
+
+type PostMeta = {
+  handle: string;
+  time: string;
+  county: string;
+};
+
+type PostStats = {
+  likes: number;
+  comments?: number;
+  answers?: number;
+};
+
+type PostType = {
+  type: string;
+  author: PostAuthor;
+  meta: PostMeta;
+  content: PostContent;
+  stats: PostStats;
+  _threadId?: string;
+};
+
+const feedPosts: PostType[] = [
+  {
+    type: 'post',
+    author: { name: 'Amina Muthoni', initials: 'AM', color: 'earth', verified: true },
+    meta: { handle: '@aminam', time: '38m', county: 'Kiambu' },
+    content: {
+      tag: 'Baraza post',
+      title: 'What are you planting before the short rains?',
+      body: 'I am trialling sukuma wiki in grow bags this season. The first batch is holding up nicely on a small balcony in Ruiru.',
+      translation: { label: 'Read in Kiswahili', text: '"Unapanda nini kabla ya mvua fupi?"' },
+      tags: ['#KilimoSmart', '#Kiambu'],
+    },
+    stats: { likes: 48, comments: 12 },
+  },
+  {
+    type: 'question',
+    author: { name: 'Grid Pulse', initials: 'GP', color: 'default', verified: false },
+    meta: { handle: '@gridpulse', time: '1h', county: 'Nairobi' },
+    content: {
+      tag: 'Deep-dive inquiry',
+      title: 'What should a small business check before going solar?',
+      body: 'Looking for practical advice from someone who has sized a system for a shop or workshop in Nakuru.',
+      bounty: '120 tokens bounty',
+      tags: ['#NakuruTech', '#Biashara'],
+    },
+    stats: { likes: 31, answers: 8 },
+  },
+  {
+    type: 'poll',
+    author: { name: 'Njeri Wambui', initials: 'NW', color: 'green', verified: true },
+    meta: { handle: '@njeri_w', time: '1h', county: 'Nairobi' },
+    content: {
+      tag: 'Community poll',
+      title: 'Should we organize a community seed swap before the rains?',
+      options: [
+        { label: 'Yes, definitely', pct: 62 },
+        { label: 'Maybe, need more info', pct: 24 },
+        { label: 'No, not relevant', pct: 14 },
+      ],
+      tags: ['#KilimoSmart', '#Nairobi'],
+    },
+    stats: { likes: 24, comments: 8 },
+  },
+  {
+    type: 'audio',
+    author: { name: 'James Otieno', initials: 'JO', color: 'blue', verified: true },
+    meta: { handle: '@james_o', time: '2h', county: 'Kisumu' },
+    content: {
+      tag: 'Audio note',
+      title: 'Quick tip: how to clean your solar panels during the dry season',
+      audio: { duration: '3:58', elapsed: '1:24', progress: 35 },
+      tags: ['#KilimoSmart', '#SolarKE'],
+    },
+    stats: { likes: 56, comments: 14 },
+  },
+];
+
+function threadToPost(thread: Thread) {
+  const profile = thread.profiles;
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : '??';
+  const type = thread.type === 'question' ? 'question' : 'post';
+
+  const base = {
+    type,
+    _threadId: thread.id,
+    author: {
+      name: profile?.full_name || 'Unknown',
+      initials,
+      color: 'earth' as const,
+      verified: profile?.is_verified || false,
+    },
+    meta: {
+      handle: profile?.username ? `@${profile.username}` : '@unknown',
+      time: getTimeAgo(thread.created_at),
+      county: profile?.county || 'Kenya',
+    },
+    stats: { likes: thread.likes_count, comments: thread.comments_count },
+  };
+
+  if (type === 'question') {
+    return {
+      ...base,
+      content: {
+        tag: 'Deep-dive inquiry',
+        title: thread.title,
+        body: thread.body || '',
+        bounty: thread.bounty_amount ? `${thread.bounty_amount} tokens bounty` : '',
+        tags: (thread.tags || []).map(t => `#${t}`),
+      },
+      stats: { likes: thread.likes_count, answers: thread.comments_count },
+    };
+  }
+
+  return {
+    ...base,
+    content: {
+      tag: 'Baraza post',
+      title: thread.title,
+      body: thread.body || '',
+      tags: (thread.tags || []).map(t => `#${t}`),
+    },
+  };
 }

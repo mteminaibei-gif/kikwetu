@@ -5,9 +5,10 @@ import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import {
   BadgeCheck, CalendarDays, FileCheck2, Users,
-  SlidersHorizontal, Plus, ChevronRight
+  SlidersHorizontal, Plus, ChevronRight, X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser, requestSession, toggleFollow, checkFollowing } from '@/lib/supabase-helpers';
 
 const MOCK_PROFESSIONALS = [
   {
@@ -18,6 +19,7 @@ const MOCK_PROFESSIONALS = [
     rating: 4.9,
     consultations: 127,
     location: 'Nairobi',
+    user_id: 'mock-nw',
   },
   {
     initials: 'JO',
@@ -27,6 +29,7 @@ const MOCK_PROFESSIONALS = [
     rating: 4.8,
     consultations: 89,
     location: 'Kisumu',
+    user_id: 'mock-jo',
   },
   {
     initials: 'FA',
@@ -36,6 +39,7 @@ const MOCK_PROFESSIONALS = [
     rating: 5.0,
     consultations: 64,
     location: 'Mombasa',
+    user_id: 'mock-fa',
   },
   {
     initials: 'RK',
@@ -45,16 +49,29 @@ const MOCK_PROFESSIONALS = [
     rating: 4.7,
     consultations: 156,
     location: 'Machakos',
+    user_id: 'mock-rk',
   },
 ];
 
+type Professional = typeof MOCK_PROFESSIONALS[number];
+
 export default function ProfessionalsPage() {
-  const [professionals, setProfessionals] = useState(MOCK_PROFESSIONALS);
+  const [professionals, setProfessionals] = useState<Professional[]>(MOCK_PROFESSIONALS);
   const [loading, setLoading] = useState(true);
   const { showToast } = useApp();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
+
+  const [sessionModalPro, setSessionModalPro] = useState<Professional | null>(null);
+  const [sessionTitle, setSessionTitle] = useState('');
+  const [sessionDesc, setSessionDesc] = useState('');
+  const [sessionSubmitting, setSessionSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchProfessionals = async () => {
+    async function init() {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+
       try {
         const { data, error } = await supabase
           .from('professionals')
@@ -72,6 +89,7 @@ export default function ProfessionalsPage() {
             rating: item.rating,
             consultations: item.consultations,
             location: item.location,
+            user_id: item.user_id || item.id,
           }));
           setProfessionals(mappedData);
         }
@@ -80,10 +98,113 @@ export default function ProfessionalsPage() {
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchProfessionals();
+    init();
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    async function checkAllFollowing() {
+      const map: Record<string, boolean> = {};
+      for (const pro of professionals) {
+        if (pro.user_id) {
+          try {
+            const result = await checkFollowing(currentUser.id, pro.user_id);
+            map[pro.user_id] = result;
+          } catch {
+            map[pro.user_id] = false;
+          }
+        }
+      }
+      setFollowingMap(map);
+    }
+    checkAllFollowing();
+  }, [currentUser, professionals]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('professionals-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'professionals' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const item = payload.new as any;
+            setProfessionals((prev) => [
+              {
+                initials: item.initials,
+                name: item.name,
+                color: item.color,
+                expertise: item.expertise,
+                rating: item.rating,
+                consultations: item.consultations,
+                location: item.location,
+                user_id: item.user_id || item.id,
+              },
+              ...prev,
+            ]);
+          } else if (payload.eventType === 'UPDATE') {
+            const item = payload.new as any;
+            setProfessionals((prev) =>
+              prev.map((p) =>
+                p.user_id === (item.user_id || item.id)
+                  ? { ...p, ...item }
+                  : p
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const old = payload.old as any;
+            setProfessionals((prev) =>
+              prev.filter((p) => p.user_id !== (old.user_id || old.id))
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  async function handleToggleFollow(pro: Professional) {
+    if (!currentUser) {
+      showToast('Please log in to follow professionals');
+      return;
+    }
+    try {
+      const isNowFollowing = await toggleFollow(currentUser.id, pro.user_id);
+      setFollowingMap((prev) => ({ ...prev, [pro.user_id]: isNowFollowing }));
+      showToast(isNowFollowing ? `Following ${pro.name}` : `Unfollowed ${pro.name}`);
+    } catch {
+      showToast('Failed to update follow status');
+    }
+  }
+
+  async function handleRequestSession() {
+    if (!sessionModalPro || !sessionTitle.trim()) {
+      showToast('Please enter a session title');
+      return;
+    }
+    if (!currentUser) {
+      showToast('Please log in to request a session');
+      return;
+    }
+    setSessionSubmitting(true);
+    try {
+      const { error } = await requestSession(currentUser.id, sessionModalPro.user_id, sessionTitle, sessionDesc);
+      if (error) throw error;
+      showToast(`Session request sent to ${sessionModalPro.name}`);
+      setSessionTitle('');
+      setSessionDesc('');
+      setSessionModalPro(null);
+    } catch {
+      showToast('Failed to send request. Try again.');
+    } finally {
+      setSessionSubmitting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -123,6 +244,58 @@ export default function ProfessionalsPage() {
 
   return (
     <AppLayout>
+      {sessionModalPro && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{
+            background: 'var(--bg)', borderRadius: 16, border: '1px solid var(--line)',
+            width: '100%', maxWidth: 420, padding: 24, position: 'relative',
+          }}>
+            <button onClick={() => setSessionModalPro(null)} style={{
+              position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
+              cursor: 'pointer', color: 'var(--text3)',
+            }}>
+              <X size={20} />
+            </button>
+            <h2 className="serif" style={{ marginBottom: 16 }}>Request Consultation</h2>
+            <p style={{ fontSize: '.82rem', color: 'var(--text2)', marginBottom: 16 }}>
+              Send a consultation request to <strong>{sessionModalPro.name}</strong>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input
+                type="text"
+                placeholder="Consultation title (e.g. Solar system sizing)"
+                value={sessionTitle}
+                onChange={(e) => setSessionTitle(e.target.value)}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.88rem',
+                }}
+              />
+              <textarea
+                placeholder="Brief description of what you need help with..."
+                value={sessionDesc}
+                onChange={(e) => setSessionDesc(e.target.value)}
+                rows={3}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.88rem',
+                  fontFamily: 'inherit', resize: 'vertical',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button className="secondary" onClick={() => setSessionModalPro(null)}>Cancel</button>
+                <button className="primary" onClick={handleRequestSession} disabled={sessionSubmitting}>
+                  {sessionSubmitting ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-head">
         <div>
           <div className="eyebrow">KikwetuConnect</div>
@@ -152,8 +325,18 @@ export default function ProfessionalsPage() {
                 <span>{pro.location} · {pro.consultations} consultations · {pro.rating} rating</span>
               </div>
               <div className="pro-actions">
-                <button className="follow" onClick={() => showToast(`Following ${pro.name}`)}>Follow</button>
-                <button className="primary" onClick={() => showToast(`Request sent to ${pro.name}`)}>Request consult</button>
+                <button
+                  className="follow"
+                  onClick={() => handleToggleFollow(pro)}
+                  style={{
+                    background: followingMap[pro.user_id] ? 'var(--greenSoft)' : undefined,
+                    color: followingMap[pro.user_id] ? 'var(--green)' : undefined,
+                    borderColor: followingMap[pro.user_id] ? 'var(--green)' : undefined,
+                  }}
+                >
+                  {followingMap[pro.user_id] ? 'Following' : 'Follow'}
+                </button>
+                <button className="primary" onClick={() => setSessionModalPro(pro)}>Request consult</button>
               </div>
             </div>
           ))}

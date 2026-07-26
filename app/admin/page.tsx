@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
+import { getCurrentUser } from '@/lib/supabase-helpers';
 import {
   ShieldCheck, Download, BadgeCheck, AlertTriangle, Users,
   TrendingUp, Clock, CheckCircle, XCircle, Eye, MoreHorizontal,
@@ -20,6 +21,7 @@ const MOCK_REVIEW_QUEUE = [
     statusLabel: 'Partial',
     icon: BadgeCheck,
     actions: ['Review', 'Decline'],
+    professionalId: null as string | null,
   },
   {
     id: 2,
@@ -30,6 +32,7 @@ const MOCK_REVIEW_QUEUE = [
     statusLabel: 'Urgent',
     icon: AlertTriangle,
     actions: ['Escalate', 'Dismiss'],
+    professionalId: null,
   },
   {
     id: 3,
@@ -40,6 +43,7 @@ const MOCK_REVIEW_QUEUE = [
     statusLabel: 'Ready',
     icon: DollarSign,
     actions: ['Approve', 'Review'],
+    professionalId: null,
   },
   {
     id: 4,
@@ -50,6 +54,7 @@ const MOCK_REVIEW_QUEUE = [
     statusLabel: 'Active',
     icon: Users,
     actions: ['View', 'More'],
+    professionalId: null,
   },
 ];
 
@@ -71,18 +76,20 @@ export default function AdminPage() {
   const { showToast } = useApp();
   const [loading, setLoading] = useState(true);
   const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>(MOCK_REVIEW_QUEUE);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     async function fetchAdminData() {
       try {
-        // Fetch audit logs
-        const { data: logs } = await supabase
-          .from('audit_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+        setIsAdmin(user?.role === 'admin' || user?.is_admin === true);
+      } catch {
+        // not logged in or no profile
+      }
 
-        // Fetch pending professionals
+      try {
         const { data: pending } = await supabase
           .from('professionals')
           .select('*')
@@ -98,18 +105,15 @@ export default function AdminPage() {
             statusLabel: 'Partial',
             icon: BadgeCheck,
             actions: ['Review', 'Decline'],
+            professionalId: p.id ?? null,
           }));
 
-          // Merge: pending professionals first, then keep remaining mock items
           const mockIds = new Set(professionalItems.map((i) => i.subject));
           const remainingMock = MOCK_REVIEW_QUEUE.filter(
             (m) => !mockIds.has(m.subject) && m.type !== 'Professional verification'
           );
           setReviewQueue([...professionalItems, ...remainingMock]);
         }
-
-        // If we got logs, we could use them for stats too
-        // For now the UI stats remain hardcoded
       } catch {
         // fallback to mock
       }
@@ -117,6 +121,117 @@ export default function AdminPage() {
     }
     fetchAdminData();
   }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-professionals')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'professionals' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' && payload.new?.status === 'pending') {
+            const p = payload.new as any;
+            const newItem: ReviewItem = {
+              id: p.id ?? Date.now(),
+              type: 'Professional verification',
+              subject: p.full_name ?? p.name ?? 'Unknown',
+              detail: p.credential_url ? 'Credentials uploaded' : 'Awaiting credentials',
+              status: 'partial',
+              statusLabel: 'Partial',
+              icon: BadgeCheck,
+              actions: ['Review', 'Decline'],
+              professionalId: p.id ?? null,
+            };
+            setReviewQueue((prev) => [newItem, ...prev]);
+            showToast(`New professional application: ${p.full_name ?? p.name}`);
+          } else if (payload.eventType === 'UPDATE') {
+            const p = payload.new as any;
+            setReviewQueue((prev) => {
+              if (p.status !== 'pending') {
+                return prev.filter((item) => item.professionalId !== p.id);
+              }
+              return prev;
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setReviewQueue((prev) => prev.filter((item) => item.professionalId !== (payload.old as any)?.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [showToast]);
+
+  async function handleApproveProfessional(item: ReviewItem) {
+    if (!item.professionalId) {
+      showToast('Cannot approve: no professional ID');
+      return;
+    }
+    if (!isAdmin) {
+      showToast('Only admins can approve professionals');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('professionals')
+        .update({ status: 'approved', is_approved: true })
+        .eq('id', item.professionalId);
+      if (error) throw error;
+      setReviewQueue((prev) => prev.filter((r) => r.id !== item.id));
+      showToast(`Approved ${item.subject}`);
+    } catch {
+      showToast('Failed to approve. Try again.');
+    }
+  }
+
+  async function handleRejectProfessional(item: ReviewItem) {
+    if (!item.professionalId) {
+      showToast('Cannot reject: no professional ID');
+      return;
+    }
+    if (!isAdmin) {
+      showToast('Only admins can reject professionals');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('professionals')
+        .delete()
+        .eq('id', item.professionalId);
+      if (error) throw error;
+      setReviewQueue((prev) => prev.filter((r) => r.id !== item.id));
+      showToast(`Rejected ${item.subject}`);
+    } catch {
+      showToast('Failed to reject. Try again.');
+    }
+  }
+
+  async function handleResolve(item: ReviewItem) {
+    try {
+      if (item.type === 'Reported thread') {
+        showToast(`Escalated ${item.subject} to jury`);
+      } else if (item.type === 'Payout batch') {
+        showToast(`Payout batch ${item.subject} approved`);
+      } else {
+        showToast(`Resolved: ${item.subject}`);
+      }
+      setReviewQueue((prev) => prev.filter((r) => r.id !== item.id));
+    } catch {
+      showToast('Failed to resolve. Try again.');
+    }
+  }
+
+  function handleAction(action: string, item: ReviewItem) {
+    if (action === 'Review' || action === 'Approve') {
+      handleApproveProfessional(item);
+    } else if (action === 'Decline' || action === 'Dismiss') {
+      handleRejectProfessional(item);
+    } else {
+      handleResolve(item);
+    }
+  }
 
   if (loading) {
     return (
@@ -161,6 +276,12 @@ export default function AdminPage() {
           <Download className="icon-sm" /> Export
         </button>
       </div>
+
+      {!isAdmin && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--goldSoft)', color: 'var(--earth)', fontSize: '.82rem', marginBottom: 16 }}>
+          You are viewing as a non-admin. Approve/Reject actions require admin privileges.
+        </div>
+      )}
 
       <div className="audit-grid">
         <div className="audit-stat" onClick={() => showToast('18 reports awaiting review')}>
@@ -221,7 +342,7 @@ export default function AdminPage() {
                       key={action}
                       className="secondary"
                       style={{ padding: '6px 12px', fontSize: '.75rem' }}
-                      onClick={(e) => { e.stopPropagation(); showToast(`${action}: ${item.subject}`); }}
+                      onClick={(e) => { e.stopPropagation(); handleAction(action, item); }}
                     >
                       {action}
                     </button>

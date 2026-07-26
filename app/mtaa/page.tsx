@@ -5,8 +5,16 @@ import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
 import {
+  getCurrentUser,
+  createListing,
+  markListingSold,
+  toggleSave,
+  checkSaved,
+  createConversation,
+} from '@/lib/supabase-helpers';
+import {
   Store, Plus, MapPin, Star, MessageCircle, Heart, MoreHorizontal,
-  Filter, Search, ExternalLink, ChevronRight
+  Filter, Search, ExternalLink, ChevronRight,
 } from 'lucide-react';
 
 const categories = [
@@ -31,6 +39,7 @@ const MOCK_LISTINGS = [
     tag: 'Fresh',
     tagColor: 'var(--greenSoft)',
     tagText: 'var(--green)',
+    is_available: true,
   },
   {
     id: 2,
@@ -44,6 +53,7 @@ const MOCK_LISTINGS = [
     tag: 'Service',
     tagColor: 'var(--goldSoft)',
     tagText: 'var(--earth)',
+    is_available: true,
   },
   {
     id: 3,
@@ -57,6 +67,7 @@ const MOCK_LISTINGS = [
     tag: 'Handmade',
     tagColor: 'var(--earthSoft)',
     tagText: 'var(--earth)',
+    is_available: true,
   },
   {
     id: 4,
@@ -70,6 +81,7 @@ const MOCK_LISTINGS = [
     tag: 'Used',
     tagColor: 'var(--blueSoft)',
     tagText: 'var(--blue)',
+    is_available: true,
   },
   {
     id: 5,
@@ -83,6 +95,7 @@ const MOCK_LISTINGS = [
     tag: 'Fresh',
     tagColor: 'var(--greenSoft)',
     tagText: 'var(--green)',
+    is_available: true,
   },
   {
     id: 6,
@@ -96,6 +109,7 @@ const MOCK_LISTINGS = [
     tag: 'Service',
     tagColor: 'var(--goldSoft)',
     tagText: 'var(--earth)',
+    is_available: true,
   },
 ];
 
@@ -119,8 +133,30 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ListingCard({ listing, onAction }: { listing: Listing; onAction: (msg: string) => void }) {
-  const [liked, setLiked] = useState(false);
+function ListingCard({
+  listing,
+  currentUserId,
+  onAction,
+  onContact,
+  onMarkSold,
+  onToggleSave,
+  saved,
+}: {
+  listing: Listing;
+  currentUserId: string | null;
+  onAction: (msg: string) => void;
+  onContact: (listing: Listing) => void;
+  onMarkSold: (listing: Listing) => void;
+  onToggleSave: (listing: Listing) => void;
+  saved: boolean;
+}) {
+  const [liked, setLiked] = useState(saved);
+
+  useEffect(() => {
+    setLiked(saved);
+  }, [saved]);
+
+  const isOwn = currentUserId && listing.seller?.name && currentUserId === (listing as any).seller_id;
 
   return (
     <article
@@ -132,6 +168,7 @@ function ListingCard({ listing, onAction }: { listing: Listing; onAction: (msg: 
         boxShadow: 'var(--shadow1)',
         transition: 'transform .18s var(--ease), border-color .18s var(--ease)',
         cursor: 'pointer',
+        opacity: listing.is_available === false ? 0.6 : 1,
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)';
@@ -141,7 +178,6 @@ function ListingCard({ listing, onAction }: { listing: Listing; onAction: (msg: 
         (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
         (e.currentTarget as HTMLElement).style.borderColor = 'var(--line)';
       }}
-      onClick={() => onAction(`Viewing ${listing.title}`)}
     >
       <div
         style={{
@@ -170,7 +206,7 @@ function ListingCard({ listing, onAction }: { listing: Listing; onAction: (msg: 
           {listing.tag}
         </span>
         <button
-          onClick={(e) => { e.stopPropagation(); setLiked(!liked); onAction(liked ? 'Removed from saved' : 'Saved'); }}
+          onClick={(e) => { e.stopPropagation(); setLiked(!liked); onToggleSave(listing); }}
           style={{
             position: 'absolute',
             top: 10,
@@ -218,13 +254,26 @@ function ListingCard({ listing, onAction }: { listing: Listing; onAction: (msg: 
           <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--green2)' }}>
             KSh {listing.price.toLocaleString()}
           </span>
-          <button
-            className="primary"
-            onClick={(e) => { e.stopPropagation(); onAction(`Chat with ${listing.seller.name}`); }}
-            style={{ gap: 5, fontSize: '.68rem', minHeight: 32 }}
-          >
-            <MessageCircle className="icon-sm" /> Contact
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {isOwn ? (
+              <button
+                className="secondary"
+                onClick={(e) => { e.stopPropagation(); onMarkSold(listing); }}
+                style={{ gap: 5, fontSize: '.68rem', minHeight: 32, opacity: listing.is_available === false ? 0.5 : 1 }}
+                disabled={listing.is_available === false}
+              >
+                {listing.is_available === false ? 'Sold' : 'Mark Sold'}
+              </button>
+            ) : (
+              <button
+                className="primary"
+                onClick={(e) => { e.stopPropagation(); onContact(listing); }}
+                style={{ gap: 5, fontSize: '.68rem', minHeight: 32 }}
+              >
+                <MessageCircle className="icon-sm" /> Contact
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </article>
@@ -237,9 +286,22 @@ export default function MtaaExchange() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [listings, setListings] = useState<Listing[]>(MOCK_LISTINGS);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newCategory, setNewCategory] = useState('produce');
+  const [newLocation, setNewLocation] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    async function fetchListings() {
+    async function init() {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+
       try {
         const { data, error } = await supabase
           .from('listings')
@@ -266,15 +328,119 @@ export default function MtaaExchange() {
             tag: item.category ?? 'Other',
             tagColor: 'var(--greenSoft)',
             tagText: 'var(--green)',
+            is_available: item.is_available !== false,
+            seller_id: item.seller_id ?? null,
           })));
+        }
+
+        if (user) {
+          const savedIds: Record<string, boolean> = {};
+          for (const l of MOCK_LISTINGS) {
+            const isSaved = await checkSaved(user.id, 'listing', String(l.id));
+            savedIds[String(l.id)] = isSaved;
+          }
+          setSavedMap(savedIds);
         }
       } catch {
         // fallback to mock
       }
       setLoading(false);
     }
-    fetchListings();
+    init();
   }, []);
+
+  async function handleCreateListing() {
+    if (!currentUser || !newTitle.trim()) {
+      showToast('Please fill in the title');
+      return;
+    }
+    setCreating(true);
+    const { data, error } = await createListing(
+      currentUser.id,
+      newTitle,
+      newDescription,
+      Number(newPrice) || 0,
+      newCategory,
+      newLocation,
+    );
+    setCreating(false);
+
+    if (!error && data) {
+      const newList: Listing = {
+        id: data.id,
+        title: data.title,
+        price: data.price,
+        location: data.location || '',
+        seller: {
+          name: currentUser.full_name || 'You',
+          initials: currentUser.full_name ? currentUser.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'Y',
+          color: 'earth',
+        },
+        rating: 4.5,
+        category: data.category || 'other',
+        color: 'var(--greenSoft)',
+        tag: data.category || 'Other',
+        tagColor: 'var(--greenSoft)',
+        tagText: 'var(--green)',
+        is_available: true,
+      };
+      setListings((prev) => [newList, ...prev]);
+      setShowCreateModal(false);
+      setNewTitle('');
+      setNewDescription('');
+      setNewPrice('');
+      setNewLocation('');
+      showToast('Listing created');
+    } else {
+      showToast('Failed to create listing');
+    }
+  }
+
+  async function handleContact(sellerListing: Listing) {
+    if (!currentUser) {
+      showToast('Sign in to contact seller');
+      return;
+    }
+    const sellerId = (sellerListing as any).seller_id;
+    if (sellerId && sellerId === currentUser.id) {
+      showToast('This is your listing');
+      return;
+    }
+    if (sellerId) {
+      const { data } = await createConversation([currentUser.id, sellerId], `Hi, I'm interested in "${sellerListing.title}"`);
+      if (data) {
+        showToast('Conversation started');
+      } else {
+        showToast('Could not start conversation');
+      }
+    } else {
+      showToast(`Chat with ${sellerListing.seller.name}`);
+    }
+  }
+
+  async function handleMarkSold(listing: Listing) {
+    const { error } = await markListingSold(String(listing.id));
+    if (!error) {
+      setListings((prev) =>
+        prev.map((l) =>
+          l.id === listing.id ? { ...l, is_available: false } : l
+        )
+      );
+      showToast('Marked as sold');
+    } else {
+      showToast('Failed to mark as sold');
+    }
+  }
+
+  async function handleToggleSave(listing: Listing) {
+    if (!currentUser) {
+      showToast('Sign in to save');
+      return;
+    }
+    const result = await toggleSave(currentUser.id, 'listing', String(listing.id));
+    setSavedMap((prev) => ({ ...prev, [String(listing.id)]: result }));
+    showToast(result ? 'Saved' : 'Removed from saved');
+  }
 
   const filtered = listings.filter((l) => {
     const matchCategory = activeCategory === 'all' || l.category === activeCategory;
@@ -328,7 +494,7 @@ export default function MtaaExchange() {
               <button
                 key={c.key}
                 className={activeCategory === c.key ? 'primary' : 'secondary'}
-                onClick={() => { setActiveCategory(c.key); showToast(`Filter: ${c.label}`); }}
+                onClick={() => { setActiveCategory(c.key); }}
                 style={{ whiteSpace: 'nowrap', fontSize: '.7rem', minHeight: 34 }}
               >
                 {c.label}
@@ -344,7 +510,11 @@ export default function MtaaExchange() {
             <div className="eyebrow">Alerts</div>
           </div>
         </div>
-        <div className="alert calm" style={{ cursor: 'pointer' }} onClick={() => showToast('Listing tips opened')}>
+        <div
+          className="alert calm"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setShowCreateModal(true)}
+        >
           <div className="alert-icon" style={{ color: 'var(--green)', background: 'var(--greenSoft)' }}>
             <Store className="icon-sm" />
           </div>
@@ -375,7 +545,16 @@ export default function MtaaExchange() {
           }}
         >
           {filtered.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onAction={showToast} />
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              currentUserId={currentUser?.id}
+              onAction={showToast}
+              onContact={handleContact}
+              onMarkSold={handleMarkSold}
+              onToggleSave={handleToggleSave}
+              saved={savedMap[String(listing.id)] || false}
+            />
           ))}
         </div>
 
@@ -399,6 +578,100 @@ export default function MtaaExchange() {
           <p>Meet in public spaces. Use M-Pesa for secure payments. Never share your PIN.</p>
         </div>
       </div>
+
+      {showCreateModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: 16,
+          }}
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 16,
+              padding: 24,
+              width: '100%',
+              maxWidth: 440,
+              boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 16 }}>Create a listing</h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Title *</label>
+                <input
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="What are you selling?"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Description</label>
+                <textarea
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Describe your item or service"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)', resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Price (KSh)</label>
+                  <input
+                    type="number"
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                    placeholder="0"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Category</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)' }}
+                  >
+                    {categories.filter((c) => c.key !== 'all').map((c) => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Location</label>
+                <input
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  placeholder="e.g. Nairobi, Westlands"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
+              <button className="secondary" onClick={() => setShowCreateModal(false)}>
+                Cancel
+              </button>
+              <button className="primary" onClick={handleCreateListing} disabled={creating}>
+                {creating ? 'Creating...' : 'Create listing'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
