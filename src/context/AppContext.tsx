@@ -36,7 +36,6 @@ interface AppContextType extends AppState {
   loadNotifications: () => Promise<void>;
   createThread: (data: Partial<Thread>) => Promise<{ error?: string }>;
   createReply: (threadId: string, content: string) => Promise<{ error?: string }>;
-  /** Toggle vote. Throws on online RPC failure. Returns new upvotes_count when available. */
   vote: (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down') => Promise<{ upvotes_count?: number }>;
   subscribeToFeed: () => () => void;
   setSelectedThread: (thread: Thread | null) => void;
@@ -67,7 +66,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ratings: [], tips: [], userVotes: {}, feedError: null,
   });
 
-  const voteLimits = useRef({ count: 0, lastReset: Date.now() });
+  // lastReset starts at 0 (pure); first vote call sets the window
+  const voteLimits = useRef({ count: 0, lastReset: 0 });
 
   const update = useCallback((partial: Partial<AppState>) => {
     setState(prev => ({ ...prev, ...partial }));
@@ -88,14 +88,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const newThreads = params?.cursor ? [...prev.threads, ...(data as Thread[])] : (data as Thread[]);
           return { ...prev, threads: newThreads, loading: false };
         });
-        if (navigator.onLine) { data.forEach(t => Offline.cacheThread(t as Thread)); }
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+          data.forEach(t => Offline.cacheThread(t as Thread));
+        }
         return data as Thread[];
       }
       return [];
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to load feed';
       console.error('[loadThreads] Error:', e);
       if (!params?.cursor) {
-        update({ feedError: e.message || 'Failed to load feed', loading: false });
+        update({ feedError: msg, loading: false });
       }
       return [];
     }
@@ -154,7 +157,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tags: data.tags || [], county: data.county || '',
     }).select().single();
     if (error) {
-      if (!navigator.onLine) { await Offline.queueAction({ type: 'createThread', userId: data.author_id, payload: data }); return {}; }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await Offline.queueAction({ type: 'createThread', userId: data.author_id, payload: data });
+        return {};
+      }
       return { error: error.message };
     }
     return {};
@@ -163,9 +169,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createReply = useCallback(async (threadId: string, content: string): Promise<{ error?: string }> => {
     if (!user) return { error: 'Not logged in' };
     const sb = createClient();
-    const { data: reply, error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
+    const { error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
     if (error) {
-      if (!navigator.onLine) { await Offline.queueAction({ type: 'createReply', userId: user.id, payload: { thread_id: threadId, content } }); return {}; }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await Offline.queueAction({ type: 'createReply', userId: user.id, payload: { thread_id: threadId, content } });
+        return {};
+      }
       return { error: error.message };
     }
     await loadReplies(threadId);
@@ -180,15 +189,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           entity_id: threadId,
         });
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     return {};
   }, [user, loadReplies]);
 
   const vote = useCallback(async (entityId: string, entityType: 'thread' | 'reply', voteType: 'up' | 'down'): Promise<{ upvotes_count?: number }> => {
     if (!user) throw new Error('Please login to vote.');
-    
+
     const now = Date.now();
-    if (now - voteLimits.current.lastReset > 60000) {
+    if (voteLimits.current.lastReset === 0 || now - voteLimits.current.lastReset > 60000) {
       voteLimits.current.count = 0;
       voteLimits.current.lastReset = now;
     }
@@ -198,10 +209,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     voteLimits.current.count++;
 
     const sb = createClient();
-    const { data: upvotes_count, error } = await sb.rpc('toggle_vote', { p_user_id: user.id, p_entity_id: entityId, p_entity_type: entityType, p_vote_type: voteType });
+    const { data: rpcData, error } = await sb.rpc('toggle_vote', {
+      p_user_id: user.id,
+      p_entity_id: entityId,
+      p_entity_type: entityType,
+      p_vote_type: voteType,
+    });
     if (error) {
       console.error('[AppContext] vote RPC error:', error);
-      if (!navigator.onLine) { await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } }); }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await Offline.queueAction({ type: 'vote', userId: user.id, payload: { entityId, entityType, voteType } });
+      }
       return {};
     }
 
@@ -215,7 +233,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return { ...prev, userVotes: nextVotes };
     });
-    // Insert notification for the content author (if not self)
 
     try {
       let authorId: string | null = null;
@@ -239,6 +256,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // ignore
     }
 
+    const upvotes_count = typeof rpcData === 'number' ? rpcData : undefined;
     return { upvotes_count };
   }, [user]);
 
@@ -247,10 +265,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const channel = sb.channel('feed-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, async (p) => {
         const newThread = p.new as Thread;
-        setState(prev => {
-          if (prev.threads.find(t => t.id === newThread.id)) return prev;
-          return prev;
-        });
         const { data: authorProfile } = await sb
           .from('profiles')
           .select('full_name, avatar_url, verified, county, username')
@@ -370,8 +384,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await sb.from('profiles').update({ role: 'expert' }).eq('id', req.profile_id);
       }
     }
-    loadProfessionalRequests();
-    loadProfessionals();
+    void loadProfessionalRequests();
+    void loadProfessionals();
     return {};
   }, [user, state.professionalRequests, loadProfessionalRequests, loadProfessionals]);
 
@@ -398,7 +412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateSessionStatus = useCallback(async (id: string, status: TeachingSession['status']) => {
     const sb = createClient();
     await sb.from('teaching_sessions').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-    if (user) loadSessions(user.id);
+    if (user) void loadSessions(user.id);
   }, [user, loadSessions]);
 
   const loadMessages = useCallback(async (sessionId: string) => {
@@ -470,9 +484,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      loadNotifications();
-      loadUserVotes();
-      (async () => { const pending = await Offline.getPendingCount(); update({ pendingSyncCount: pending }); })();
+      void loadNotifications();
+      void loadUserVotes();
+      void (async () => {
+        const pending = await Offline.getPendingCount();
+        update({ pendingSyncCount: pending });
+      })();
     } else {
       update({ userVotes: {} });
     }
@@ -483,18 +500,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!user) return;
       const sb = createClient();
       const drained = await Offline.drainSyncQueue(sb);
-      if (drained > 0) { const pending = await Offline.getPendingCount(); update({ pendingSyncCount: pending }); loadThreads(); }
+      if (drained > 0) {
+        const pending = await Offline.getPendingCount();
+        update({ pendingSyncCount: pending });
+        void loadThreads();
+      }
     };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [user, update, loadThreads]);
 
   useEffect(() => {
-    if (user && navigator.onLine) {
-      (async () => {
+    if (user && typeof navigator !== 'undefined' && navigator.onLine) {
+      void (async () => {
         const sb = createClient();
         const drained = await Offline.drainSyncQueue(sb);
-        if (drained > 0) { const pending = await Offline.getPendingCount(); update({ pendingSyncCount: pending }); loadThreads(); }
+        if (drained > 0) {
+          const pending = await Offline.getPendingCount();
+          update({ pendingSyncCount: pending });
+          void loadThreads();
+        }
       })();
     }
   }, [user, update, loadThreads]);
