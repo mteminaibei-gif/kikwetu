@@ -58,7 +58,7 @@ export default function QuizzesPage() {
     }
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const startQuiz = (q: Quiz) => {
     setActive(q);
@@ -86,9 +86,15 @@ export default function QuizzesPage() {
         }, { onConflict: 'user_id,quiz_id' });
 
         if (correct && points > 0) {
-          await sb.rpc('increment_heshima', { p_user_id: user.id, p_amount: points }).catch(() => {
-            // RPC may not exist — soft fail
+          // rpc returns a builder; await it — do not call .catch() on the builder
+          const { error: heshimaErr } = await sb.rpc('increment_heshima', {
+            p_user_id: user.id,
+            p_amount: points,
           });
+          if (heshimaErr) {
+            // RPC may not exist yet — soft fail
+            console.warn('[quizzes] increment_heshima:', heshimaErr.message);
+          }
         }
         setCompletedIds(prev => new Set(prev).add(active.id));
       } catch {
@@ -122,7 +128,7 @@ export default function QuizzesPage() {
 
           {active ? (
             <div className="p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm space-y-5">
-              <button onClick={() => setActive(null)} className="text-xs font-bold text-gray-500 hover:text-brand-red">
+              <button type="button" onClick={() => setActive(null)} className="text-xs font-bold text-gray-500 hover:text-brand-red">
                 ← Back to list
               </button>
               <div className="flex items-center gap-2">
@@ -143,6 +149,7 @@ export default function QuizzesPage() {
                   return (
                     <button
                       key={opt.id ?? idx}
+                      type="button"
                       disabled={submitted}
                       onClick={() => setSelected(idx)}
                       className={cn(
@@ -161,7 +168,8 @@ export default function QuizzesPage() {
 
               {!submitted ? (
                 <button
-                  onClick={submitAnswer}
+                  type="button"
+                  onClick={() => void submitAnswer()}
                   disabled={selected === null}
                   className="w-full bg-brand-red text-white py-3 rounded-xl text-sm font-bold disabled:opacity-40"
                 >
@@ -173,6 +181,7 @@ export default function QuizzesPage() {
                     {scoreDelta > 0 ? `Correct! +${scoreDelta} Heshima` : 'Not quite — try another quiz'}
                   </p>
                   <button
+                    type="button"
                     onClick={() => setActive(null)}
                     className="px-6 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800 text-sm font-bold"
                   >
@@ -194,6 +203,7 @@ export default function QuizzesPage() {
               {quizzes.map(q => (
                 <button
                   key={q.id}
+                  type="button"
                   onClick={() => startQuiz(q)}
                   className="w-full text-left p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm hover:border-brand-terracotta/40 transition-all"
                 >
