@@ -1,14 +1,87 @@
 {
-  "name": "KikwetuConnect — Maarifa Yetu, Hadithi Zetu, Mustakabali Wetu",
+  "name": "KikwetuConnect - Our Knowledge, Our Stories, Our Future",
   "short_name": "KikwetuConnect",
-  "description": "East Africa's knowledge platform connecting all 47 counties. Share farming tips, tech skills, Swahili stories, and grow together.",
+  "description": "Kenya's premier education and community platform for knowledge sharing and professional growth",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFF9F0",
-  "theme_color": "#cc5b47",
-  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2d7c4a",
+  "orientation": "portrait-primary",
+  "scope": "/",
   "icons": [
-    { "src": "/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" },
-    { "src": "/icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml" }
-  ]
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["education", "social", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshot-540x720.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshot-1280x720.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ask a Question",
+      "short_name": "Ask",
+      "description": "Ask a question in KikwetuConnect",
+      "url": "/?action=ask",
+      "icons": [
+        {
+          "src": "/icon-ask-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Browse Spaces",
+      "short_name": "Spaces",
+      "description": "Browse communities and spaces",
+      "url": "/spaces",
+      "icons": [
+        {
+          "src": "/icon-spaces-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "media",
+          "accept": ["image/*", "video/*"]
+        }
+      ]
+    }
+  }
 }
