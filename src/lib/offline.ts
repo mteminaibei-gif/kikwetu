@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import type { Thread, Reply, Profile, Space } from '@/types';
+import type { Thread, Reply, Profile } from '@/types';
 
 let db: Dexie | null = null;
 
@@ -55,11 +55,12 @@ export const Offline = {
   },
   async getPendingCount(): Promise<number> {
     const d = getOfflineDB();
-    return d.table('syncQueue').where('synced').equals(0).count();
+    // Dexie indexes booleans as true/false — not 0/1
+    return d.table('syncQueue').where('synced').equals(false).count();
   },
   async getPendingActions(): Promise<SyncAction[]> {
     const d = getOfflineDB();
-    return d.table('syncQueue').where('synced').equals(0).toArray();
+    return d.table('syncQueue').where('synced').equals(false).toArray();
   },
   async markSynced(id: number) {
     const d = getOfflineDB();
@@ -76,7 +77,7 @@ export const Offline = {
 
   async drainSyncQueue(sb: ReturnType<typeof import('./supabase').createClient>): Promise<number> {
     const d = getOfflineDB();
-    const pending = await d.table('syncQueue').where('synced').equals(0).toArray();
+    const pending = await d.table('syncQueue').where('synced').equals(false).toArray();
     let drained = 0;
     for (const action of pending) {
       try {

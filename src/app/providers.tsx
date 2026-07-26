@@ -27,7 +27,7 @@ function TutorialGate() {
         if (data && !data.tutorial_completed && data.heshima_score <= 100) {
           setShow(true);
         }
-      } catch {}
+      } catch { /* ignore */ }
       setChecked(true);
     })();
   }, [user]);
@@ -47,12 +47,23 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
   const isLanding = pathname === '/';
+  const showNav = !isAdmin;
+
   return (
     <>
-      {!isAdmin && <Navbar />}
+      {showNav && <Navbar />}
       <TutorialGate />
       <ConsentBanner />
-      <main className={cn('flex-1', !isLanding && 'pb-20 md:pb-0')}>{children}</main>
+      {/* pt-16 offsets fixed navbar (h-16) so content is never hidden under it */}
+      <main
+        className={cn(
+          'flex-1',
+          showNav && 'pt-16',
+          !isLanding && 'pb-20 md:pb-0',
+        )}
+      >
+        {children}
+      </main>
       <MobileBottomNav />
     </>
   );

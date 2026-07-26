@@ -28,6 +28,7 @@ interface AppState {
 
 interface AppContextType extends AppState {
   loadThreads: (params?: { spaceId?: string; type?: string }) => Promise<void>;
+  appendThreads: (extra: Thread[]) => void;
   loadThread: (id: string) => Promise<void>;
   loadReplies: (threadId: string) => Promise<void>;
   loadSpaces: () => Promise<void>;
@@ -71,7 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadThreads = useCallback(async (params?: { spaceId?: string; type?: string }) => {
     const sb = createClient();
-    let q = sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').order('created_at', { ascending: false }).limit(30);
+    let q = sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)').order('created_at', { ascending: false }).limit(30);
     if (params?.spaceId) q = q.eq('space_id', params.spaceId);
     if (params?.type) q = q.eq('type', params.type);
     const { data } = await q;
@@ -84,9 +85,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const appendThreads = useCallback((extra: Thread[]) => {
+    if (!extra.length) return;
+    setState(prev => {
+      const seen = new Set(prev.threads.map(t => t.id));
+      const unique = extra.filter(t => !seen.has(t.id));
+      if (!unique.length) return prev;
+      return { ...prev, threads: [...prev.threads, ...unique] };
+    });
+  }, []);
+
   const loadThread = useCallback(async (id: string) => {
     const sb = createClient();
-    const { data } = await sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county), space:spaces(name)').eq('id', id).single();
+    const { data } = await sb.from('threads').select('*, author:profiles(full_name, avatar_url, verified, county, username), space:spaces(name)').eq('id', id).single();
     if (data) { update({ selectedThread: data as Thread }); await Offline.cacheThread(data as Thread); }
   }, [update]);
 
@@ -130,7 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createReply = useCallback(async (threadId: string, content: string): Promise<{ error?: string }> => {
     if (!user) return { error: 'Not logged in' };
     const sb = createClient();
-    const { data: reply, error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
+    const { error } = await sb.from('replies').insert({ thread_id: threadId, author_id: user.id, content }).select().single();
     if (error) {
       if (!navigator.onLine) { await Offline.queueAction({ type: 'createReply', userId: user.id, payload: { thread_id: threadId, content } }); return {}; }
       return { error: error.message };
@@ -147,7 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           entity_id: threadId,
         });
       }
-    } catch {}
+    } catch { /* ignore */ }
     return {};
   }, [user, loadReplies]);
 
@@ -155,7 +166,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('Please login to vote.');
     const sb = createClient();
 
-    // RPC returns the new upvotes_count (INTEGER) when migration_votes.sql is applied
     const { data: rpcData, error } = await sb.rpc('toggle_vote', {
       p_user_id: user.id,
       p_entity_id: entityId,
@@ -175,47 +185,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message || 'Vote failed');
     }
 
-    let upvotes_count: number | undefined =
+    let resolvedCount: number | undefined =
       typeof rpcData === 'number' ? rpcData : undefined;
 
-    // Fallback SELECT if older RPC returned void
-    if (typeof upvotes_count !== 'number') {
+    if (typeof resolvedCount !== 'number') {
       try {
         if (entityType === 'thread') {
           const { data } = await sb.from('threads').select('upvotes_count').eq('id', entityId).single();
-          upvotes_count = data?.upvotes_count;
+          if (typeof data?.upvotes_count === 'number') resolvedCount = data.upvotes_count;
         } else {
           const { data } = await sb.from('replies').select('upvotes_count').eq('id', entityId).single();
-          upvotes_count = data?.upvotes_count;
+          if (typeof data?.upvotes_count === 'number') resolvedCount = data.upvotes_count;
         }
       } catch {
         // realtime / next load will sync
       }
     }
 
-    if (typeof upvotes_count === 'number') {
+    // Narrow for TypeScript: Thread.upvotes_count is number, not number | undefined
+    if (typeof resolvedCount === 'number') {
+      const count: number = resolvedCount;
       if (entityType === 'thread') {
         setState(prev => ({
           ...prev,
           threads: prev.threads.map(t =>
-            t.id === entityId ? { ...t, upvotes_count: upvotes_count! } : t
+            t.id === entityId ? { ...t, upvotes_count: count } : t
           ),
           selectedThread:
             prev.selectedThread?.id === entityId
-              ? { ...prev.selectedThread, upvotes_count: upvotes_count! }
+              ? { ...prev.selectedThread, upvotes_count: count }
               : prev.selectedThread,
         }));
       } else {
         setState(prev => ({
           ...prev,
           replies: prev.replies.map(r =>
-            r.id === entityId ? { ...r, upvotes_count: upvotes_count! } : r
+            r.id === entityId ? { ...r, upvotes_count: count } : r
           ),
         }));
       }
     }
 
-    // Notify content author (non-self) — never break voting
     try {
       let authorId: string | null = null;
       if (entityType === 'thread') {
@@ -235,10 +245,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch {
-      // ignore
+      // ignore notification errors
     }
 
-    return { upvotes_count };
+    return { upvotes_count: resolvedCount };
   }, [user]);
 
   const subscribeToFeed = useCallback(() => {
@@ -246,10 +256,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const channel = sb.channel('feed-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, async (p) => {
         const newThread = p.new as Thread;
-        setState(prev => {
-          if (prev.threads.find(t => t.id === newThread.id)) return prev;
-          return prev;
-        });
         const { data: authorProfile } = await sb
           .from('profiles')
           .select('full_name, avatar_url, verified, county, username')
@@ -280,10 +286,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             t.id === updated.id
               ? {
                   ...t,
-                  upvotes_count: updated.upvotes_count,
-                  reply_count: updated.reply_count,
-                  title: updated.title,
-                  content: updated.content,
+                  upvotes_count: updated.upvotes_count ?? t.upvotes_count,
+                  reply_count: updated.reply_count ?? t.reply_count,
+                  title: updated.title ?? t.title,
+                  content: updated.content ?? t.content,
                 }
               : t
           ),
@@ -291,8 +297,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             prev.selectedThread?.id === updated.id
               ? {
                   ...prev.selectedThread,
-                  upvotes_count: updated.upvotes_count,
-                  reply_count: updated.reply_count,
+                  upvotes_count: updated.upvotes_count ?? prev.selectedThread.upvotes_count,
+                  reply_count: updated.reply_count ?? prev.selectedThread.reply_count,
                 }
               : prev.selectedThread,
         }));
@@ -315,7 +321,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev,
           replies: prev.replies.map(r =>
             r.id === updated.id
-              ? { ...r, upvotes_count: updated.upvotes_count, is_accepted: updated.is_accepted }
+              ? {
+                  ...r,
+                  upvotes_count: updated.upvotes_count ?? r.upvotes_count,
+                  is_accepted: updated.is_accepted ?? r.is_accepted,
+                }
               : r
           ),
         }));
@@ -497,7 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      ...state, loadThreads, loadThread, loadReplies, loadSpaces, loadNotifications,
+      ...state, loadThreads, appendThreads, loadThread, loadReplies, loadSpaces, loadNotifications,
       createThread: createThreadFn, createReply, vote, subscribeToFeed,
       setSelectedThread: (t) => update({ selectedThread: t }),
       loadProfessionals, loadProfessionalRequests, requestProfessional, reviewProfessionalRequest,
