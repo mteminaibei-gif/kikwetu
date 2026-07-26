@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+import Icon from '@/components/Icon';
 
 interface NavItem { label: string; href: string; icon: string; badge?: string; isProfile?: boolean; }
 
@@ -76,7 +77,7 @@ export default function DesktopSidebar() {
               href={item.isProfile ? `/profile/${user.id}` : item.href}
               className={cn('nav-item', isActive(item.href, item.isProfile) && 'active')}
             >
-              <i data-lucide={item.icon} className="icon" />
+              <Icon name={item.icon} className="icon" />
               <span>{item.label}</span>
               {item.badge && <span className="nav-badge">{item.badge}</span>}
             </Link>
@@ -91,7 +92,7 @@ export default function DesktopSidebar() {
             href="/admin"
             className={cn('nav-item', pathname?.startsWith('/admin') && 'active')}
           >
-            <i data-lucide="shield" className="icon" />
+            <Icon name="shield" className="icon" />
             <span>Dashboard</span>
           </Link>
         </div>

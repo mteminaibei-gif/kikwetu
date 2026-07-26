@@ -8,6 +8,7 @@ import { useApp } from '@/context/AppContext';
 import { createClient } from '@/lib/supabase';
 import { cn, timeAgo } from '@/lib/utils';
 import Image from 'next/image';
+import Icon, { getThemeIcon } from '@/components/Icon';
 
 function BellIcon({ className }: { className?: string }) { return <svg xmlns="http://www.w3.org/2000/svg" className={cn('icon', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>; }
 
@@ -25,22 +26,20 @@ export default function Navbar() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [themeIcon, setThemeIcon] = useState<string>('moon');
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
     setOnline(navigator.onLine);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     const html = document.documentElement;
     const stored = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isDark = stored === 'dark' || (!stored && prefersDark);
     html.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  }, [mounted]);
+    setThemeIcon(isDark ? 'sun' : 'moon');
+  }, []);
 
   useEffect(() => {
     const h = () => setOnline(navigator.onLine);
@@ -107,8 +106,6 @@ export default function Navbar() {
     }
   }, [searchQuery, router]);
 
-  const themeIcon = mounted && document.documentElement.getAttribute('data-theme') === 'dark' ? 'sun' : 'moon';
-
   return (
     <header className="topbar">
       <Link href={user ? '/feed' : '/'} className="wordmark">
@@ -119,7 +116,7 @@ export default function Navbar() {
       {user && pathname !== '/' && (
         <div className="search-bar" ref={searchRef}>
           <form onSubmit={handleSearchSubmit} style={{ display: 'contents' }}>
-            <i data-lucide="search" className="icon-sm" />
+            <Icon name="search" className="icon-sm" />
             <input
               type="text"
               value={searchQuery}
@@ -146,7 +143,7 @@ export default function Navbar() {
                     background: 'transparent', color: 'var(--color-text)', fontSize: '.78rem',
                     cursor: 'pointer', textAlign: 'left',
                   }}>
-                  <i data-lucide="search" className="icon-sm" />
+                  <Icon name="search" className="icon-sm" />
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{r.title}</span>
                   <span style={{ color: 'var(--color-text-3)', fontSize: '.65rem' }}>{r.author?.full_name || ''}</span>
                 </button>
@@ -171,7 +168,7 @@ export default function Navbar() {
 
       <div className="top-actions">
         <button className="icon-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
-          <i data-lucide={themeIcon} className="icon" />
+          {themeIcon && <Icon name={themeIcon} className="icon" />}
         </button>
         <button className="icon-btn" id="langBtn" aria-label="Change language">
           <span className="eyebrow" style={{ letterSpacing: '.05em' }}>EN</span>

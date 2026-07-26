@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
+import Icon from '@/components/Icon';
 
 export default function RightSidebar() {
   const { spaces } = useApp();
@@ -17,21 +18,21 @@ export default function RightSidebar() {
         <h3 className="serif">Worth your attention.</h3>
         <div className="right-list">
           <div className="right-item">
-            <div className="quick-icon" style={{ width: 28, height: 28 }}><i data-lucide="droplets" className="icon-sm" /></div>
+            <div className="quick-icon" style={{ width: 28, height: 28 }}><Icon name="droplets" className="icon-sm" /></div>
             <div className="right-copy">
               <strong>Water-saving tips</strong>
               <span>2.4k readers &middot; Makueni</span>
             </div>
           </div>
           <div className="right-item">
-            <div className="quick-icon" style={{ width: 28, height: 28 }}><i data-lucide="graduation-cap" className="icon-sm" /></div>
+            <div className="quick-icon" style={{ width: 28, height: 28 }}><Icon name="graduation-cap" className="icon-sm" /></div>
             <div className="right-copy">
               <strong>Bursary deadlines</strong>
               <span>1.8k readers &middot; Education</span>
             </div>
           </div>
           <div className="right-item">
-            <div className="quick-icon" style={{ width: 28, height: 28 }}><i data-lucide="ship-wheel" className="icon-sm" /></div>
+            <div className="quick-icon" style={{ width: 28, height: 28 }}><Icon name="ship-wheel" className="icon-sm" /></div>
             <div className="right-copy">
               <strong>Mombasa port update</strong>
               <span>940 readers &middot; Mombasa</span>

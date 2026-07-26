@@ -4,6 +4,7 @@ import React, { memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { timeAgo, formatNumber, cn } from '@/lib/utils';
+import Icon from '@/components/Icon';
 import type { Thread } from '@/types';
 
 interface ThreadCardProps {
@@ -64,24 +65,24 @@ const ThreadCard = memo(function ThreadCard({
       <div className="post-actions">
         <button type="button" onClick={e => onVote(thread, 'up', e)} disabled={voting}
           className={cn('action-btn', userVote === 'up' && 'active')}>
-          <i data-lucide="thumbs-up" className="icon-sm" />
+          <Icon name="thumbs-up" className="icon-sm" />
           <span>{formatNumber(displayCount)}</span>
         </button>
         <Link href={`/thread/${thread.id}`} className="action-btn">
-          <i data-lucide="message-circle" className="icon-sm" />
+          <Icon name="message-circle" className="icon-sm" />
           <span>{thread.reply_count || 0}</span>
         </Link>
         <button type="button" onClick={() => onShare(thread.id)}
           className="action-btn">
-          <i data-lucide="send" className="icon-sm" />
+          <Icon name="send" className="icon-sm" />
           <span>Share</span>
         </button>
         <button type="button" onClick={() => onSave(thread.id)}
           className={cn('action-btn', saved && 'saved')}>
-          <i data-lucide={saved ? 'bookmark' : 'bookmark'} className="icon-sm" />
+          <Icon name="bookmark" className="icon-sm" />
         </button>
         <button type="button" className="action-btn">
-          <i data-lucide="ellipsis" className="icon-sm" />
+          <Icon name="ellipsis" className="icon-sm" />
         </button>
       </div>
     </article>

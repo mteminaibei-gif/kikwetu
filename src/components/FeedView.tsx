@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast';
 import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import Icon from '@/components/Icon';
 import PostComposer from '@/components/PostComposer';
 import ProfileView from '@/components/ProfileView';
 import ThreadCard from '@/components/ThreadCard';
@@ -240,7 +241,7 @@ export default function FeedView() {
               <h1 className="serif">{tr('Baraza', 'The Baraza')}</h1>
               <p>{tr('Maswali, mawazo na maarifa kutoka kwa watu walio karibu nawe.', 'Questions, ideas, and local knowledge from people near you.')}</p>
             </div>
-            <button className="select-pill"><i data-lucide="map-pin" className="icon-sm" />Nairobi</button>
+            <button className="select-pill"><Icon name="map-pin" className="icon-sm" />Nairobi</button>
           </div>
 
           <section className="section-card composer">
@@ -267,7 +268,7 @@ export default function FeedView() {
           <section className="section-card" style={{ marginTop: 14 }}>
             {feedError ? (
               <div className="empty-state">
-                <div className="empty-icon"><i data-lucide="alert-circle" className="icon-lg" /></div>
+                <div className="empty-icon"><Icon name="alert-circle" className="icon-lg" /></div>
                 <h3>{tr('Kuna tatizo', 'Something went wrong')}</h3>
                 <p>{tr('Kuna tatizo kupakia machapisho.', 'There was an error loading the feed.')}</p>
                 <button className="primary-btn" onClick={() => loadThreads()} style={{ marginTop: 14 }}>
@@ -278,7 +279,7 @@ export default function FeedView() {
               <ThreadSkeleton />
             ) : displayedThreads.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon"><i data-lucide="message-circle" className="icon-lg" /></div>
+                <div className="empty-icon"><Icon name="message-circle" className="icon-lg" /></div>
                 <h3>{tr('Hakuna machapisho bado.', 'No posts yet.')}</h3>
                 <p>{tr('Kuwa wa kwanza kushiriki!', 'Be the first to share!')}</p>
               </div>
@@ -347,7 +348,7 @@ export default function FeedView() {
         style={{ width: 48, height: 48, borderRadius: '50%', border: 0, color: 'var(--color-surface)', background: 'var(--color-green-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)' }}
         aria-label="Compose post"
       >
-        <i data-lucide="plus" className="icon-lg" />
+        <Icon name="plus" className="icon-lg" />
       </button>
     </div>
   );
