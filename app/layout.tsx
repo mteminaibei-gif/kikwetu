@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   },
   description: "Join KikwetuConnect, Kenya's premier education and community platform. Ask questions, share knowledge, and connect with thousands of Kenyans passionate about learning and growth.",
   keywords: [
+    "Kikwetu",
+    "Baraza",
+    "Heshima",
+    "M-Pesa",
+    "Nyumba Kumi",
+    "Mtaa Exchange",
     "Kenya",
     "education",
     "Q&A",
@@ -35,9 +41,14 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "KikwetuConnect Team" }],
   creator: "KikwetuConnect",
+  category: "Community & Education",
+  classification: "Social Networking & Knowledge Sharing Platform",
   formatDetection: {
     email: false,
     telephone: false,
+  },
+  alternates: {
+    canonical: "https://kikwetuconnect.com",
   },
   openGraph: {
     type: "website",
@@ -64,6 +75,13 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
