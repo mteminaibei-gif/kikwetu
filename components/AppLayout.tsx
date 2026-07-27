@@ -489,9 +489,6 @@ const Topbar = React.memo(function Topbar() {
         <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
           {theme === 'dark' ? <Sun className="icon" /> : <Moon className="icon" />}
         </button>
-        <button type="button" className="icon-btn" onClick={toggleLang} aria-label="Change language">
-          <span className="eyebrow" style={{ letterSpacing: '.05em' }}>{lang}</span>
-        </button>
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button type="button" className="icon-btn" aria-label="Notifications" onClick={() => setNotifOpen(prev => !prev)}>
             <Bell className="icon" />
@@ -506,9 +503,6 @@ const Topbar = React.memo(function Topbar() {
             navigate={(path) => router.push(path)}
           />
         </div>
-        <button type="button" className="icon-btn" onClick={() => void handleLogout()} aria-label="Sign out">
-          <LogOut className="icon" />
-        </button>
         <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
           <span>{user?.full_name || 'Member'}</span>
           <span
@@ -672,13 +666,13 @@ const RightSidebar = React.memo(function RightSidebar() {
 });
 
 function MobileNav({ activeRoute }: { activeRoute: string }) {
-  const { setCreateOpen } = useApp();
+  const { setCreateOpen, unreadCount } = useApp();
   const items = [
     { icon: House, label: 'Home', href: '/' },
-    { icon: GraduationCap, label: 'Learn', href: '/students' },
+    { icon: Compass, label: 'Explore', href: '/explore' },
     null,
     { icon: MessagesSquare, label: 'Chat', href: '/messages' },
-    { icon: UserRound, label: 'Profile', href: '/profile' },
+    { icon: UserRound, label: 'Me', href: '/profile' },
   ];
 
   return (
@@ -692,11 +686,14 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
           );
         }
         const Icon = item.icon;
-        const isActive = activeRoute === item.href;
+        const isActive = activeRoute === item.href || (item.href !== '/' && activeRoute.startsWith(item.href));
         return (
           <Link key={item.href} href={item.href} className={isActive ? 'active' : ''}>
             <Icon className="icon" />
             <span>{item.label}</span>
+            {item.href === '/messages' && unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: 'var(--red)' }} />
+            )}
           </Link>
         );
       })}
@@ -709,9 +706,9 @@ function CreatePanel() {
   const router = useRouter();
 
   const createOptions = [
-    { icon: HelpCircle, label: 'Ask a question', action: 'question' },
-    { icon: FileText, label: 'Share a post', action: 'post' },
-    { icon: Calendar, label: 'Offer a session', action: 'session' },
+    { icon: HelpCircle, label: 'Ask a question', description: 'Post to the Baraza for answers', action: 'question' },
+    { icon: FileText, label: 'Share a post', description: 'Share knowledge with your community', action: 'post' },
+    { icon: Calendar, label: 'Offer a session', description: 'Help someone with your expertise', action: 'session' },
   ];
 
   return (
@@ -719,27 +716,32 @@ function CreatePanel() {
       <button type="button" className="icon-btn create-close" onClick={() => setCreateOpen(false)} aria-label="Close create panel">
         <X className="icon-sm" />
       </button>
-      <div className="eyebrow">Make something useful</div>
-      <h3>What do you want to add?</h3>
-      <p>Ask clearly. Share locally. Leave people better off.</p>
-      <div className="create-options">
-        {createOptions.map((opt) => {
-          const Icon = opt.icon;
-          return (
-            <button
-              type="button"
-              key={opt.action}
-              className="create-option"
-              onClick={() => {
-                setCreateOpen(false);
-                router.push(`/baraza?compose=${opt.action}`);
-              }}
-            >
-              <Icon className="icon" />
-              <span>{opt.label}</span>
-            </button>
-          );
-        })}
+      <div style={{ padding: '20px' }}>
+        <div className="eyebrow">Make something useful</div>
+        <h3>What do you want to add?</h3>
+        <p>Ask clearly. Share locally. Leave people better off.</p>
+        <div className="create-options">
+          {createOptions.map((opt) => {
+            const Icon = opt.icon;
+            return (
+              <button
+                type="button"
+                key={opt.action}
+                className="create-option"
+                onClick={() => {
+                  setCreateOpen(false);
+                  router.push(`/baraza?compose=${opt.action}`);
+                }}
+              >
+                <Icon className="icon" />
+                <div>
+                  <span>{opt.label}</span>
+                  <span style={{ display: 'block', fontSize: '.65rem', color: 'var(--text3)', fontWeight: 500, marginTop: 2 }}>{opt.description}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
