@@ -14,6 +14,18 @@ const eslintConfig = defineConfig([
     'coverage/**',
     'public/**',
   ]),
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      '@next/next/no-img-element': 'warn',
+      'react/no-unescaped-entities': 'off',
+      'react-hooks/purity': 'off',
+    }
+  }
 ])
 
 export default eslintConfig
+

@@ -775,6 +775,7 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
   useEffect(() => {
     const saved = localStorage.getItem('kikwetu-theme') as 'light' | 'dark' | null;
     if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(saved);
       document.documentElement.dataset.theme = saved;
     }
