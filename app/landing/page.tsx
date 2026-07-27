@@ -54,7 +54,7 @@ export default function LandingPage() {
     void supabase.auth.getSession().then(({ data: { session } }) => {
       setChecking(false);
       if (session?.user) {
-        router.replace('/');
+        router.replace('/baraza');
       }
     });
   }, [router]);

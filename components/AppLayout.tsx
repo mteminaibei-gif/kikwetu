@@ -4,7 +4,7 @@ import React, { useState, createContext, useContext, useEffect, useCallback, use
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { markNotificationRead, markAllNotificationsRead } from '@/lib/supabase-helpers';
+import { markNotificationRead, markAllNotificationsRead, createThread } from '@/lib/supabase-helpers';
 import {
   House, Compass, Search, Layers3, GraduationCap, BadgeCheck,
   MessagesSquare, WalletCards, Store, ShieldCheck, Radio, Brain,
@@ -849,7 +849,7 @@ const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebar
 });
 
 function MobileNav({ activeRoute }: { activeRoute: string }) {
-  const { setCreateOpen, unreadCount } = useApp();
+  const { setCreateOpen } = useApp();
   const items = [
     { icon: House, label: 'Home', href: '/' },
     { icon: Compass, label: 'Explore', href: '/explore' },
@@ -874,9 +874,6 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
           <Link key={item.href} href={item.href} className={isActive ? 'active' : ''}>
             <Icon className="icon" />
             <span>{item.label}</span>
-            {item.href === '/messages' && unreadCount > 0 && (
-              <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: 'var(--red)' }} />
-            )}
           </Link>
         );
       })}
@@ -885,46 +882,98 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
 }
 
 function CreatePanel() {
-  const { createOpen, setCreateOpen } = useApp();
+  const { createOpen, setCreateOpen, user, showToast } = useApp();
   const router = useRouter();
 
-  const createOptions = [
-    { icon: FileText, label: 'Post', description: 'Share a photo, update, or local insight', action: 'post' },
-    { icon: HelpCircle, label: 'Question', description: 'Ask the Baraza for answers', action: 'question' },
-    { icon: BarChart3, label: 'Poll', description: 'Let your county vote on something', action: 'poll' },
-    { icon: Mic, label: 'Audio', description: 'Record an audio note or tip', action: 'audio' },
-  ];
+  if (!createOpen || !user) {
+    return null;
+  }
+
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [type, setType] = useState('post');
+  const [tagsInput, setTagsInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!title.trim()) return;
+    if (!user) {
+      showToast('Please sign in to post');
+      return;
+    }
+    setSubmitting(true);
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+    try {
+      const { data, error } = await createThread(user.id, title.trim(), body.trim(), type, tags);
+      if (error || !data) {
+        showToast(error?.message || 'Failed to create post');
+        console.error(error);
+      } else {
+        setTitle('');
+        setBody('');
+        setTagsInput('');
+        setType('post');
+        setCreateOpen(false);
+        showToast('Posted successfully!');
+        router.refresh();
+      }
+    } catch (err) {
+      showToast('Failed to create post');
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className={`create-panel ${createOpen ? 'open' : ''}`}>
-      <button type="button" className="icon-btn create-close" onClick={() => setCreateOpen(false)} aria-label="Close create panel">
-        <X className="icon-sm" />
-      </button>
-      <div style={{ padding: '20px' }}>
-        <div className="eyebrow">Make something useful</div>
-        <h3>What do you want to add?</h3>
-        <p>Ask clearly. Share locally. Leave people better off.</p>
-        <div className="create-options">
-          {createOptions.map((opt) => {
-            const Icon = opt.icon;
-            return (
-              <button
-                type="button"
-                key={opt.action}
-                className="create-option"
-                onClick={() => {
-                  setCreateOpen(false);
-                  router.push(`/baraza?compose=${opt.action}`);
-                }}
-              >
-                <Icon className="icon" />
-                <div>
-                  <span>{opt.label}</span>
-                  <span style={{ display: 'block', fontSize: '.65rem', color: 'var(--text3)', fontWeight: 500, marginTop: 2 }}>{opt.description}</span>
-                </div>
-              </button>
-            );
-          })}
+    <div className="create-panel open">
+      <div style={{ padding: 20 }}>
+        <h3>Create a new post</h3>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {['post', 'question', 'poll', 'audio'].map(t => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 8,
+                border: `1px solid ${type === t ? 'var(--green)' : 'var(--line)'}`,
+                background: type === t ? 'var(--greenSoft)' : 'transparent',
+                color: type === t ? 'var(--green)' : 'var(--text3)',
+                fontSize: '.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <input
+          placeholder="Title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          style={{ marginBottom: 10 }}
+        />
+        <textarea
+          placeholder="What's on your mind?"
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          rows={4}
+          style={{ marginBottom: 10 }}
+        />
+        <input
+          placeholder="Tags (comma separated)"
+          value={tagsInput}
+          onChange={e => setTagsInput(e.target.value)}
+          style={{ marginBottom: 14 }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
+          <button className="primary" onClick={() => void handleSubmit()} disabled={submitting || !title.trim()}>
+            {submitting ? 'Posting...' : 'Post'}
+          </button>
         </div>
       </div>
     </div>

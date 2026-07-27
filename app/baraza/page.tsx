@@ -11,9 +11,9 @@ import {
   createThread, createReply, fetchReplies,
 } from '@/lib/supabase-helpers';
 import {
-  Plus, Image, MessageCircleQuestion, Video, ThumbsUp,
+  Plus, ThumbsUp, ThumbsDown, MessageCircleQuestion, Video,
   MessageCircle, Send, Bookmark, MoreHorizontal, Sprout,
-  CircleHelp, BadgeDollarSign, Ellipsis, Filter
+  CircleHelp, BadgeDollarSign, Ellipsis, Filter, ChevronDown,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
@@ -336,19 +336,19 @@ function PostCard({
   onSaveChange: (threadId: string, saved: boolean) => void;
   onReplyAdded: (threadId: string) => void;
 }) {
-  const [liked, setLiked] = useState(false);
+  const [upvoted, setUpvoted] = useState(false);
+  const [downvoted, setDownvoted] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [voted, setVoted] = useState<number | null>(null);
   const [votedPoll, setVotedPoll] = useState<number | null>(null);
-  const [likeDelta, setLikeDelta] = useState(0);
+  const [voteDelta, setVoteDelta] = useState(0);
 
   useEffect(() => {
     if (!user || !threadId) return;
     checkVote(user.id, 'thread', threadId).then(v => {
       if (v) {
-        setLiked(true);
-        setLikeDelta(v.value === 1 ? 0 : -1);
-      }
+        if (v.value === 1) { setUpvoted(true); setDownvoted(false); setVoteDelta(0); }
+        else { setUpvoted(false); setDownvoted(true); setVoteDelta(0); }
+      } else { setUpvoted(false); setDownvoted(false); setVoteDelta(0); }
     });
     checkSaved(user.id, 'thread', threadId).then(s => setSaved(s));
   }, [user, threadId]);
@@ -373,22 +373,44 @@ function PostCard({
     }
   };
 
-  const handleVote = async () => {
-    if (!user || !threadId) {
-      onAction('Please sign in to vote');
-      return;
-    }
-    const prevLiked = liked;
-    const delta = liked ? -1 : 1;
-    setLiked(!liked);
-    setLikeDelta(ld => liked ? ld - 1 : ld + 1);
-    onVoteChange(threadId, delta, !liked);
+  const handleUpVote = async () => {
+    if (!user || !threadId) { onAction('Please sign in to vote'); return; }
+    if (upvoted) return;
+    const delta = downvoted ? 2 : 1;
+    const prevUp = upvoted;
+    const prevDown = downvoted;
+    setUpvoted(true);
+    setDownvoted(false);
+    setVoteDelta(d => d + delta);
+    onVoteChange(threadId, delta, true);
     try {
+      if (downvoted) await toggleVote(user.id, 'thread', threadId, 1);
       await toggleVote(user.id, 'thread', threadId, 1);
-      analytics.vote('thread', liked ? -1 : 1);
+      analytics.vote('thread', 1);
     } catch {
-      setLiked(prevLiked);
-      onVoteChange(threadId, -delta, liked);
+      setUpvoted(prevUp); setDownvoted(prevDown); setVoteDelta(d => d - delta);
+      onVoteChange(threadId, -delta, prevUp);
+      onAction('Failed to update vote');
+    }
+  };
+
+  const handleDownVote = async () => {
+    if (!user || !threadId) { onAction('Please sign in to vote'); return; }
+    if (downvoted) return;
+    const delta = upvoted ? -2 : -1;
+    const prevUp = upvoted;
+    const prevDown = downvoted;
+    setUpvoted(false);
+    setDownvoted(true);
+    setVoteDelta(d => d + delta);
+    onVoteChange(threadId, delta, false);
+    try {
+      if (upvoted) await toggleVote(user.id, 'thread', threadId, -1);
+      await toggleVote(user.id, 'thread', threadId, -1);
+      analytics.vote('thread', -1);
+    } catch {
+      setUpvoted(prevUp); setDownvoted(prevDown); setVoteDelta(d => d - delta);
+      onVoteChange(threadId, -delta, prevDown);
       onAction('Failed to update vote');
     }
   };
@@ -508,9 +530,15 @@ function PostCard({
       </div>
 
       <div className="post-actions">
-        <button className={`action ${liked ? 'active' : ''}`} onClick={handleVote}>
-          <ThumbsUp className="icon-sm" /> <span>{post.stats.likes + likeDelta}</span>
-        </button>
+        <div style={{ display: 'flex', gap: 2, marginRight: 4 }}>
+          <button className={`action ${upvoted ? 'active' : ''}`} onClick={() => void handleUpVote()} title="Upvote">
+            <ThumbsUp className="icon-sm" />
+          </button>
+          <button className={`action ${downvoted ? 'active' : ''}`} onClick={() => void handleDownVote()} title="Downvote">
+            <ThumbsDown className="icon-sm" />
+          </button>
+          <span style={{ fontSize: '.72rem', fontWeight: 700, marginLeft: 4, color: 'var(--text)' }}>{post.stats.likes + voteDelta}</span>
+        </div>
         <button className="action" onClick={() => onAction('Comments opened')}>
           <MessageCircle className="icon-sm" />
           <span>{'answers' in post.stats ? `${post.stats.answers} answers` : post.stats.comments}</span>
@@ -565,6 +593,10 @@ function BarazaPageInner() {
   const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerType, setComposerType] = useState<'post' | 'question' | 'poll' | 'audio'>('post');
+  const [composeTitle, setComposeTitle] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeTags, setComposeTags] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (composeType) {
@@ -668,42 +700,49 @@ function BarazaPageInner() {
     }));
   };
 
-  const handleCreateThread = async (title: string, body: string, type: string, tags: string[]) => {
+  const handleCreateThread = async () => {
     if (!user) {
       showToast('Please sign in to post');
       return;
     }
-    const { data, error } = await createThread(user.id, title, body, type, tags);
-    if (error || !data) {
+    if (!composeTitle.trim()) return;
+    setSubmitting(true);
+    const tags = composeTags.split(',').map(t => t.trim()).filter(Boolean);
+    try {
+      const { data, error } = await createThread(user.id, composeTitle.trim(), composeBody.trim(), composerType, tags);
+      if (error || !data) {
+        showToast(error?.message || 'Failed to create post');
+        console.error(error);
+      } else {
+        const { data: fullThread } = await supabase
+          .from('threads')
+          .select('*, profiles:author_id (full_name, username, avatar_url, county, heshima, is_verified)')
+          .eq('id', data.id)
+          .single();
+        if (fullThread) {
+          setPosts(prev => [threadToPost(fullThread), ...prev]);
+        }
+        setComposeTitle('');
+        setComposeBody('');
+        setComposeTags('');
+        setComposerOpen(false);
+        showToast('Posted successfully!');
+      }
+    } catch {
       showToast('Failed to create post');
-      console.error(error);
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    const { data: fullThread } = await supabase
-      .from('threads')
-      .select('*, profiles:author_id (full_name, username, avatar_url, county, heshima, is_verified)')
-      .eq('id', data.id)
-      .single();
-    if (fullThread) {
-      setPosts(prev => [threadToPost(fullThread), ...prev]);
-    }
-    setComposerOpen(false);
-    showToast('Posted successfully!');
   };
 
   return (
     <AppLayout>
-      {composerOpen && (
-        <ComposerModal onClose={() => setComposerOpen(false)} onSubmit={handleCreateThread} initialType={composerType} />
-      )}
-
       <div className="page-head">
         <div>
           <div className="eyebrow">Baraza feed</div>
           <h1 className="serif">What Kenya is talking about.</h1>
           <p>Questions, posts, polls, and audio from your communities and beyond.</p>
         </div>
-        <button className="select-pill"><Filter className="icon-sm" /> All topics</button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflow: 'auto' }}>
@@ -761,20 +800,56 @@ function BarazaPageInner() {
             Share something useful with your county...
           </button>
         </div>
-        <div className="composer-actions">
-          <button className="composer-action" onClick={() => { setComposerType('post'); setComposerOpen(true); }}>
-            <Image className="icon" /> Post
-          </button>
-          <button className="composer-action" onClick={() => { setComposerType('question'); setComposerOpen(true); }}>
-            <MessageCircleQuestion className="icon" /> Question
-          </button>
-          <button className="composer-action" onClick={() => { setComposerType('poll'); setComposerOpen(true); }}>
-            <CircleHelp className="icon" /> Poll
-          </button>
-          <button className="composer-action" onClick={() => { setComposerType('audio'); setComposerOpen(true); }}>
-            <Video className="icon" /> Audio
-          </button>
-        </div>
+        {composerOpen && user && (
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg)' }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+              {['post', 'question', 'poll', 'audio'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setComposerType(t as 'post' | 'question' | 'poll' | 'audio')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 8,
+                    border: `1px solid ${composerType === t ? 'var(--green)' : 'var(--line)'}`,
+                    background: composerType === t ? 'var(--greenSoft)' : 'transparent',
+                    color: composerType === t ? 'var(--green)' : 'var(--text3)',
+                    fontSize: '.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <input
+              placeholder="Title"
+              value={composeTitle}
+              onChange={e => setComposeTitle(e.target.value)}
+              style={{ marginBottom: 8 }}
+            />
+            <textarea
+              placeholder="What's on your mind?"
+              value={composeBody}
+              onChange={e => setComposeBody(e.target.value)}
+              rows={3}
+              style={{ marginBottom: 8 }}
+            />
+            <input
+              placeholder="Tags (comma separated)"
+              value={composeTags}
+              onChange={e => setComposeTags(e.target.value)}
+              style={{ marginBottom: 10 }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="secondary" onClick={() => setComposerOpen(false)}>Cancel</button>
+              <button className="primary" onClick={() => void handleCreateThread()} disabled={submitting || !composeTitle.trim()}>
+                {submitting ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section style={{ marginTop: 14 }}>
