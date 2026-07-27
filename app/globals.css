@@ -91,7 +91,6 @@ body {
   transition: background .3s ease, color .3s ease;
 }
 
-/* Ambient gradient background */
 body::before {
   content: "";
   position: fixed;
@@ -108,7 +107,6 @@ body::before {
   opacity: .14;
 }
 
-/* ===== Typography ===== */
 h1, h2, h3, h4, p { margin: 0; }
 h1, h2, h3, h4 { text-wrap: balance; }
 
@@ -132,16 +130,13 @@ h1, h2, h3, h4 { text-wrap: balance; }
 
 .muted { color: var(--text3); }
 
-/* ===== Icons ===== */
 .icon { width: 19px; height: 19px; stroke-width: 1.9; }
 .icon-sm { width: 16px; height: 16px; }
 .icon-lg { width: 23px; height: 23px; }
 
-/* ===== Utility ===== */
 .mono { font-variant-numeric: tabular-nums; }
 .hidden { display: none !important; }
 
-/* ===== Card ===== */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -151,7 +146,6 @@ h1, h2, h3, h4 { text-wrap: balance; }
   transition: transform .2s var(--ease), box-shadow .2s var(--ease);
 }
 
-/* ===== Form Elements ===== */
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
@@ -179,7 +173,6 @@ a {
   color: inherit;
 }
 
-/* ===== Scrollbar ===== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--surface2); }
 ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
@@ -191,13 +184,11 @@ a {
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
-/* ===== Selection ===== */
 ::selection {
   background-color: var(--green);
   color: var(--surface);
 }
 
-/* ===== Animations ===== */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: .4; }
@@ -222,7 +213,6 @@ a {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* ===== Theme Bridge for Tailwind v4 ===== */
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -248,7 +238,6 @@ a {
   --font-serif: "Fraunces", Georgia, serif;
 }
 
-/* ===== Micro-interactions ===== */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -264,67 +253,23 @@ a {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* Smooth page transitions */
 main, .page {
   animation: fadeIn .35s var(--ease) both;
 }
 
-/* Card hover lift */
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow2);
 }
 
-/* Button press feedback */
 button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-/* Focus visible ring */
 :focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 2px;
   border-radius: 4px;
-}
-
-/* Selection color */
-::selection {
-  background: oklch(43% .12 158 / .2);
-  color: var(--text);
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--line2);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text3);
-}
-
-/* Smooth transitions for theme switch */
-*, *::before, *::after {
-  transition-property: background-color, border-color, color, box-shadow;
-  transition-duration: 0s;
 }
 
 body, .topbar, .sidebar, .nav-item, button, input, select, textarea, section {
@@ -332,7 +277,89 @@ body, .topbar, .sidebar, .nav-item, button, input, select, textarea, section {
   transition-timing-function: var(--ease);
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 640px) {
   html { font-size: 14px; }
+}
+
+/* ===== Mobile toolbar + FAB (fix black oval / misalignment) ===== */
+@media (max-width: 720px) {
+  .layout {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .mobile-nav {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 50 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    justify-items: center !important;
+    width: min(438px, calc(100% - 20px)) !important;
+    min-height: 58px !important;
+    padding: 4px 6px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 20px !important;
+    background: var(--surface) !important;
+    box-shadow: 0 10px 30px oklch(24% .034 158 / .16) !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .mobile-nav > a,
+  .mobile-nav > button:not(.create-main) {
+    display: grid !important;
+    place-items: center !important;
+    gap: 2px !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    color: var(--text3) !important;
+    font-size: .58rem !important;
+    font-weight: 800 !important;
+  }
+
+  .mobile-nav > a.active {
+    color: var(--green2) !important;
+    background: var(--greenSoft) !important;
+  }
+
+  /* Centered green FAB — surface ring (not bg) so no dark “pill” under the + */
+  .mobile-nav .create-main {
+    display: grid !important;
+    place-items: center !important;
+    place-self: center !important;
+    width: 52px !important;
+    height: 52px !important;
+    margin: 0 !important;
+    margin-top: -18px !important;
+    padding: 0 !important;
+    border: 3px solid var(--surface) !important;
+    border-radius: 50% !important;
+    background: var(--green) !important;
+    color: var(--surface) !important;
+    box-shadow: 0 6px 18px oklch(43% .12 158 / .4) !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+  }
+
+  .mobile-nav .create-main svg {
+    width: 22px !important;
+    height: 22px !important;
+    color: var(--surface) !important;
+  }
+
+  .create-panel {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
+
+  .toast {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
