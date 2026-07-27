@@ -77,7 +77,6 @@ const navSections = (isAdmin: boolean) => [
     title: 'Main',
     color: 'var(--green)',
     items: [
-      { icon: House, label: 'Home', href: '/' },
       { icon: Compass, label: 'Baraza Feed', href: '/baraza', badge: 'New' },
       { icon: Search, label: 'Explore', href: '/explore' },
       { icon: Layers3, label: 'Spaces', href: '/spaces' },
@@ -470,7 +469,7 @@ const Topbar = React.memo(function Topbar() {
 
   return (
     <header className="topbar">
-      <Link href="/" className="wordmark">
+      <Link href="/baraza" className="wordmark">
         <span className="mark">k</span>
         <strong>kikwetu<span>.</span></strong>
       </Link>
@@ -851,8 +850,8 @@ const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebar
 function MobileNav({ activeRoute }: { activeRoute: string }) {
   const { setCreateOpen } = useApp();
   const items = [
-    { icon: House, label: 'Home', href: '/' },
-    { icon: Compass, label: 'Explore', href: '/explore' },
+    { icon: Compass, label: 'Baraza', href: '/baraza' },
+    { icon: Search, label: 'Explore', href: '/explore' },
     null,
     { icon: MessagesSquare, label: 'Chat', href: '/messages' },
     { icon: UserRound, label: 'Me', href: '/profile' },
@@ -869,7 +868,7 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
           );
         }
         const Icon = item.icon;
-        const isActive = activeRoute === item.href || (item.href !== '/' && activeRoute.startsWith(item.href));
+        const isActive = activeRoute === item.href || (item.href !== '/baraza' && activeRoute.startsWith(item.href));
         return (
           <Link key={item.href} href={item.href} className={isActive ? 'active' : ''}>
             <Icon className="icon" />
