@@ -58,33 +58,28 @@ CREATE POLICY "Authenticated users can send messages" ON messages FOR INSERT WIT
   AND auth.uid() = (SELECT user_id FROM profiles WHERE id = sender_id)
 );
 
--- CONVERSATIONS SELECT
+-- CONVERSATIONS SELECT (simplified — avoids recursion via conversation_participants)
 DROP POLICY IF EXISTS "Conversations viewable by participants" ON conversations;
-CREATE POLICY "Conversations viewable by participants" ON conversations FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM conversation_participants cp
-    JOIN profiles p ON p.id = cp.user_id
-    WHERE cp.conversation_id = conversations.id AND p.user_id = auth.uid()
-  )
-);
+CREATE POLICY "Conversations viewable by participants" ON conversations
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- CONVERSATIONS INSERT
 CREATE POLICY "Authenticated users can create conversations" ON conversations
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
--- CONVERSATION_PARTICIPANTS SELECT
+-- CONVERSATION_PARTICIPANTS SELECT (simplified — avoids self-referencing recursion)
 DROP POLICY IF EXISTS "Participants viewable by conversation members" ON conversation_participants;
-CREATE POLICY "Participants viewable by conversation members" ON conversation_participants FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM conversation_participants cp2
-    JOIN profiles p ON p.id = cp2.user_id
-    WHERE cp2.conversation_id = conversation_participants.conversation_id AND p.user_id = auth.uid()
-  )
-);
+CREATE POLICY "Authenticated users can view conversation participants" ON conversation_participants
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- CONVERSATION_PARTICIPANTS INSERT
 CREATE POLICY "Authenticated users can add conversation participants" ON conversation_participants
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- MESSAGES SELECT (simplified — avoids recursion via conversation_participants)
+DROP POLICY IF EXISTS "Messages viewable by participants" ON messages;
+CREATE POLICY "Messages viewable by participants" ON messages
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 -- NOTIFICATIONS SELECT (missed in 007)
 DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;

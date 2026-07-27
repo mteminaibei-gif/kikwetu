@@ -19,8 +19,8 @@ const counties = [
   'Homa Bay County', 'Migori County', 'Siaya County', 'Kakamega County',
   'Bungoma County', 'Vihiga County', 'Busia County', 'Kilifi County',
   'Kwale County', 'Taita-Taveta County', 'Lamu County', 'Garissa County',
-  'Wajir County', 'Mandera County', 'Marsabit County', 'Mandera County',
-  'Marsabit County', 'Mandera County',
+  'Wajir County', 'Mandera County', 'Marsabit County', 'Tana River County',
+  'Isiolo County', 'Samburu County',
 ];
 
 const purposes = [
