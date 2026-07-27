@@ -385,7 +385,7 @@ const Topbar = React.memo(function Topbar() {
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'GP';
+    : user?.username?.slice(0, 2).toUpperCase() || 'U';
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -543,7 +543,7 @@ const Topbar = React.memo(function Topbar() {
           <LogOut className="icon" />
         </button>
         <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
-          <span>{user?.full_name || 'Grid Pulse'}</span>
+          <span>{user?.full_name || 'Member'}</span>
           <span
             className="avatar-wrapper"
             style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer' }}
@@ -595,7 +595,7 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'GP';
+    : user?.username?.slice(0, 2).toUpperCase() || 'U';
 
   const handleLogout = async () => {
     try {
@@ -667,8 +667,8 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
             </span>
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Grid Pulse'}</strong>
-            <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'gridpulse'}</span>
+            <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Member'}</strong>
+            <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'user'}</span>
           </div>
           <Settings className="icon-sm" style={{ color: 'var(--text3)' }} />
         </Link>
@@ -905,11 +905,53 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          const { data: profile } = await supabase
+          const authUser = session.user;
+          const meta = authUser.user_metadata || {};
+          
+          // Try to fetch existing profile
+          let { data: profile } = await supabase
             .from('profiles')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', authUser.id)
             .single();
+          
+          // If no profile exists, create one from auth metadata
+          if (!profile) {
+            const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
+            const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
+            
+            const { data: newProfile, error } = await supabase
+              .from('profiles')
+              .insert({
+                user_id: authUser.id,
+                username,
+                full_name: fullName,
+                language: meta.language || 'en',
+                role: 'member',
+              })
+              .select()
+              .single();
+            
+            if (!error && newProfile) {
+              profile = newProfile;
+            }
+          }
+          
+          // If profile exists but missing fields, update from auth metadata
+          if (profile) {
+            const updates: Record<string, any> = {};
+            if (!profile.full_name && meta.full_name) updates.full_name = meta.full_name;
+            if (!profile.username && meta.username) updates.username = meta.username;
+            
+            if (Object.keys(updates).length > 0) {
+              await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', profile.id);
+              profile = { ...profile, ...updates };
+            }
+          }
+          
           setUser(profile);
         }
       } catch (err) {
@@ -923,11 +965,34 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
+        const authUser = session.user;
+        const meta = authUser.user_metadata || {};
+        
+        let { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', authUser.id)
           .single();
+        
+        if (!profile) {
+          const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
+          const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
+          
+          const { data: newProfile, error } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: authUser.id,
+              username,
+              full_name: fullName,
+              language: meta.language || 'en',
+              role: 'member',
+            })
+            .select()
+            .single();
+          
+          if (!error && newProfile) profile = newProfile;
+        }
+        
         setUser(profile);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);

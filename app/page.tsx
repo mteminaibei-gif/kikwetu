@@ -631,7 +631,7 @@ function getMockThreads(): Thread[] {
       likes_count: 31,
       comments_count: 8,
       created_at: new Date(Date.now() - 60 * 60000).toISOString(),
-      profiles: { full_name: 'Grid Pulse', username: 'gridpulse', avatar_url: null, county: 'Nairobi', is_verified: false },
+      profiles: { full_name: 'Anonymous', username: 'anonymous', avatar_url: null, county: 'Nairobi', is_verified: false },
     },
     {
       id: 'mock-3',

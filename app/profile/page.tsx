@@ -25,8 +25,8 @@ import {
 } from 'lucide-react';
 
 const MOCK_PROFILE = {
-  name: 'Grid Pulse',
-  username: '@gridpulse',
+  name: '',
+  username: '',
   location: 'Nairobi',
   bio: 'I care about useful interfaces, local stories, and making complex things feel obvious.',
   heshima: '740',

@@ -829,8 +829,8 @@ const feedPosts: PostType[] = [
   },
   {
     type: 'question',
-    author: { name: 'Grid Pulse', initials: 'GP', color: 'default', verified: false },
-    meta: { handle: '@gridpulse', time: '1h', county: 'Nairobi' },
+    author: { name: 'Anonymous', initials: 'GP', color: 'default', verified: false },
+    meta: { handle: '@anonymous', time: '1h', county: 'Nairobi' },
     content: {
       tag: 'Deep-dive inquiry',
       title: 'What should a small business check before going solar?',

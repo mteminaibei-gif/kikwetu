@@ -54,7 +54,7 @@ const mockMessages: Record<string, Array<{
   conversation_id: string;
 }>> = {
   '1': [
-    { id: '1', sender: 'James Otieno', text: 'Hi Grid Pulse. Bring your power bill if you have it.', time: '10:14 AM', mine: false, conversation_id: '1' },
+    { id: '1', sender: 'James Otieno', text: 'Hi there. Bring your power bill if you have it.', time: '10:14 AM', mine: false, conversation_id: '1' },
     { id: '2', sender: 'You', text: 'Perfect. I am trying to avoid buying more system than the shop needs.', time: '10:16 AM', mine: true, conversation_id: '1' },
     { id: '3', sender: 'James Otieno', text: 'That is the right starting point. We will map essential load first.', time: '10:17 AM', mine: false, conversation_id: '1' },
   ],
