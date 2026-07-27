@@ -239,7 +239,7 @@ function ThreadPageInner() {
 
   if (loading) {
     return (
-      <AppLayout showRightSidebar={false}>
+      <AppLayout>
         <div className="page-head">
           <div>
             <div className="eyebrow">Students Area</div>
@@ -255,7 +255,7 @@ function ThreadPageInner() {
 
   if (!thread) {
     return (
-      <AppLayout showRightSidebar={false}>
+      <AppLayout>
         <div className="page-head">
           <div>
             <div className="eyebrow">Students Area</div>
@@ -273,7 +273,7 @@ function ThreadPageInner() {
   }
 
   return (
-    <AppLayout showRightSidebar={false}>
+    <AppLayout>
       <div className="page-head">
         <div>
           <div className="eyebrow">Students Area</div>

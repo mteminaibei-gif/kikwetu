@@ -274,7 +274,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <AppLayout showRightSidebar={false}>
+    <AppLayout>
       <div className="page-head">
         <div>
           <div className="eyebrow">KikwetuConnect</div>

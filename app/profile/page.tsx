@@ -166,7 +166,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <AppLayout showRightSidebar={false}>
+      <AppLayout>
         <div className="page-head">
           <div>
             <span className="eyebrow">Profile</span>
@@ -184,7 +184,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppLayout showRightSidebar={false}>
+    <AppLayout>
       <div className="page-head">
         <div>
           <span className="eyebrow">Profile</span>

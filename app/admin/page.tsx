@@ -244,7 +244,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <AppLayout showRightSidebar={false}>
+      <AppLayout>
         <div className="page-head">
           <div>
             <div className="eyebrow">Admin dashboard</div>
@@ -274,7 +274,7 @@ export default function AdminPage() {
   }
 
   return (
-    <AppLayout showRightSidebar={false}>
+    <AppLayout>
       <div className="page-head">
         <div>
           <div className="eyebrow">Admin dashboard</div>

@@ -136,7 +136,7 @@ export default function RadioPage() {
   const liveStation = STATIONS[0]; // NRG Radio as the "now playing" hero
 
   return (
-    <AppLayout showRightSidebar={false}>
+    <AppLayout>
       <div className="radio-page">
 
         {/* ---- styles ---- */}

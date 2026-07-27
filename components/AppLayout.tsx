@@ -6,12 +6,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { markNotificationRead, markAllNotificationsRead, createThread } from '@/lib/supabase-helpers';
 import {
-  House, Compass, Search, Layers3, GraduationCap, BadgeCheck,
+  Compass, Search, Layers3, GraduationCap, BadgeCheck,
   MessagesSquare, WalletCards, Store, ShieldCheck, Radio, Brain,
   UserRound, Bookmark, Settings, LogOut, Bell, Moon, Sun, Plus,
   TrendingUp, MoreHorizontal, Volume2, X, Camera,
   MessageCircle, ThumbsUp, AtSign, UserPlus, Award, Calendar,
-  AlertTriangle, CheckCheck, HelpCircle, FileText, BarChart3, Mic
+  AlertTriangle, CheckCheck, HelpCircle, FileText, BarChart3, Mic, Menu
 } from 'lucide-react';
 
 interface Profile {
@@ -46,6 +46,8 @@ interface AppContextType {
   signOut: () => Promise<void>;
   unreadCount: number;
   setUnreadCount: (v: number | ((prev: number) => number)) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (v: boolean) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -63,13 +65,14 @@ export const AppContext = createContext<AppContextType>({
   signOut: async () => {},
   unreadCount: 0,
   setUnreadCount: () => {},
+  sidebarOpen: false,
+  setSidebarOpen: () => {},
 });
 
 export const useApp = () => useContext(AppContext);
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  showRightSidebar?: boolean;
 }
 
 const navSections = (isAdmin: boolean) => [
@@ -386,7 +389,7 @@ function NotificationDropdown({
 }
 
 const Topbar = React.memo(function Topbar() {
-  const { theme, toggleTheme, lang, toggleLang, user, setUser, unreadCount, setUnreadCount, showToast, signOut } = useApp();
+  const { theme, toggleTheme, lang, toggleLang, user, setUser, unreadCount, setUnreadCount, showToast, signOut, setSidebarOpen } = useApp();
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -469,10 +472,15 @@ const Topbar = React.memo(function Topbar() {
 
   return (
     <header className="topbar">
-      <Link href="/baraza" className="wordmark">
+      <div className="topbar-left">
+        <button type="button" className="icon-btn hamburger" onClick={() => setSidebarOpen(true)} aria-label="Menu">
+          <Menu className="icon" />
+        </button>
+        <Link href="/baraza" className="wordmark">
         <span className="mark">k</span>
         <strong>kikwetu<span>.</span></strong>
       </Link>
+      </div>
 
       <label className={`search ${searchFocused ? 'focused' : ''}`}>
         <Search className="icon-sm" />
@@ -988,11 +996,12 @@ function Toast() {
   );
 }
 
-export default function AppLayout({ children, showRightSidebar = true }: AppLayoutProps) {
+export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [lang, setLang] = useState<'EN' | 'SW'>('EN');
   const [createOpen, setCreateOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [toastTimer, setToastTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [user, setUser] = useState<Profile | null>(null);
@@ -1128,6 +1137,10 @@ let { data: profile } = await supabase.from('profiles').select('*').eq('user_id'
     setUser(null);
   }, []);
 
+  const overlayInitials = user?.full_name
+    ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : user?.username?.slice(0, 2).toUpperCase() || 'U';
+
   return (
     <AppContext.Provider value={{
       theme, toggleTheme,
@@ -1136,13 +1149,62 @@ let { data: profile } = await supabase.from('profiles').select('*').eq('user_id'
       toast, showToast,
       user, setUser, loading, signOut,
       unreadCount, setUnreadCount,
+      sidebarOpen, setSidebarOpen,
     }}>
       <Topbar />
       <div className="layout">
         <LeftSidebar activeRoute={pathname} />
         <main className="page">{children}</main>
-        {showRightSidebar && <RightSidebar pathname={pathname} />}
       </div>
+      {sidebarOpen && (
+        <>
+          <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+          <aside className={`sidebar left-sidebar sidebar-overlay${sidebarOpen ? ' open' : ''}`}>
+            {navSections(user?.role === 'admin').map((section) => (
+              <div key={section.title} className="nav-section">
+                <div className="nav-title">{section.title}</div>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`nav-item ${isActive ? 'active' : ''}`}
+                      style={isActive ? { color: section.color } : undefined}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <Icon className="icon" style={!isActive ? { color: section.color, opacity: 0.7 } : undefined} />
+                      <span>{item.label}</span>
+                      {item.badge && <span className="nav-badge">{item.badge}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+            <div className="heshima">
+              <div className="ring">{user?.heshima || 740}</div>
+              <div>
+                <strong>Heshima rating</strong>
+                <span>Level {Math.floor((user?.heshima || 740) / 100)} &middot; {100 - ((user?.heshima || 740) % 100)} to next level</span>
+              </div>
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <Link href="/profile" className="profile-pill" onClick={() => setSidebarOpen(false)}>
+                <Avatar src={user?.avatar_url} initials={overlayInitials} size="md" isOnline={user?.is_online} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Member'}</strong>
+                  <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'user'}</span>
+                </div>
+                <Settings className="icon-sm" style={{ color: 'var(--text3)' }} />
+              </Link>
+              <button type="button" className="icon-btn" onClick={() => { void signOut(); setSidebarOpen(false); }} aria-label="Sign out">
+                <LogOut className="icon" />
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
       <MobileNav activeRoute={pathname} />
       <CreatePanel />
       <Toast />
