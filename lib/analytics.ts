@@ -26,6 +26,7 @@ function getSessionId(): string {
 // Queue for batching events
 let eventQueue: AnalyticsEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let analyticsTableMissing = false;
 
 // Track an event
 export function track(event: string, properties?: Record<string, any>) {
@@ -62,7 +63,11 @@ export function track(event: string, properties?: Record<string, any>) {
 // Flush events to Supabase
 async function flush() {
   if (eventQueue.length === 0) return;
-  
+  if (analyticsTableMissing) {
+    eventQueue = [];
+    return;
+  }
+
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;
@@ -72,56 +77,47 @@ async function flush() {
   eventQueue = [];
 
   try {
-    // Try to store in Supabase (non-blocking)
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     const records = events.map(e => ({
-      ...e,
+      event: e.event,
+      properties: e.properties || {},
+      timestamp: e.timestamp,
+      session_id: e.session_id,
       user_id: user?.id || null,
     }));
 
-    await supabase.from('analytics_events').insert(records);
+    const { error } = await supabase.from('analytics_events').insert(records);
+    // PGRST205 / 42P01 = table not found; stop retrying for this session
+    if (error && (error.code === 'PGRST205' || error.code === '42P01' || error.message?.includes('analytics_events'))) {
+      analyticsTableMissing = true;
+    }
   } catch {
     // Silently fail - analytics should never break the app
-    // Events are already lost from queue, but that's acceptable
   }
 }
 
 // Convenience tracking functions
 export const analytics = {
-  // Page views
   pageView: (page: string) => track('page_view', { page }),
-  
-  // Auth events
   login: (method: string) => track('auth_login', { method }),
   signup: (method: string) => track('auth_signup', { method }),
   logout: () => track('auth_logout'),
-  
-  // Content events
   createPost: (type: string) => track('content_create', { type }),
   vote: (targetType: string, value: number) => track('content_vote', { targetType, value }),
   reply: () => track('content_reply'),
   share: (targetType: string) => track('content_share', { targetType }),
-  
-  // Social events
   follow: (targetUserId: string) => track('social_follow', { targetUserId }),
   unfollow: (targetUserId: string) => track('social_unfollow', { targetUserId }),
   joinSpace: (spaceId: string) => track('social_join_space', { spaceId }),
-  
-  // Commerce events
   sendTip: (amount: number, toUserId: string) => track('commerce_tip', { amount, toUserId }),
   createListing: (category: string, price: number) => track('commerce_listing', { category, price }),
-  
-  // Feature events
   takeQuiz: (quizId: string, score: number) => track('feature_quiz', { quizId, score }),
   uploadAvatar: () => track('feature_avatar_upload'),
   sendAlert: (type: string) => track('feature_safety_alert', { type }),
-  
-  // Search events
   search: (query: string, resultCount: number) => track('search', { query, resultCount }),
 };
 
-// Flush on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flush);
 }

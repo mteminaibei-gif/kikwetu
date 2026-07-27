@@ -20,7 +20,7 @@ interface Thread {
   tags: string[];
   likes_count: number;
   created_at: string;
-  user_id: string;
+  author_id: string;
   profiles?: {
     full_name: string;
     username: string;
@@ -91,7 +91,7 @@ function ThreadPageInner() {
   const [voteCount, setVoteCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [threadId] = useState(threadIdParam || '1');
+  const [threadId] = useState(threadIdParam || '');
   const [thread, setThread] = useState<Thread | null>(null);
   const [loading, setLoading] = useState(true);
   const [replies, setReplies] = useState<Reply[]>([]);
@@ -103,13 +103,13 @@ function ThreadPageInner() {
 
   useEffect(() => {
     async function fetchThread() {
-      if (!threadId) {
+      if (!threadId || threadId.startsWith('mock-')) {
         setLoading(false);
         return;
       }
       const { data } = await supabase
         .from('threads')
-        .select('*, profiles:user_id(full_name, username, avatar_url, county, heshima, is_verified)')
+        .select('*, profiles:author_id(full_name, username, avatar_url, county, heshima, is_verified)')
         .eq('id', threadId)
         .single();
       if (data) {
@@ -126,7 +126,7 @@ function ThreadPageInner() {
       const profile = await getCurrentUser();
       setCurrentUser(profile);
 
-      if (!threadId) return;
+      if (!threadId || threadId.startsWith('mock-')) return;
       const { data: replyData } = await fetchReplies(threadId);
       if (replyData) {
         setReplies(replyData as unknown as Reply[]);
@@ -137,7 +137,7 @@ function ThreadPageInner() {
   }, [threadId]);
 
   useEffect(() => {
-    if (!threadId) return;
+    if (!threadId || threadId.startsWith('mock-')) return;
 
     const channel = supabase
       .channel('thread-replies-realtime')
@@ -171,7 +171,7 @@ function ThreadPageInner() {
   }, [replies.length]);
 
   const handleVote = async () => {
-    if (!currentUser?.user_id) return;
+    if (!currentUser?.user_id || !threadId) return;
     const result = await toggleVote(currentUser.user_id, 'thread', threadId, 1);
     if (result.voted) {
       setLiked(true);
@@ -185,14 +185,14 @@ function ThreadPageInner() {
   };
 
   const handleSave = async () => {
-    if (!currentUser?.user_id) return;
+    if (!currentUser?.user_id || !threadId) return;
     const isSaved = await toggleSave(currentUser.user_id, 'thread', threadId);
     setSaved(isSaved);
     showToast(isSaved ? 'Answer saved' : 'Answer unsaved');
   };
 
   const handleReply = async () => {
-    if (!replyText.trim() || !currentUser?.user_id || submitting) return;
+    if (!replyText.trim() || !currentUser?.user_id || submitting || !threadId) return;
 
     setSubmitting(true);
     const { data, error } = await createReply(threadId, currentUser.user_id, replyText.trim());

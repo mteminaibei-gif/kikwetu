@@ -38,7 +38,7 @@ export default function SpaceDetailPage() {
 
       const { data: threadData } = await supabase
         .from('threads')
-        .select('*, profiles:user_id(full_name, username, avatar_url, heshima, is_verified)')
+        .select('*, profiles:author_id(full_name, username, avatar_url, heshima, is_verified)')
         .eq('space_id', spaceId)
         .order('created_at', { ascending: false })
         .limit(20)
