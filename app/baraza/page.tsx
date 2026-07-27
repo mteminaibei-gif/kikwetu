@@ -6,7 +6,7 @@ import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
 import { analytics } from '@/lib/analytics';
 import {
-  getCurrentUser, toggleVote, checkVote, toggleSave, checkSaved,
+  toggleVote, checkVote, toggleSave, checkSaved,
   createThread, createReply, fetchReplies,
 } from '@/lib/supabase-helpers';
 import {
@@ -556,10 +556,9 @@ function FeedSkeleton() {
 }
 
 function BarazaPageInner() {
-  const { showToast } = useApp();
+  const { user, showToast } = useApp();
   const searchParams = useSearchParams();
   const composeType = searchParams.get('compose');
-  const [user, setUser] = useState<User | null>(null);
   const [filter, setFilter] = useState('for-you');
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
@@ -579,10 +578,6 @@ function BarazaPageInner() {
     { key: 'spaces', label: 'Spaces' },
     { key: 'trending', label: 'Trending' },
   ];
-
-  useEffect(() => {
-    getCurrentUser().then(u => setUser(u));
-  }, []);
 
   useEffect(() => {
     analytics.pageView('baraza');

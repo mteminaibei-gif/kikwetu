@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout, { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, joinSpace, checkSpaceMember } from '@/lib/supabase-helpers';
+import { joinSpace, checkSpaceMember } from '@/lib/supabase-helpers';
 import {
   Layers3, Plus, Users, MessageCircle, Calendar,
   TrendingUp, Star, MapPin, MoreHorizontal, X,
@@ -82,12 +82,11 @@ const MOCK_SUGGESTED = [
 ];
 
 export default function SpacesPage() {
-  const { showToast } = useApp();
+  const { user, showToast } = useApp();
   const [filter, setFilter] = useState('All');
   const [joinedSpaces, setJoinedSpaces] = useState(MOCK_JOINED);
   const [suggestedSpaces, setSuggestedSpaces] = useState(MOCK_SUGGESTED);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [memberStatus, setMemberStatus] = useState<Record<string, boolean>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -96,9 +95,6 @@ export default function SpacesPage() {
 
   useEffect(() => {
     async function init() {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-
       const { data, error } = await supabase
         .from('spaces')
         .select('*')
@@ -126,12 +122,12 @@ export default function SpacesPage() {
         setJoinedSpaces(all.slice(0, 3));
         setSuggestedSpaces(all.slice(3));
 
-        if (currentUser) {
+        if (user) {
           const status: Record<string, boolean> = {};
           await Promise.all(
             all.map(async (s: any) => {
               if (s.id) {
-                status[s.id] = await checkSpaceMember(s.id, currentUser.id);
+                status[s.id] = await checkSpaceMember(s.id, user.user_id);
               }
             })
           );
@@ -153,7 +149,7 @@ export default function SpacesPage() {
     if (!space.id) return;
 
     const wasMember = memberStatus[space.id] || false;
-    const newStatus = await joinSpace(space.id, user.id);
+    const newStatus = await joinSpace(space.id, user.user_id);
 
     setMemberStatus((prev) => ({ ...prev, [space.id]: newStatus }));
 
@@ -184,7 +180,7 @@ export default function SpacesPage() {
         name: newName.trim(),
         description: newDesc.trim(),
         icon: newIcon || '🏘️',
-        created_by: user.id,
+        created_by: user.user_id,
         members_count: 1,
       })
       .select()

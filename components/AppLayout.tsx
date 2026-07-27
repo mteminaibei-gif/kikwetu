@@ -85,6 +85,7 @@ interface AppLayoutProps {
 const navSections = (isAdmin: boolean) => [
   {
     title: 'Main',
+    color: 'var(--green)',
     items: [
       { icon: House, label: 'Home', href: '/' },
       { icon: Compass, label: 'Baraza feed', href: '/baraza', badge: 'New' },
@@ -94,6 +95,7 @@ const navSections = (isAdmin: boolean) => [
   },
   {
     title: 'Learn & earn',
+    color: 'var(--gold)',
     items: [
       { icon: GraduationCap, label: 'Students Area', href: '/students', badge: '2' },
       { icon: BadgeCheck, label: 'Professionals', href: '/professionals' },
@@ -103,6 +105,7 @@ const navSections = (isAdmin: boolean) => [
   },
   {
     title: 'Local life',
+    color: 'var(--earth)',
     items: [
       { icon: Store, label: 'Mtaa Exchange', href: '/mtaa' },
       { icon: ShieldCheck, label: 'Nyumba Kumi', href: '/nyumba-kumi' },
@@ -112,6 +115,7 @@ const navSections = (isAdmin: boolean) => [
   },
   {
     title: 'Your account',
+    color: 'var(--blue)',
     items: [
       { icon: UserRound, label: 'Profile', href: '/profile' },
       { icon: Bookmark, label: 'Saved', href: '/saved' },
@@ -122,29 +126,43 @@ const navSections = (isAdmin: boolean) => [
 ];
 
 // ===== Avatar Component =====
-function Avatar({ src, initials, size = 'sm', className = '' }: {
+function Avatar({ src, initials, size = 'sm', className = '', isOnline = false }: {
   src?: string | null;
   initials: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  isOnline?: boolean;
 }) {
   const sizeMap = { xs: 24, sm: 32, md: 40, lg: 64, xl: 96 };
   const px = sizeMap[size];
 
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={initials}
-        className={`avatar ${size} avatar-img ${className}`}
-        style={{ width: px, height: px, objectFit: 'cover', borderRadius: '50%' }}
-      />
-    );
-  }
-
   return (
-    <span className={`avatar ${size} ${className}`} style={{ width: px, height: px, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-      {initials}
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      {src ? (
+        <img
+          src={src}
+          alt={initials}
+          className={`avatar ${size} avatar-img ${className}`}
+          style={{ width: px, height: px, objectFit: 'cover', borderRadius: '50%' }}
+        />
+      ) : (
+        <span className={`avatar ${size} ${className}`} style={{ width: px, height: px, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+          {initials}
+        </span>
+      )}
+      {isOnline && (
+        <span style={{
+          position: 'absolute',
+          bottom: size === 'xs' ? 0 : 1,
+          right: size === 'xs' ? 0 : 1,
+          width: size === 'xs' ? 6 : 8,
+          height: size === 'xs' ? 6 : 8,
+          borderRadius: '50%',
+          background: 'var(--green)',
+          border: '2px solid var(--surface)',
+          zIndex: 1,
+        }} />
+      )}
     </span>
   );
 }
@@ -552,7 +570,7 @@ const Topbar = React.memo(function Topbar() {
             onMouseEnter={(e) => { const o = e.currentTarget.querySelector('.avatar-overlay') as HTMLElement; if (o) o.style.opacity = '1'; }}
             onMouseLeave={(e) => { const o = e.currentTarget.querySelector('.avatar-overlay') as HTMLElement; if (o) o.style.opacity = '0'; }}
           >
-            <Avatar src={avatarSrc} initials={initials} size="sm" />
+            <Avatar src={avatarSrc} initials={initials} size="sm" isOnline={user?.is_online} />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -627,8 +645,9 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
                 key={item.href}
                 href={item.href}
                 className={`nav-item ${isActive ? 'active' : ''}`}
+                style={isActive ? { color: section.color } : undefined}
               >
-                <Icon className="icon" />
+                <Icon className="icon" style={!isActive ? { color: section.color, opacity: 0.7 } : undefined} />
                 <span>{item.label}</span>
                 {item.badge && <span className="nav-badge">{item.badge}</span>}
               </Link>
@@ -648,7 +667,7 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
       <div style={{ marginTop: 16 }}>
         <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <Avatar src={user?.avatar_url} initials={initials} size="md" />
+            <Avatar src={user?.avatar_url} initials={initials} size="md" isOnline={user?.is_online} />
             <span style={{
               position: 'absolute',
               inset: 0,

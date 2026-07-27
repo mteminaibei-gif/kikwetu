@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, toggleFollow, checkFollowing } from '@/lib/supabase-helpers';
+import { toggleFollow, checkFollowing } from '@/lib/supabase-helpers';
 import {
   Search, TrendingUp, CircleHelp, BadgeDollarSign, Users, Tag,
   MapPin, Sprout, MessageCircle, ThumbsUp, Send, Ellipsis, BadgeCheck
@@ -42,7 +42,7 @@ interface SearchResult {
 }
 
 export default function ExplorePage() {
-  const { showToast } = useApp();
+  const { user, showToast } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeTab, setActiveTab] = useState('All');
@@ -50,31 +50,26 @@ export default function ExplorePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [trendingThreads, setTrendingThreads] = useState<any[]>([]);
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    getCurrentUser().then(u => setCurrentUser(u));
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) return;
+    if (!user) return;
     const allPros = [...results.professionals];
     if (allPros.length === 0) return;
     async function checkAll() {
       const map: Record<string, boolean> = {};
       for (const pro of allPros) {
         const userId = pro.user_id || pro.id;
-        if (userId) map[userId] = await checkFollowing(currentUser!.user_id, userId);
+        if (userId) map[userId] = await checkFollowing(user!.user_id, userId);
       }
       setFollowingMap(prev => ({ ...prev, ...map }));
     }
     checkAll();
-  }, [currentUser, results.professionals]);
+  }, [user, results.professionals]);
 
   const handleFollow = async (proUserId: string) => {
-    if (!currentUser) return showToast('Please sign in');
-    const nowFollowing = await toggleFollow(currentUser.user_id, proUserId);
+    if (!user) return showToast('Please sign in');
+    const nowFollowing = await toggleFollow(user.user_id, proUserId);
     setFollowingMap(prev => ({ ...prev, [proUserId]: nowFollowing }));
     showToast(nowFollowing ? 'Following' : 'Unfollowed');
   };
@@ -244,7 +239,7 @@ export default function ExplorePage() {
                 {thread.body && <p>{thread.body.slice(0, 120)}{thread.body.length > 120 ? '...' : ''}</p>}
               </div>
               <div className="post-actions">
-                <button className="action"><ThumbsUp className="icon-sm" /> <span>{thread.vote_count || 0}</span></button>
+                <button className="action"><ThumbsUp className="icon-sm" /> <span>{thread.likes_count || 0}</span></button>
                 <button className="action" onClick={(e) => { e.stopPropagation(); handleShare(window.location.href); }}><Send className="icon-sm" /> <span>Share</span></button>
               </div>
             </article>
@@ -339,7 +334,7 @@ export default function ExplorePage() {
                   <div className="right-copy">
                     <strong style={{ color: 'var(--green)' }}>{t.title?.slice(0, 30) || 'Trending'}</strong>
                     <span>{t.type || 'Post'}</span>
-                    <span>{t.vote_count || 0} votes</span>
+                    <span>{t.likes_count || 0} votes</span>
                   </div>
                 </div>
               ))}

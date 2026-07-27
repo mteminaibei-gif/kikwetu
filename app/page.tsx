@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, toggleVote, checkVote, toggleSave, checkSaved, createThread, toggleReaction, getReactions } from '@/lib/supabase-helpers';
+import { toggleVote, checkVote, toggleSave, checkSaved, createThread, toggleReaction, getReactions } from '@/lib/supabase-helpers';
 import {
   Plus, Image, MessageCircleQuestion, Video, ThumbsUp,
   MessageCircle, Send, Bookmark, MoreHorizontal, MapPin,
@@ -451,8 +451,7 @@ function getTimeAgo(dateStr: string): string {
 }
 
 export default function Home() {
-  const { showToast } = useApp();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, showToast } = useApp();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -460,10 +459,6 @@ export default function Home() {
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  useEffect(() => {
-    getCurrentUser().then(u => setUser(u));
-  }, []);
 
   useEffect(() => {
     const fetchThreads = async () => {

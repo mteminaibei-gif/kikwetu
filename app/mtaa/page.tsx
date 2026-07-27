@@ -5,7 +5,6 @@ import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
 import {
-  getCurrentUser,
   createListing,
   markListingSold,
   toggleSave,
@@ -156,7 +155,7 @@ function ListingCard({
     setLiked(saved);
   }, [saved]);
 
-  const isOwn = currentUserId && listing.seller?.name && currentUserId === (listing as any).seller_id;
+  const isOwn = currentUserId && currentUserId === (listing as any).seller_id;
 
   return (
     <article
@@ -281,12 +280,11 @@ function ListingCard({
 }
 
 export default function MtaaExchange() {
-  const { showToast } = useApp();
+  const { user, showToast } = useApp();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [listings, setListings] = useState<Listing[]>(MOCK_LISTINGS);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -299,9 +297,6 @@ export default function MtaaExchange() {
 
   useEffect(() => {
     async function init() {
-      const user = await getCurrentUser();
-      setCurrentUser(user);
-
       try {
         const { data, error } = await supabase
           .from('marketplace_listings')
@@ -336,7 +331,7 @@ export default function MtaaExchange() {
         if (user) {
           const savedIds: Record<string, boolean> = {};
           for (const l of MOCK_LISTINGS) {
-            const isSaved = await checkSaved(user.id, 'listing', String(l.id));
+            const isSaved = await checkSaved(user.user_id, 'listing', String(l.id));
             savedIds[String(l.id)] = isSaved;
           }
           setSavedMap(savedIds);
@@ -350,13 +345,13 @@ export default function MtaaExchange() {
   }, []);
 
   async function handleCreateListing() {
-    if (!currentUser || !newTitle.trim()) {
+    if (!user || !newTitle.trim()) {
       showToast('Please fill in the title');
       return;
     }
     setCreating(true);
     const { data, error } = await createListing(
-      currentUser.id,
+      user.user_id,
       newTitle,
       newDescription,
       Number(newPrice) || 0,
@@ -372,8 +367,8 @@ export default function MtaaExchange() {
         price: data.price,
         location: data.location || '',
         seller: {
-          name: currentUser.full_name || 'You',
-          initials: currentUser.full_name ? currentUser.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'Y',
+          name: user.full_name || 'You',
+          initials: user.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'Y',
           color: 'earth',
         },
         rating: 4.5,
@@ -397,17 +392,17 @@ export default function MtaaExchange() {
   }
 
   async function handleContact(sellerListing: Listing) {
-    if (!currentUser) {
+    if (!user) {
       showToast('Sign in to contact seller');
       return;
     }
     const sellerId = (sellerListing as any).seller_id;
-    if (sellerId && sellerId === currentUser.id) {
+    if (sellerId && sellerId === user.user_id) {
       showToast('This is your listing');
       return;
     }
     if (sellerId) {
-      const { data } = await createConversation([currentUser.id, sellerId], `Hi, I'm interested in "${sellerListing.title}"`);
+      const { data } = await createConversation([user.user_id, sellerId], `Hi, I'm interested in "${sellerListing.title}"`);
       if (data) {
         showToast('Conversation started');
       } else {
@@ -433,11 +428,11 @@ export default function MtaaExchange() {
   }
 
   async function handleToggleSave(listing: Listing) {
-    if (!currentUser) {
+    if (!user) {
       showToast('Sign in to save');
       return;
     }
-    const result = await toggleSave(currentUser.id, 'listing', String(listing.id));
+    const result = await toggleSave(user.user_id, 'listing', String(listing.id));
     setSavedMap((prev) => ({ ...prev, [String(listing.id)]: result }));
     showToast(result ? 'Saved' : 'Removed from saved');
   }
@@ -548,7 +543,7 @@ export default function MtaaExchange() {
             <ListingCard
               key={listing.id}
               listing={listing}
-              currentUserId={currentUser?.id}
+              currentUserId={user?.user_id || null}
               onAction={showToast}
               onContact={handleContact}
               onMarkSold={handleMarkSold}
