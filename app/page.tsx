@@ -11,6 +11,14 @@ import {
   Sprout, CircleHelp, BadgeDollarSign, Ellipsis, Smile
 } from 'lucide-react';
 
+interface ThreadProfile {
+  full_name: string;
+  username: string;
+  avatar_url: string | null;
+  county: string | null;
+  is_verified: boolean;
+}
+
 interface Thread {
   id: string;
   author_id: string;
@@ -22,13 +30,7 @@ interface Thread {
   likes_count: number;
   comments_count: number;
   created_at: string;
-  profiles?: {
-    full_name: string;
-    username: string;
-    avatar_url: string | null;
-    county: string | null;
-    is_verified: boolean;
-  };
+  profiles?: ThreadProfile;
 }
 
 interface User {
@@ -50,6 +52,18 @@ const THREAD_SELECT = `
     is_verified
   )
 `;
+
+/** Supabase FK joins can type as object | array; normalize to a single profile object. */
+function normalizeThread(row: Record<string, unknown>): Thread {
+  const raw = row.profiles;
+  let profiles: ThreadProfile | undefined;
+  if (Array.isArray(raw)) {
+    profiles = (raw[0] as ThreadProfile) || undefined;
+  } else if (raw && typeof raw === 'object') {
+    profiles = raw as ThreadProfile;
+  }
+  return { ...(row as unknown as Thread), profiles };
+}
 
 function Stories() {
   const stories = [
@@ -488,7 +502,8 @@ export default function Home() {
           setFeedError(error.message);
           setThreads([]);
         } else {
-          setThreads((data as Thread[]) || []);
+          const rows = (data || []) as Record<string, unknown>[];
+          setThreads(rows.map(normalizeThread));
         }
       } catch (err) {
         console.error('[feed]', err);
@@ -548,7 +563,7 @@ export default function Home() {
       .eq('id', data.id)
       .single();
     if (fullThread) {
-      setThreads(prev => [fullThread as Thread, ...prev]);
+      setThreads(prev => [normalizeThread(fullThread as Record<string, unknown>), ...prev]);
     }
     setComposerOpen(false);
     showToast('Posted successfully!');
