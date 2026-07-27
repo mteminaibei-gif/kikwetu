@@ -1,5 +1,11 @@
 import { supabase } from './supabase';
 
+/** True for placeholder IDs like mock-nw, mock-3 — must never be sent to Postgres UUID columns. */
+export function isMockId(id: string | null | undefined): boolean {
+  if (!id || typeof id !== 'string') return true;
+  return id.startsWith('mock-') || id === '1' || id === 'undefined' || id === 'null';
+}
+
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -12,6 +18,8 @@ export async function getCurrentUser() {
 }
 
 export async function toggleVote(userId: string, targetType: 'thread' | 'reply', targetId: string, value: 1 | -1) {
+  if (isMockId(userId) || isMockId(targetId)) return { voted: false, delta: 0 };
+
   const { data: existing } = await supabase
     .from('votes')
     .select('id, value')
@@ -35,6 +43,8 @@ export async function toggleVote(userId: string, targetType: 'thread' | 'reply',
 }
 
 export async function checkVote(userId: string, targetType: 'thread' | 'reply', targetId: string) {
+  if (isMockId(userId) || isMockId(targetId)) return null;
+
   const { data } = await supabase
     .from('votes')
     .select('id, value')
@@ -46,6 +56,8 @@ export async function checkVote(userId: string, targetType: 'thread' | 'reply', 
 }
 
 export async function toggleSave(userId: string, targetType: 'thread' | 'reply' | 'listing', targetId: string) {
+  if (isMockId(userId) || isMockId(targetId)) return false;
+
   const { data: existing } = await supabase
     .from('saved_items')
     .select('id')
@@ -64,6 +76,8 @@ export async function toggleSave(userId: string, targetType: 'thread' | 'reply' 
 }
 
 export async function checkSaved(userId: string, targetType: 'thread' | 'reply' | 'listing', targetId: string) {
+  if (isMockId(userId) || isMockId(targetId)) return false;
+
   const { data } = await supabase
     .from('saved_items')
     .select('id')
@@ -75,6 +89,8 @@ export async function checkSaved(userId: string, targetType: 'thread' | 'reply' 
 }
 
 export async function toggleFollow(followerId: string, followingId: string) {
+  if (isMockId(followerId) || isMockId(followingId)) return false;
+
   const { data: existing } = await supabase
     .from('follows')
     .select('id')
@@ -92,6 +108,8 @@ export async function toggleFollow(followerId: string, followingId: string) {
 }
 
 export async function checkFollowing(followerId: string, followingId: string) {
+  if (isMockId(followerId) || isMockId(followingId)) return false;
+
   const { data } = await supabase
     .from('follows')
     .select('id')
@@ -102,6 +120,8 @@ export async function checkFollowing(followerId: string, followingId: string) {
 }
 
 export async function createThread(authorId: string, title: string, body: string, type: string = 'post', tags: string[] = [], bountyAmount?: number, spaceId?: string) {
+  if (isMockId(authorId)) return { data: null, error: new Error('Invalid author') };
+
   const { data, error } = await supabase
     .from('threads')
     .insert({
@@ -119,6 +139,8 @@ export async function createThread(authorId: string, title: string, body: string
 }
 
 export async function createReply(threadId: string, authorId: string, body: string) {
+  if (isMockId(threadId) || isMockId(authorId)) return { data: null, error: new Error('Invalid id') };
+
   const { data, error } = await supabase
     .from('replies')
     .insert({ thread_id: threadId, author_id: authorId, body })
@@ -128,6 +150,8 @@ export async function createReply(threadId: string, authorId: string, body: stri
 }
 
 export async function fetchReplies(threadId: string) {
+  if (isMockId(threadId)) return { data: [], error: null };
+
   const { data, error } = await supabase
     .from('replies')
     .select('id, thread_id, author_id, body, likes_count, created_at, profiles:author_id (full_name, username, avatar_url, county, is_verified)')
@@ -137,6 +161,8 @@ export async function fetchReplies(threadId: string) {
 }
 
 export async function sendMessage(conversationId: string, senderId: string, body: string) {
+  if (isMockId(conversationId) || isMockId(senderId)) return { data: null, error: new Error('Invalid id') };
+
   const { data, error } = await supabase
     .from('messages')
     .insert({ conversation_id: conversationId, sender_id: senderId, body })
@@ -154,6 +180,8 @@ export async function sendMessage(conversationId: string, senderId: string, body
 }
 
 export async function createConversation(participantIds: string[], firstMessage?: string) {
+  if (participantIds.some(isMockId)) return { data: null, error: new Error('Invalid participant') };
+
   const { data: conv, error: convError } = await supabase
     .from('conversations')
     .insert({ last_message: firstMessage || null, last_message_at: firstMessage ? new Date().toISOString() : null })
@@ -180,6 +208,8 @@ export async function createConversation(participantIds: string[], firstMessage?
 }
 
 export async function joinSpace(spaceId: string, userId: string) {
+  if (isMockId(spaceId) || isMockId(userId)) return false;
+
   const { data: existing } = await supabase
     .from('space_members')
     .select('id')
@@ -197,6 +227,8 @@ export async function joinSpace(spaceId: string, userId: string) {
 }
 
 export async function checkSpaceMember(spaceId: string, userId: string) {
+  if (isMockId(spaceId) || isMockId(userId)) return false;
+
   const { data } = await supabase
     .from('space_members')
     .select('id')
@@ -207,6 +239,8 @@ export async function checkSpaceMember(spaceId: string, userId: string) {
 }
 
 export async function sendTip(fromUserId: string, toUserId: string, amount: number, rating: number, comment?: string, sessionId?: string) {
+  if (isMockId(fromUserId) || isMockId(toUserId)) return { data: null, error: new Error('Invalid user') };
+
   const platformFee = Math.round(amount * 0.1);
   const netAmount = amount - platformFee;
   const { data, error } = await supabase
@@ -228,6 +262,8 @@ export async function sendTip(fromUserId: string, toUserId: string, amount: numb
 }
 
 export async function createListing(sellerId: string, title: string, description: string, price: number, category: string, location?: string) {
+  if (isMockId(sellerId)) return { data: null, error: new Error('Invalid seller') };
+
   const { data, error } = await supabase
     .from('marketplace_listings')
     .insert({ seller_id: sellerId, title, description, price, category, location: location || null })
@@ -237,6 +273,8 @@ export async function createListing(sellerId: string, title: string, description
 }
 
 export async function markListingSold(listingId: string) {
+  if (isMockId(listingId)) return { error: new Error('Invalid listing') };
+
   const { error } = await supabase
     .from('marketplace_listings')
     .update({ is_available: false })
@@ -245,6 +283,8 @@ export async function markListingSold(listingId: string) {
 }
 
 export async function createAlert(reporterId: string, type: string, title: string, description: string, location: string, county: string) {
+  if (isMockId(reporterId)) return { data: null, error: new Error('Invalid reporter') };
+
   const { data, error } = await supabase
     .from('nyumba_kumi_alerts')
     .insert({ reporter_id: reporterId, type, title, description, location, county })
@@ -254,6 +294,8 @@ export async function createAlert(reporterId: string, type: string, title: strin
 }
 
 export async function confirmAlert(alertId: string) {
+  if (isMockId(alertId)) return { error: new Error('Invalid alert') };
+
   const { data: alert } = await supabase
     .from('nyumba_kumi_alerts')
     .select('confirmations_count')
@@ -271,6 +313,8 @@ export async function confirmAlert(alertId: string) {
 }
 
 export async function submitQuizResult(quizId: string, userId: string, score: number, totalQuestions: number, timeTaken?: number) {
+  if (isMockId(quizId) || isMockId(userId)) return { data: null, error: new Error('Invalid id') };
+
   const { data, error } = await supabase
     .from('quiz_results')
     .insert({
@@ -286,6 +330,10 @@ export async function submitQuizResult(quizId: string, userId: string, score: nu
 }
 
 export async function requestSession(studentId: string, professionalId: string, title: string, description?: string) {
+  if (isMockId(studentId) || isMockId(professionalId)) {
+    return { data: null, error: new Error('Cannot request session for placeholder professional') };
+  }
+
   const { data, error } = await supabase
     .from('sessions')
     .insert({
@@ -306,6 +354,8 @@ const PROFILE_ALLOWED_FIELDS = [
 ];
 
 export async function updateProfile(userId: string, updates: Record<string, any>) {
+  if (isMockId(userId)) return { error: new Error('Invalid user') };
+
   const safeUpdates = Object.fromEntries(
     Object.entries(updates).filter(([k]) => PROFILE_ALLOWED_FIELDS.includes(k))
   );
@@ -318,6 +368,8 @@ export async function updateProfile(userId: string, updates: Record<string, any>
 }
 
 export async function createReport(reporterId: string, targetType: string, targetId: string, reason: string, description?: string) {
+  if (isMockId(reporterId) || isMockId(targetId)) return { data: null, error: new Error('Invalid id') };
+
   const { data, error } = await supabase
     .from('reports')
     .insert({
@@ -333,14 +385,18 @@ export async function createReport(reporterId: string, targetType: string, targe
 }
 
 export async function markNotificationRead(notificationId: string) {
+  if (isMockId(notificationId)) return;
   await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
 }
 
 export async function markAllNotificationsRead(userId: string) {
+  if (isMockId(userId)) return;
   await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
 }
 
 export async function toggleReaction(userId: string, targetType: 'thread' | 'reply', targetId: string, emoji: string) {
+  if (isMockId(userId) || isMockId(targetId)) return { reacted: false };
+
   const { data: existing } = await supabase
     .from('reactions')
     .select('id')
@@ -360,6 +416,8 @@ export async function toggleReaction(userId: string, targetType: 'thread' | 'rep
 }
 
 export async function getReactions(targetType: 'thread' | 'reply', targetId: string) {
+  if (isMockId(targetId)) return [];
+
   const { data } = await supabase
     .from('reactions')
     .select('emoji, user_id')
