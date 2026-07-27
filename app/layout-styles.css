@@ -203,6 +203,8 @@
   border-radius: 13px;
   color: var(--text2);
   background: transparent;
+  font-size: .86rem;
+  font-weight: 500;
   text-align: left;
   text-decoration: none;
   transition: transform .2s var(--ease), background .2s var(--ease);
@@ -270,7 +272,8 @@
 
 .page-head h1 {
   margin-top: 5px;
-  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  font-weight: 800;
   line-height: 1.02;
 }
 
@@ -278,7 +281,8 @@
   max-width: 59ch;
   margin-top: 9px;
   color: var(--text2);
-  font-size: .9rem;
+  font-size: .95rem;
+  line-height: 1.6;
 }
 
 .select-pill {
@@ -687,7 +691,7 @@
 }
 
 .post h3 { font-size: 1.05rem; line-height: 1.27; }
-.post p { margin-top: 8px; color: var(--text2); font-size: .86rem; }
+.post p { margin-top: 8px; color: var(--text2); font-size: .9rem; }
 
 .translation {
   margin-top: 12px;
@@ -796,7 +800,7 @@
 .pro-card:hover { transform: translateY(-2px); border-color: var(--green); }
 
 .pro-copy { min-width: 0; flex: 1; }
-.pro-copy strong { display: block; font-size: .86rem; }
+.pro-copy strong { display: block; font-size: .88rem; font-weight: 700; }
 .pro-copy p { margin-top: 3px; color: var(--text2); font-size: .75rem; }
 .pro-copy span { display: block; margin-top: 5px; color: var(--text3); font-size: .67rem; }
 
@@ -838,7 +842,7 @@
 }
 
 .right-copy { min-width: 0; flex: 1; }
-.right-copy strong { display: block; font-size: .75rem; }
+.right-copy strong { display: block; font-size: .88rem; font-weight: 700; }
 .right-copy span { display: block; color: var(--text3); font-size: .66rem; }
 
 .tip {
@@ -1403,7 +1407,7 @@
 .quick:nth-child(3) .quick-icon { color: var(--blue); background: var(--blueSoft); }
 
 .quick-copy { min-width: 0; flex: 1; }
-.quick-copy strong { display: block; font-size: .78rem; }
+.quick-copy strong { display: block; font-size: .88rem; font-weight: 700; }
 .quick-copy span { display: block; color: var(--text3); font-size: .67rem; }
 
 .arrow { color: var(--text3); }

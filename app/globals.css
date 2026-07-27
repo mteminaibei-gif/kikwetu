@@ -14,9 +14,9 @@
   --surface3: oklch(91% .03 94);
 
   /* Text */
-  --text: oklch(24% .034 158);
-  --text2: oklch(41% .028 158);
-  --text3: oklch(56% .022 158);
+  --text: oklch(20% .04 158);
+  --text2: oklch(36% .03 158);
+  --text3: oklch(48% .025 158);
 
   /* Borders */
   --line: oklch(84% .025 94);
@@ -51,9 +51,9 @@
   --surface2: oklch(23% .03 158);
   --surface3: oklch(27% .034 158);
 
-  --text: oklch(92% .022 94);
-  --text2: oklch(76% .025 94);
-  --text3: oklch(60% .025 94);
+  --text: oklch(95% .02 94);
+  --text2: oklch(82% .022 94);
+  --text3: oklch(68% .025 94);
 
   --line: oklch(30% .03 158);
   --line2: oklch(38% .035 158);
@@ -86,7 +86,7 @@ html, body {
 
 body {
   font-family: "DM Sans", system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 16.5px;
   line-height: 1.5;
   transition: background .3s ease, color .3s ease;
 }
@@ -115,11 +115,16 @@ h1, h2, h3, h4 { text-wrap: balance; }
 .serif {
   font-family: "Fraunces", Georgia, serif;
   letter-spacing: -.045em;
+  font-weight: 700;
+}
+
+.text-glow {
+  text-shadow: 0 0 1px currentColor;
 }
 
 .eyebrow {
   color: var(--green);
-  font-size: .67rem;
+  font-size: .72rem;
   font-weight: 800;
   letter-spacing: .14em;
   text-transform: uppercase;

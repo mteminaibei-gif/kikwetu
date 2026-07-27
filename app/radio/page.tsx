@@ -3,110 +3,93 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
-import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/supabase-helpers';
 import {
-  Radio, Play, Pause, Volume2, VolumeX, Heart, Share2,
-  Star, Wifi, Clock, ExternalLink,
+  Play, Pause, Volume2, VolumeX, Heart, Share2, SkipForward, SkipBack,
+  Radio, Wifi, Clock, ExternalLink,
 } from 'lucide-react';
 
 /* ---------- types ---------- */
 interface Station {
-  id: string;
+  id: number;
   name: string;
-  city: string;
   genre: string;
-  category: string;
+  icon: string;
   color: string;
-  initials: string;
-  nowPlaying: string;
-  signal: 1 | 2 | 3;
-  streamUrl: string | null;
+  show: string;
+  hosts: string;
+  song: string;
+  listeners: number;
+  streamUrl: string;
+  isLive: boolean;
 }
 
-/* ---------- simulated catalogue ---------- */
+interface Podcast {
+  id: number;
+  title: string;
+  host: string;
+  episode: string;
+  duration: string;
+  icon: string;
+  gradient: string;
+}
+
+interface ScheduleSlot {
+  time: string;
+  show: string;
+  hosts: string;
+  status: 'live' | 'done' | 'upcoming';
+}
+
+type GenreFilter = 'All' | 'Live' | 'Podcasts' | 'Music' | 'Talk' | 'News';
+
+/* ---------- data ---------- */
 const STATIONS: Station[] = [
-  // National
-  { id: 'capital-fm', name: 'Capital FM', city: 'Nairobi', genre: 'Pop / Hits', category: 'National', color: '#d42027', initials: 'CF', nowPlaying: 'Bien – Inauma', signal: 3, streamUrl: 'https://streaming.capitalfm.co.ke/capital' },
-  { id: 'classic-105', name: 'Classic 105', city: 'Nairobi', genre: 'Classic Hits', category: 'National', color: '#1a1a2e', initials: 'C1', nowPlaying: 'Lionel Richie – Hello', signal: 3, streamUrl: 'https://streaming.classic105.com/classic105' },
-  { id: 'kiss-fm', name: 'Kiss FM', city: 'Nairobi', genre: 'Urban', category: 'National', color: '#e91e8c', initials: 'KF', nowPlaying: 'Sauti Sol – Suzanna', signal: 3, streamUrl: 'https://stream.kissfm.co.ke/kiss' },
-  { id: 'nrg-fm', name: 'NRG FM', city: 'Nairobi', genre: 'Gen Z / Urban', category: 'National', color: '#ff6b00', initials: 'NR', nowPlaying: 'Otile Brown – Dusuma', signal: 3, streamUrl: 'https://streaming.nrg.fm/nrg' },
-  { id: 'homeboyz', name: 'Homeboyz Radio', city: 'Nairobi', genre: 'Reggae / Hip Hop', category: 'National', color: '#8b0000', initials: 'HR', nowPlaying: 'Chronicle – Reggae Life', signal: 2, streamUrl: 'https://stream.homeboyzradio.com/homeboyz' },
-  { id: 'radio-jambo', name: 'Radio Jambo', city: 'Nairobi', genre: 'Entertainment', category: 'National', color: '#00843d', initials: 'RJ', nowPlaying: 'DJ Creme – Mix Session', signal: 3, streamUrl: 'https://streaming.radiojambo.co.ke/jambo' },
-  { id: 'nation-fm', name: 'Nation FM', city: 'Nairobi', genre: 'News / Talk', category: 'National', color: '#003580', initials: 'NF', nowPlaying: 'Jeff Koinange Live', signal: 3, streamUrl: 'https://streaming.nation.africa/nationfm' },
-  { id: 'ktn-news', name: 'KTN News', city: 'Nairobi', genre: 'News', category: 'National', color: '#cc0000', initials: 'KN', nowPlaying: 'KTN Prime Time', signal: 3, streamUrl: null },
-  { id: 'kiss-tv', name: 'Kiss TV', city: 'Nairobi', genre: 'Entertainment', category: 'National', color: '#e91e8c', initials: 'KT', nowPlaying: 'The Trend', signal: 2, streamUrl: null },
-  { id: 'ntv', name: 'NTV', city: 'Nairobi', genre: 'News', category: 'National', color: '#0066cc', initials: 'NT', nowPlaying: 'NTV At One', signal: 3, streamUrl: null },
-
-  // County
-  { id: 'radio-lake-victoria', name: 'Radio Lake Victoria', city: 'Kisumu', genre: 'Luo Music', category: 'County', color: '#2196f3', initials: 'LV', nowPlaying: 'Otile Brown – Malaika', signal: 2, streamUrl: null },
-  { id: 'musyi-fm', name: 'Musyi FM', city: 'Central', genre: 'Kikuyu', category: 'County', color: '#4caf50', initials: 'MF', nowPlaying: 'Kamene Goro Show', signal: 2, streamUrl: null },
-  { id: 'ramogi-fm', name: 'Ramogi FM', city: 'Nairobi', genre: 'Luo', category: 'County', color: '#ff9800', initials: 'RF', nowPlaying: 'Rogi Dhe Bwo', signal: 3, streamUrl: null },
-  { id: 'egesa-fm', name: 'Egesa FM', city: 'Western', genre: 'Luhya', category: 'County', color: '#795548', initials: 'EF', nowPlaying: 'Bukusu Vibes', signal: 2, streamUrl: null },
-  { id: 'coro-fm', name: 'Coro FM', city: 'Central', genre: 'Kikuyu', category: 'County', color: '#009688', initials: 'CR', nowPlaying: 'Ngemi ya Muthoni', signal: 2, streamUrl: null },
-  { id: 'mwago-fm', name: 'Mwago FM', city: 'Rift Valley', genre: 'Kalenjin', category: 'County', color: '#607d8b', initials: 'MG', nowPlaying: 'Kalenjin Hits Mix', signal: 2, streamUrl: null },
-  { id: 'bahari-fm', name: 'Bahari FM', city: 'Coast', genre: 'Swahili', category: 'County', color: '#00bcd4', initials: 'BF', nowPlaying: 'Taarab za Mjini', signal: 2, streamUrl: null },
-  { id: 'pwani-tv', name: 'Pwani TV', city: 'Coast', genre: 'Swahili', category: 'County', color: '#ff5722', initials: 'PT', nowPlaying: 'Coast Business Hub', signal: 2, streamUrl: null },
-
-  // Religious
-  { id: 'inooro-fm', name: 'Inooro FM', city: 'Central', genre: 'Christian / Kikuyu', category: 'Religious', color: '#ffd600', initials: 'IF', nowPlaying: 'Mwathi wa Kiria', signal: 3, streamUrl: null },
-  { id: 'bahari-radio', name: 'Bahari Radio', city: 'Coast', genre: 'Islamic', category: 'Religious', color: '#00695c', initials: 'BR', nowPlaying: 'Quran Recitation', signal: 2, streamUrl: null },
-  { id: 'trm-tv', name: 'TRM TV', city: 'Nairobi', genre: 'Christian', category: 'Religious', color: '#7c4dff', initials: 'TR', nowPlaying: 'Gospel Sunday', signal: 3, streamUrl: null },
-
-  // Music
-  { id: 'capital-xtra', name: 'Capital Xtra', city: 'Nairobi', genre: 'Afrobeats', category: 'Music', color: '#ff1744', initials: 'CX', nowPlaying: 'Burna Boy – City Boys', signal: 3, streamUrl: null },
-  { id: 'soundcity', name: 'Soundcity Radio', city: 'Nairobi', genre: 'Afrobeats', category: 'Music', color: '#651fff', initials: 'SR', nowPlaying: 'Tyla – Water', signal: 3, streamUrl: null },
-  { id: '4408', name: '4408', city: 'Nairobi', genre: 'Gen Z', category: 'Music', color: '#00e676', initials: '48', nowPlaying: 'Sauti Sol – Midnightrain', signal: 3, streamUrl: null },
-
-  // News
-  { id: 'kbc-radio', name: 'KBC Radio', city: 'Nairobi', genre: 'National', category: 'News', color: '#1565c0', initials: 'KB', nowPlaying: 'KBC English Service', signal: 3, streamUrl: 'https://stream.kbc.co.ke/kbc' },
-  { id: 'kameme-fm', name: 'Kameme FM', city: 'Central', genre: 'Kikuyu News', category: 'News', color: '#2e7d32', initials: 'KM', nowPlaying: 'Gikuyu News Hour', signal: 3, streamUrl: 'https://streaming.kameme.co.ke/kameme' },
-  { id: 'musyi-news', name: 'Musyi FM News', city: 'Central', genre: 'Kikuyu News', category: 'News', color: '#4caf50', initials: 'MN', nowPlaying: 'Haki FM Express', signal: 2, streamUrl: null },
+  { id: 1, name: 'NRG Radio', genre: 'Urban / Gengetone', icon: '📻', color: 'var(--red-soft)', show: 'The Drive Show', hosts: 'Kamene & Obinna', song: 'Sauti Sol ft. Burna Boy — "Afrikan Star"', listeners: 4230, streamUrl: 'https://stream.nrgradio.co.ke/nrg.mp3', isLive: true },
+  { id: 2, name: 'Kiss FM', genre: 'Pop / R&B / Hip Hop', icon: '🎙️', color: 'var(--gold-soft)', show: 'Evening Show', hosts: 'Ciku Muiruri', song: 'Bien — "Inauma"', listeners: 3100, streamUrl: 'https://live.kenyans.co.ke/kissfm', isLive: true },
+  { id: 3, name: 'Citizen Radio', genre: 'News / Talk', icon: '🌿', color: 'var(--green-soft)', show: 'Jambo Kenya', hosts: 'Team Citizen', song: 'News update', listeners: 2800, streamUrl: 'https://live.citizentv.co.ke/radio', isLive: true },
+  { id: 4, name: 'Capital FM', genre: 'International / Charts', icon: '🎵', color: 'var(--blue-soft)', show: 'Capital in the Morning', hosts: 'Capital Team', song: 'Top 40 Countdown', listeners: 2500, streamUrl: 'https://kenya.shoutcast.com/CapitalFM', isLive: true },
+  { id: 5, name: 'Hope FM', genre: 'Gospel / Inspirational', icon: '✝️', color: 'var(--purple-soft)', show: 'Morning Devotion', hosts: 'Hope Team', song: 'Wahu — "God Over Everything"', listeners: 1800, streamUrl: 'https://live.hopefm.co.ke/hope.mp3', isLive: true },
+  { id: 6, name: 'Clouds FM', genre: 'Bongo Flava / TZ', icon: '🥁', color: 'var(--earth-soft)', show: 'Bongo Hits', hosts: 'Clouds Team', song: 'Diamond — "Komasava"', listeners: 2200, streamUrl: 'https://live.clouds.co.ke/clouds.mp3', isLive: true },
+  { id: 7, name: 'BBC Swahili', genre: 'News / Current Affairs', icon: '📰', color: 'oklch(90% .05 0)', show: 'Habari za Jioni', hosts: 'BBC Team', song: 'Latest headlines', listeners: 3500, streamUrl: 'https://stream.bbc.co.ke/swahili.mp3', isLive: true },
+  { id: 8, name: 'Trace Mziki', genre: 'Afrobeats / Amapiano', icon: '🎶', color: 'oklch(90% .05 200)', show: 'AfroVibes Mix', hosts: 'DJ Trace', song: 'Burna Boy — "Last Last"', listeners: 2900, streamUrl: 'https://live.trace.fm/mziki.mp3', isLive: true },
+  { id: 9, name: 'Classic 105', genre: 'Oldies / Classic Hits', icon: '🎸', color: 'var(--gold-soft)', show: 'Maina & Kingangi', hosts: 'Maina & Kingangi', song: 'Bob Marley — "Is This Love"', listeners: 2600, streamUrl: 'https://live.classic105.com/classic.mp3', isLive: true },
+  { id: 10, name: 'Radio Jambo', genre: 'Gengetone / Urban', icon: '🎤', color: 'var(--red-soft)', show: 'Genge Tone Show', hosts: 'Pompi & crew', song: 'Navivi — "Sherehe"', listeners: 1900, streamUrl: 'https://live.radijambo.co.ke/jambo.mp3', isLive: false },
+  { id: 11, name: 'Nation FM', genre: 'Talk / News / Business', icon: '📊', color: 'var(--blue-soft)', show: 'Business Today', hosts: 'Nation Team', song: 'Market update', listeners: 1500, streamUrl: 'https://live.nationmedia.com/nation.mp3', isLive: true },
+  { id: 12, name: 'Homeboyz Radio', genre: 'Urban / Gengetone', icon: '🏠', color: 'var(--green-soft)', show: 'The Homeboyz Show', hosts: 'Jalango & team', song: 'Otile Brown — "Dusuma"', listeners: 2100, streamUrl: 'https://live.homeboyz.co.ke/homeboyz.mp3', isLive: false },
 ];
 
-const CATEGORIES = ['All', 'National', 'County', 'Religious', 'Music', 'News'] as const;
-type Category = typeof CATEGORIES[number];
+const PODCASTS: Podcast[] = [
+  { id: 1, title: 'The Swahili Tech Pod', host: 'James Kariuki & Amani', episode: 'Ep. 47: AI in East Africa', duration: '42 min', icon: '🎧', gradient: 'linear-gradient(135deg, oklch(40% .1 158), oklch(55% .1 42))' },
+  { id: 2, title: 'Hustler Diaries', host: 'Wambui Kamau', episode: 'Ep. 112: Side Hustle to Startup', duration: '38 min', icon: '💼', gradient: 'linear-gradient(135deg, oklch(50% .1 241), oklch(40% .1 310))' },
+  { id: 3, title: 'Mama Afrika Stories', host: 'Fatuma Ali', episode: 'Ep. 89: Mombasa Old Town', duration: '55 min', icon: '🌍', gradient: 'linear-gradient(135deg, oklch(55% .12 42), oklch(45% .1 78))' },
+];
 
-const SONGS: Record<string, string[]> = {
-  'capital-fm': ['Bien – Inauma', 'Sauti Sol – Suzanna', 'Nviiri – Pombe Sigara', 'Otile Brown – Dusuma'],
-  'classic-105': ['Lionel Richie – Hello', 'Eagles – Hotel California', 'Whitney Houston – I Will Always Love You'],
-  'kiss-fm': ['Sauti Sol – Suzanna', 'Naiboi – 2 in 1', 'Khaligraph – Tujibambe'],
-  'nrg-fm': ['Otile Brown – Dusuma', 'Harmonize – Kwangwaru', 'Zuchu – Sukari'],
-};
+const SCHEDULE: ScheduleSlot[] = [
+  { time: '6:00 AM', show: 'Morning Vibes', hosts: 'DJ Kalonje — Wake-up mix', status: 'done' },
+  { time: '10:00 AM', show: 'Mid-Morning Show', hosts: 'MC Jesse — Requests & interviews', status: 'done' },
+  { time: '3:00 PM', show: 'The Drive Show', hosts: 'Kamene & Obinna — Entertainment & traffic', status: 'live' },
+  { time: '7:00 PM', show: 'The Night Frequency', hosts: 'DJ Xclusive — Club mixes & new releases', status: 'upcoming' },
+  { time: '10:00 PM', show: 'Late Night Love', hosts: 'Mwalimu Rachel — Slow jams & dedications', status: 'upcoming' },
+];
+
+const GENRE_FILTERS: GenreFilter[] = ['All', 'Live', 'Podcasts', 'Music', 'Talk', 'News'];
 
 /* ---------- helpers ---------- */
-function randomSong(station: Station): string {
-  const pool = SONGS[station.id];
-  if (pool) return pool[Math.floor(Math.random() * pool.length)];
-  return station.nowPlaying;
-}
-
-function getSignalIcon(s: 1 | 2 | 3) {
-  return (
-    <Wifi
-      size={14}
-      style={{
-        color: s === 3 ? 'var(--green)' : s === 2 ? 'var(--gold)' : 'var(--red)',
-        opacity: s === 1 ? 0.5 : 1,
-      }}
-    />
-  );
+function formatListeners(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
 }
 
 /* ================================================================ */
 export default function RadioPage() {
   const { showToast } = useApp();
 
-  const [category, setCategory] = useState<Category>('All');
-  const [search, setSearch] = useState('');
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [activeGenre, setActiveGenre] = useState<GenreFilter>('All');
+  const [playingId, setPlayingId] = useState<number | null>(null);
   const [volume, setVolume] = useState(75);
   const [muted, setMuted] = useState(false);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [nowPlaying, setNowPlaying] = useState<Record<string, string>>({});
-  const [progress, setProgress] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
-  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [showPodcasts, setShowPodcasts] = useState(true);
 
   /* --- load favorites from localStorage --- */
   useEffect(() => {
@@ -116,12 +99,12 @@ export default function RadioPage() {
     } catch { /* ignore */ }
   }, []);
 
-  const persistFavs = useCallback((next: Set<string>) => {
+  const persistFavs = useCallback((next: Set<number>) => {
     setFavorites(next);
     localStorage.setItem('kikwetu-radio-favs', JSON.stringify([...next]));
   }, []);
 
-  const toggleFav = useCallback((id: string) => {
+  const toggleFav = useCallback((id: number) => {
     persistFavs(
       favorites.has(id)
         ? new Set([...favorites].filter(x => x !== id))
@@ -130,57 +113,27 @@ export default function RadioPage() {
     showToast(favorites.has(id) ? 'Removed from favorites' : 'Added to favorites');
   }, [favorites, persistFavs, showToast]);
 
-  /* --- simulated now-playing rotation --- */
-  useEffect(() => {
-    const initial: Record<string, string> = {};
-    STATIONS.forEach(s => { initial[s.id] = s.nowPlaying; });
-    setNowPlaying(initial);
-
-    const iv = setInterval(() => {
-      setNowPlaying(prev => {
-        const copy = { ...prev };
-        const randomStation = STATIONS[Math.floor(Math.random() * STATIONS.length)];
-        copy[randomStation.id] = randomSong(randomStation);
-        return copy;
-      });
-    }, 15_000);
-    return () => clearInterval(iv);
-  }, []);
-
   /* --- play / pause --- */
-  const play = useCallback((id: string) => {
+  const play = useCallback((id: number) => {
     setPlayingId(prev => prev === id ? null : id);
-    setProgress(0);
-    setElapsed(0);
   }, []);
 
-  /* --- progress ticker --- */
-  useEffect(() => {
-    if (progressTimer.current) clearInterval(progressTimer.current);
+  const openStream = useCallback((station: Station) => {
+    window.open(station.streamUrl, '_blank');
+  }, []);
 
-    if (playingId) {
-      progressTimer.current = setInterval(() => {
-        setElapsed(e => e + 1);
-        setProgress(p => {
-          if (p >= 100) return 0;
-          return p + 0.15;
-        });
-      }, 1000);
-    }
-
-    return () => { if (progressTimer.current) clearInterval(progressTimer.current); };
-  }, [playingId]);
-
-  /* --- filtered list --- */
+  /* --- filtered stations --- */
   const filtered = STATIONS.filter(s => {
-    const matchCat = category === 'All' || s.category === category;
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase())
-      || s.genre.toLowerCase().includes(search.toLowerCase())
-      || s.city.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    if (activeGenre === 'All') return true;
+    if (activeGenre === 'Live') return s.isLive;
+    if (activeGenre === 'Music') return s.genre.toLowerCase().includes('music') || s.genre.toLowerCase().includes('pop') || s.genre.toLowerCase().includes('urban') || s.genre.toLowerCase().includes('bongo') || s.genre.toLowerCase().includes('afrobeats') || s.genre.toLowerCase().includes('oldies') || s.genre.toLowerCase().includes('gengetone');
+    if (activeGenre === 'Talk') return s.genre.toLowerCase().includes('talk') || s.genre.toLowerCase().includes('business');
+    if (activeGenre === 'News') return s.genre.toLowerCase().includes('news');
+    return true;
   });
 
   const activeStation = playingId ? STATIONS.find(s => s.id === playingId) : null;
+  const liveStation = STATIONS[0]; // NRG Radio as the "now playing" hero
 
   return (
     <AppLayout showRightSidebar={false}>
@@ -188,387 +141,606 @@ export default function RadioPage() {
 
         {/* ---- styles ---- */}
         <style jsx global>{`
-          .radio-page { padding-bottom: 100px; }
-          .radio-page .radio-header { margin-bottom: 28px; }
-          .radio-page .radio-header h1 {
-            font-size: 1.75rem; font-weight: 800; color: var(--text);
-            display: flex; align-items: center; gap: 10px; margin: 0 0 4px;
+          .radio-page {
+            padding-bottom: 120px;
+            max-width: 1100px;
+            margin: 0 auto;
           }
-          .radio-page .radio-header h1 .live-dot {
-            width: 10px; height: 10px; border-radius: 50%; background: var(--red);
-            animation: pulse 1.5s infinite;
-          }
-          .radio-page .radio-header p { color: var(--text3); font-size: .9rem; margin: 0; }
 
-          /* search */
-          .radio-search {
-            display: flex; align-items: center; gap: 8px;
-            background: var(--surface); border: 1px solid var(--line);
-            border-radius: 12px; padding: 0 14px; height: 44px;
-            transition: border-color .2s;
+          /* Header */
+          .radio-header { margin-bottom: 28px; }
+          .radio-header h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 2rem; font-weight: 700; color: var(--text);
+            margin: 0 0 6px; letter-spacing: -0.02em;
           }
-          .radio-search:focus-within { border-color: var(--green); }
-          .radio-search input {
-            flex: 1; background: none; border: none; outline: none;
-            color: var(--text); font-size: .88rem; font-family: inherit;
-          }
-          .radio-search input::placeholder { color: var(--text3); }
+          .radio-header p { color: var(--text3); font-size: .9rem; margin: 0; }
 
-          /* categories */
-          .cat-tabs {
-            display: flex; gap: 8px; margin: 20px 0 22px;
+          /* Genre Pills */
+          .genre-pills {
+            display: flex; gap: 8px; margin: 20px 0 24px;
             overflow-x: auto; padding-bottom: 4px;
             scrollbar-width: none;
           }
-          .cat-tabs::-webkit-scrollbar { display: none; }
-          .cat-tab {
-            padding: 7px 18px; border-radius: 999px; font-size: .8rem;
+          .genre-pills::-webkit-scrollbar { display: none; }
+          .genre-pill {
+            padding: 7px 20px; border-radius: 999px; font-size: .82rem;
             font-weight: 600; white-space: nowrap; cursor: pointer;
             border: 1px solid var(--line); background: var(--surface);
-            color: var(--text2); transition: all .2s;
+            color: var(--text2); transition: all .2s; font-family: inherit;
           }
-          .cat-tab:hover { background: var(--surface2); }
-          .cat-tab.active {
+          .genre-pill:hover { background: var(--surface2); }
+          .genre-pill.active {
             background: var(--green); color: #fff; border-color: var(--green);
           }
 
-          /* grid */
+          /* Hero Card */
+          .hero-card {
+            position: relative; border-radius: 20px; overflow: hidden;
+            background: linear-gradient(135deg, oklch(25% .08 158), oklch(20% .06 158));
+            padding: 32px; margin-bottom: 36px; color: #fff;
+          }
+          .hero-card::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(0,0,0,.15), rgba(0,0,0,.35));
+            pointer-events: none;
+          }
+          .hero-content { position: relative; z-index: 1; }
+
+          .hero-top {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            margin-bottom: 20px;
+          }
+          .hero-eq {
+            display: flex; align-items: flex-end; gap: 3px; height: 32px;
+          }
+          .hero-eq .eq-bar {
+            width: 5px; border-radius: 3px; background: var(--gold);
+            animation: eqBounce .8s ease-in-out infinite alternate;
+          }
+          .hero-eq .eq-bar:nth-child(1) { height: 18px; animation-delay: 0s; }
+          .hero-eq .eq-bar:nth-child(2) { height: 28px; animation-delay: .1s; }
+          .hero-eq .eq-bar:nth-child(3) { height: 14px; animation-delay: .2s; }
+          .hero-eq .eq-bar:nth-child(4) { height: 24px; animation-delay: .15s; }
+          .hero-eq .eq-bar:nth-child(5) { height: 20px; animation-delay: .25s; }
+          .hero-eq .eq-bar:nth-child(6) { height: 16px; animation-delay: .05s; }
+
+          .live-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--red); color: #fff; padding: 4px 12px;
+            border-radius: 999px; font-size: .7rem; font-weight: 700;
+            letter-spacing: .05em;
+          }
+          .live-badge .live-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: #fff;
+            animation: livePulse 1.5s ease-in-out infinite;
+          }
+
+          .hero-station-icon {
+            font-size: 2.2rem; margin-bottom: 8px; display: block;
+          }
+          .hero-station-name {
+            font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700;
+            margin: 0 0 4px;
+          }
+          .hero-show-name {
+            font-size: .9rem; opacity: .85; margin: 0 0 2px;
+          }
+          .hero-song {
+            font-size: .8rem; opacity: .65; margin: 0 0 16px;
+          }
+          .hero-listeners {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: .78rem; opacity: .7; margin-bottom: 20px;
+          }
+
+          .hero-controls {
+            display: flex; align-items: center; gap: 16px;
+          }
+          .hero-play {
+            width: 52px; height: 52px; border-radius: 50%; border: none;
+            background: var(--gold); color: #000; display: flex;
+            align-items: center; justify-content: center; cursor: pointer;
+            transition: all .2s; flex-shrink: 0;
+          }
+          .hero-play:hover { transform: scale(1.08); box-shadow: 0 4px 20px rgba(212,168,84,.4); }
+          .hero-play svg { width: 22px; height: 22px; }
+
+          .hero-volume {
+            display: flex; align-items: center; gap: 8px; margin-left: auto;
+          }
+          .hero-vol-slider {
+            -webkit-appearance: none; appearance: none; width: 80px; height: 4px;
+            background: rgba(255,255,255,.25); border-radius: 999px; outline: none;
+            cursor: pointer;
+          }
+          .hero-vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+            background: #fff; cursor: pointer;
+          }
+          .hero-vol-slider::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: #fff; cursor: pointer; border: none;
+          }
+
+          /* Section titles */
+          .section-title {
+            font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700;
+            color: var(--text); margin: 0 0 16px; letter-spacing: -0.01em;
+          }
+
+          /* Station Grid */
           .station-grid {
-            display: grid; gap: 16px;
+            display: grid; gap: 14px;
             grid-template-columns: repeat(4, 1fr);
+            margin-bottom: 40px;
           }
           @media (max-width: 1100px) { .station-grid { grid-template-columns: repeat(3, 1fr); } }
           @media (max-width: 800px)  { .station-grid { grid-template-columns: repeat(2, 1fr); } }
           @media (max-width: 500px)  { .station-grid { grid-template-columns: 1fr; } }
 
-          /* card */
           .station-card {
             background: var(--surface); border: 1px solid var(--line);
-            border-radius: 16px; overflow: hidden; transition: all .25s var(--ease);
+            border-radius: 14px; overflow: hidden; transition: all .25s var(--ease);
             display: flex; flex-direction: column; position: relative;
+            padding: 14px;
           }
           .station-card:hover {
             transform: translateY(-3px); box-shadow: var(--shadow1);
-            border-color: var(--line2);
           }
-          .station-card.now-playing { border-color: var(--green); }
-
-          .card-top {
-            position: relative; padding: 20px 16px 14px; display: flex;
-            flex-direction: column; align-items: center; text-align: center; gap: 10px;
+          .station-card.now-playing {
+            border-color: var(--green);
           }
-          .station-avatar {
-            width: 56px; height: 56px; border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: .85rem; color: #fff; letter-spacing: .02em;
-            position: relative;
-          }
-          .station-avatar .pulse-ring {
-            position: absolute; inset: -4px; border-radius: 18px;
-            border: 2px solid var(--green); opacity: 0;
-            animation: pulseRing 2s ease-out infinite;
-          }
-          .now-playing .station-avatar .pulse-ring { opacity: 1; }
-
-          .card-name { font-weight: 700; font-size: .92rem; color: var(--text); }
-          .card-city { font-size: .72rem; color: var(--text3); margin-top: -4px; }
-
-          .genre-tag {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 10px; border-radius: 999px; font-size: .68rem;
-            font-weight: 600; background: var(--surface2); color: var(--text2);
+          .station-card.now-playing::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: linear-gradient(90deg, var(--green), var(--gold));
+            border-radius: 14px 14px 0 0;
           }
 
-          .card-bottom {
-            padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px;
+          .card-icon {
+            font-size: 1.8rem; margin-bottom: 10px;
           }
-          .now-text {
-            font-size: .72rem; color: var(--text3); text-align: center;
+          .card-name {
+            font-weight: 700; font-size: .88rem; color: var(--text);
+            margin-bottom: 2px;
+          }
+          .card-genre {
+            font-size: .72rem; color: var(--text3); margin-bottom: 8px;
+          }
+          .card-now {
+            font-size: .7rem; color: var(--text3); margin-bottom: 10px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
           }
-          .now-text strong { color: var(--text2); }
+          .card-now strong { color: var(--text2); }
 
           .card-actions {
-            display: flex; align-items: center; gap: 8px;
+            display: flex; align-items: center; gap: 6px; margin-top: auto;
           }
-          .card-actions .play-btn {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            gap: 6px; padding: 9px 0; border-radius: 12px; border: none;
-            font-weight: 700; font-size: .78rem; cursor: pointer; transition: all .2s;
-            font-family: inherit;
+          .card-play {
+            width: 34px; height: 34px; border-radius: 10px; border: none;
+            background: var(--green); color: #fff; display: flex;
+            align-items: center; justify-content: center; cursor: pointer;
+            transition: all .2s; flex-shrink: 0;
           }
-          .card-actions .play-btn.play {
-            background: var(--green); color: #fff;
-          }
-          .card-actions .play-btn.play:hover { background: var(--green2); }
-          .card-actions .play-btn.pause {
-            background: var(--redSoft); color: var(--red);
-          }
-          .card-actions .play-btn.pause:hover { background: var(--red); color: #fff; }
+          .card-play:hover { background: var(--green2); transform: scale(1.06); }
+          .card-play.playing { background: var(--red); }
+          .card-play.playing:hover { background: var(--red2); }
+          .card-play svg { width: 16px; height: 16px; }
 
-          .card-actions .fav-btn, .card-actions .share-btn {
-            width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line);
+          .card-fav {
+            width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line);
             background: var(--surface2); display: flex; align-items: center;
             justify-content: center; cursor: pointer; transition: all .2s;
+            margin-left: auto;
           }
-          .card-actions .fav-btn:hover { border-color: var(--red); color: var(--red); }
-          .card-actions .fav-btn.is-fav { color: var(--red); border-color: var(--red); background: var(--redSoft); }
-          .card-actions .share-btn:hover { border-color: var(--blue); color: var(--blue); }
+          .card-fav:hover { border-color: var(--red); color: var(--red); }
+          .card-fav.is-fav { color: var(--red); border-color: var(--red); background: var(--redSoft); }
+          .card-fav svg { width: 15px; height: 15px; }
 
-          .signal-badge {
-            position: absolute; top: 12px; right: 12px; display: flex;
-            align-items: center; gap: 3px;
+          .card-listeners {
+            font-size: .68rem; color: var(--text3); display: flex;
+            align-items: center; gap: 4px; margin-top: 8px;
+          }
+          .card-listeners .live-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--green);
           }
 
-          /* ---- player bar ---- */
-          .player-bar {
-            position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
-            width: min(100% - 32px, 960px); background: var(--surface);
-            border: 1px solid var(--line); border-radius: 18px;
-            box-shadow: var(--shadow2); z-index: 50;
+          /* Podcasts Grid */
+          .podcasts-grid {
+            display: grid; gap: 16px;
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 40px;
+          }
+          @media (max-width: 900px) { .podcasts-grid { grid-template-columns: repeat(2, 1fr); } }
+          @media (max-width: 500px) { .podcasts-grid { grid-template-columns: 1fr; } }
+
+          .podcast-card {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: 14px; overflow: hidden; transition: all .25s var(--ease);
+            cursor: pointer;
+          }
+          .podcast-card:hover {
+            transform: translateY(-3px); box-shadow: var(--shadow1);
+          }
+          .podcast-art {
+            height: 100px; display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem;
+          }
+          .podcast-info {
+            padding: 14px;
+          }
+          .podcast-title {
+            font-weight: 700; font-size: .88rem; color: var(--text);
+            margin-bottom: 4px;
+          }
+          .podcast-host {
+            font-size: .72rem; color: var(--text3); margin-bottom: 6px;
+          }
+          .podcast-episode {
+            font-size: .76rem; color: var(--text2); margin-bottom: 6px;
+          }
+          .podcast-duration {
+            font-size: .68rem; color: var(--text3);
+          }
+
+          /* Schedule */
+          .schedule-list {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: 14px; overflow: hidden; margin-bottom: 20px;
+          }
+          .schedule-item {
             display: flex; align-items: center; gap: 14px;
-            padding: 12px 20px; transition: all .3s var(--ease);
-            backdrop-filter: blur(12px);
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--line);
+            transition: background .2s;
+          }
+          .schedule-item:last-child { border-bottom: none; }
+          .schedule-item:hover { background: var(--surface2); }
+          .schedule-item.live {
+            background: oklch(96% .02 158);
+            border-left: 3px solid var(--green);
+          }
+
+          .schedule-time {
+            font-size: .78rem; font-weight: 600; color: var(--text2);
+            min-width: 72px; white-space: nowrap;
+          }
+          .schedule-show {
+            font-weight: 700; font-size: .88rem; color: var(--text);
+            margin-bottom: 2px;
+          }
+          .schedule-hosts {
+            font-size: .72rem; color: var(--text3);
+          }
+          .schedule-status {
+            margin-left: auto; flex-shrink: 0;
+          }
+          .status-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px; border-radius: 999px; font-size: .68rem;
+            font-weight: 700; letter-spacing: .03em;
+          }
+          .status-badge.live {
+            background: var(--red); color: #fff;
+          }
+          .status-badge.live .status-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: #fff;
+            animation: livePulse 1.5s ease-in-out infinite;
+          }
+          .status-badge.done {
+            background: var(--surface2); color: var(--text3);
+          }
+          .status-badge.upcoming {
+            background: var(--surface2); color: var(--text3);
+          }
+
+          /* Sticky Player Bar */
+          .player-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--surface); border-top: 1px solid var(--line);
+            box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+            z-index: 100; padding: 10px 24px;
+            display: flex; align-items: center; gap: 16px;
+            backdrop-filter: blur(16px);
           }
           @media (max-width: 600px) {
-            .player-bar { bottom: 72px; left: 8px; right: 8px; width: auto; transform: none; padding: 10px 14px; gap: 10px; }
+            .player-bar { padding: 8px 12px; gap: 10px; }
           }
 
-          .player-avatar {
-            width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+          .player-info {
+            display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;
+          }
+          .player-icon {
+            font-size: 1.5rem; flex-shrink: 0;
+          }
+          .player-text { min-width: 0; }
+          .player-name {
+            font-weight: 700; font-size: .82rem; color: var(--text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          }
+          .player-song {
+            font-size: .7rem; color: var(--text3); white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+          }
+
+          .player-controls {
+            display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+          }
+          .player-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: none;
             display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: .75rem; color: #fff;
+            cursor: pointer; transition: all .2s; background: var(--surface2);
+            color: var(--text2);
           }
-          .player-info { flex: 1; min-width: 0; }
-          .player-info .p-name { font-weight: 700; font-size: .85rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .player-info .p-song { font-size: .72rem; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .player-btn:hover { background: var(--surface3); color: var(--text); }
+          .player-btn.main {
+            width: 42px; height: 42px; background: var(--green); color: #fff;
+          }
+          .player-btn.main:hover { background: var(--green2); transform: scale(1.06); }
+          .player-btn.main svg { width: 18px; height: 18px; }
+          .player-btn svg { width: 16px; height: 16px; }
 
-          .player-center { display: flex; align-items: center; gap: 10px; }
-          .player-center .big-play {
-            width: 42px; height: 42px; border-radius: 50%; border: none;
+          .player-right {
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+          }
+          .player-eq {
+            display: flex; align-items: flex-end; gap: 2px; height: 18px;
+          }
+          .player-eq .pe-bar {
+            width: 3px; border-radius: 2px; background: var(--green);
+            animation: eqBounce .6s ease-in-out infinite alternate;
+          }
+          .player-eq .pe-bar:nth-child(1) { height: 10px; animation-delay: 0s; }
+          .player-eq .pe-bar:nth-child(2) { height: 14px; animation-delay: .1s; }
+          .player-eq .pe-bar:nth-child(3) { height: 8px; animation-delay: .2s; }
+          .player-eq .pe-bar:nth-child(4) { height: 12px; animation-delay: .15s; }
+
+          .player-vol-wrap {
+            display: flex; align-items: center; gap: 6px;
+          }
+          .player-vol-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: none;
+            background: none; color: var(--text2); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all .2s;
+            transition: color .2s;
           }
-          .player-center .big-play.on { background: var(--green); color: #fff; }
-          .player-center .big-play.on:hover { background: var(--green2); transform: scale(1.06); }
-          .player-center .big-play.off { background: var(--surface2); color: var(--text); border: 1px solid var(--line); }
-          .player-center .big-play.off:hover { border-color: var(--green); color: var(--green); }
-
-          .progress-track {
-            width: 120px; height: 4px; background: var(--surface3); border-radius: 999px;
-            overflow: hidden; position: relative;
-          }
-          .progress-fill {
-            height: 100%; background: var(--green); border-radius: 999px;
-            transition: width 1s linear;
-          }
-          .player-elapsed { font-size: .65rem; color: var(--text3); min-width: 28px; text-align: right; }
-
-          .player-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-          .vol-wrap { display: flex; align-items: center; gap: 6px; }
-          .vol-slider {
+          .player-vol-btn:hover { color: var(--text); }
+          .player-vol-btn svg { width: 16px; height: 16px; }
+          .player-vol-slider {
             -webkit-appearance: none; appearance: none; width: 72px; height: 4px;
             background: var(--surface3); border-radius: 999px; outline: none;
             cursor: pointer;
           }
-          .vol-slider::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-            background: var(--green); cursor: pointer; border: 2px solid var(--surface);
+          .player-vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+            background: var(--green); cursor: pointer;
           }
-          .vol-slider::-moz-range-thumb {
-            width: 14px; height: 14px; border-radius: 50%;
-            background: var(--green); cursor: pointer; border: 2px solid var(--surface);
+          .player-vol-slider::-moz-range-thumb {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: var(--green); cursor: pointer; border: none;
           }
-          .player-right .player-share {
-            width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+
+          .player-fav {
+            width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line);
             background: var(--surface2); display: flex; align-items: center;
             justify-content: center; cursor: pointer; transition: all .2s;
           }
-          .player-right .player-share:hover { border-color: var(--blue); color: var(--blue); }
+          .player-fav:hover { border-color: var(--red); color: var(--red); }
+          .player-fav.is-fav { color: var(--red); border-color: var(--red); background: var(--redSoft); }
+          .player-fav svg { width: 15px; height: 15px; }
 
-          .radio-empty {
-            grid-column: 1 / -1; text-align: center; padding: 48px 16px;
-            color: var(--text3);
+          @media (max-width: 700px) {
+            .player-vol-wrap { display: none; }
           }
-          .radio-empty .empty-icon { margin-bottom: 12px; color: var(--line2); }
 
-          @keyframes pulse {
+          /* Animations */
+          @keyframes eqBounce {
+            0% { transform: scaleY(1); }
+            100% { transform: scaleY(.4); }
+          }
+          @keyframes livePulse {
             0%, 100% { opacity: 1; }
             50% { opacity: .4; }
-          }
-          @keyframes pulseRing {
-            0% { transform: scale(1); opacity: .5; }
-            100% { transform: scale(1.25); opacity: 0; }
-          }
-
-          @media (max-width: 600px) {
-            .player-bar .vol-wrap .vol-slider { display: none; }
           }
         `}</style>
 
         {/* ---- header ---- */}
         <div className="radio-header">
-          <h1>
-            <Radio size={26} style={{ color: 'var(--green)' }} />
-            Live Radio
-            <span className="live-dot" />
-          </h1>
-          <p>Listen to Kenya&apos;s top radio stations</p>
+          <h1>Radio</h1>
+          <p>Live stations, podcasts, and shows from across East Africa.</p>
         </div>
 
-        {/* ---- search ---- */}
-        <label className="radio-search">
-          <Radio size={16} style={{ color: 'var(--text3)', flexShrink: 0 }} />
-          <input
-            placeholder="Search stations, genres, cities..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </label>
-
-        {/* ---- category tabs ---- */}
-        <div className="cat-tabs">
-          {CATEGORIES.map(c => (
+        {/* ---- genre pills ---- */}
+        <div className="genre-pills">
+          {GENRE_FILTERS.map(g => (
             <button
-              key={c}
-              className={`cat-tab ${category === c ? 'active' : ''}`}
-              onClick={() => setCategory(c)}
+              key={g}
+              className={`genre-pill ${activeGenre === g ? 'active' : ''}`}
+              onClick={() => {
+                setActiveGenre(g);
+                setShowPodcasts(g === 'All' || g === 'Podcasts');
+              }}
             >
-              {c}
+              {g}
             </button>
           ))}
         </div>
 
-        {/* ---- station grid ---- */}
-        <div className="station-grid">
-          {filtered.length === 0 && (
-            <div className="radio-empty">
-              <Radio size={40} className="empty-icon" />
-              <p>No stations match your search</p>
+        {/* ---- hero now playing ---- */}
+        <div className="hero-card">
+          <div className="hero-content">
+            <div className="hero-top">
+              <div className="hero-eq">
+                {[1,2,3,4,5,6].map(i => <span key={i} className="eq-bar" />)}
+              </div>
+              <span className="live-badge"><span className="live-dot" /> LIVE NOW</span>
             </div>
-          )}
+            <span className="hero-station-icon">{liveStation.icon}</span>
+            <h2 className="hero-station-name">{liveStation.name}</h2>
+            <p className="hero-show-name">{liveStation.show} &middot; {liveStation.hosts}</p>
+            <p className="hero-song">{liveStation.song}</p>
+            <div className="hero-listeners">
+              <Wifi size={14} /> {formatListeners(liveStation.listeners)} listeners
+            </div>
+            <div className="hero-controls">
+              <button className="hero-play" onClick={() => openStream(liveStation)}>
+                {playingId === liveStation.id ? <Pause /> : <Play />}
+              </button>
+              <div className="hero-volume">
+                <button
+                  className="player-vol-btn"
+                  onClick={() => setMuted(m => !m)}
+                  style={{ color: 'rgba(255,255,255,.7)' }}
+                >
+                  {muted ? <VolumeX /> : <Volume2 />}
+                </button>
+                <input
+                  type="range" min={0} max={100}
+                  value={muted ? 0 : volume}
+                  onChange={e => { setVolume(Number(e.target.value)); setMuted(false); }}
+                  className="hero-vol-slider"
+                  aria-label="Volume"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
+        {/* ---- live stations grid ---- */}
+        <h2 className="section-title">Live Stations</h2>
+        <div className="station-grid">
           {filtered.map(station => {
             const isPlaying = playingId === station.id;
             const isFav = favorites.has(station.id);
-            const track = nowPlaying[station.id] || station.nowPlaying;
 
             return (
               <div key={station.id} className={`station-card ${isPlaying ? 'now-playing' : ''}`}>
-                <span className="signal-badge">{getSignalIcon(station.signal)}</span>
-
-                <div className="card-top">
-                  <div className="station-avatar" style={{ background: station.color }}>
-                    {station.initials}
-                    {isPlaying && <span className="pulse-ring" />}
-                  </div>
-                  <div className="card-name">{station.name}</div>
-                  <div className="card-city">{station.city}</div>
-                  <span className="genre-tag">
-                    <Star size={10} /> {station.genre}
-                  </span>
+                <span className="card-icon">{station.icon}</span>
+                <div className="card-name">{station.name}</div>
+                <div className="card-genre">{station.genre}</div>
+                <div className="card-now">
+                  <strong>NOW:</strong> {station.song}
                 </div>
-
-                <div className="card-bottom">
-                  <div className="now-text">
-                    <Clock size={10} style={{ display: 'inline', verticalAlign: '-1px', marginRight: 4 }} />
-                    <strong>NOW:</strong> {track}
-                  </div>
-                  <div className="card-actions">
-                    <button
-                      className={`play-btn ${isPlaying ? 'pause' : 'play'}`}
-                      onClick={() => {
-                        if (station.streamUrl) {
-                          window.open(station.streamUrl, '_blank');
-                        } else {
-                          play(station.id);
-                        }
-                      }}
-                    >
-                      {isPlaying ? <Pause size={15} /> : station.streamUrl ? <ExternalLink size={15} /> : <Play size={15} />}
-                      {isPlaying ? 'Pause' : station.streamUrl ? 'Open Stream' : 'Play'}
-                    </button>
-                    <button
-                      className={`fav-btn ${isFav ? 'is-fav' : ''}`}
-                      onClick={() => toggleFav(station.id)}
-                      aria-label="Favorite"
-                    >
-                      <Heart size={15} fill={isFav ? 'currentColor' : 'none'} />
-                    </button>
-                    <button
-                      className="share-btn"
-                      onClick={() => showToast(`Link copied for ${station.name}`)}
-                      aria-label="Share"
-                    >
-                      <Share2 size={15} />
-                    </button>
-                  </div>
+                <div className="card-actions">
+                  <button
+                    className={`card-play ${isPlaying ? 'playing' : ''}`}
+                    onClick={() => openStream(station)}
+                    title={station.isLive ? 'Open stream' : 'Offline'}
+                  >
+                    {isPlaying ? <Pause /> : <Play />}
+                  </button>
+                  <button
+                    className={`card-fav ${isFav ? 'is-fav' : ''}`}
+                    onClick={() => toggleFav(station.id)}
+                    aria-label="Favorite"
+                  >
+                    <Heart fill={isFav ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+                <div className="card-listeners">
+                  {station.isLive && <span className="live-dot" />}
+                  {formatListeners(station.listeners)} listeners
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* ---- player bar ---- */}
+        {/* ---- popular podcasts ---- */}
+        {showPodcasts && (
+          <>
+            <h2 className="section-title">Popular Podcasts</h2>
+            <div className="podcasts-grid">
+              {PODCASTS.map(p => (
+                <div key={p.id} className="podcast-card">
+                  <div className="podcast-art" style={{ background: p.gradient }}>
+                    {p.icon}
+                  </div>
+                  <div className="podcast-info">
+                    <div className="podcast-title">{p.title}</div>
+                    <div className="podcast-host">{p.host}</div>
+                    <div className="podcast-episode">{p.episode}</div>
+                    <div className="podcast-duration">{p.duration}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ---- today's schedule ---- */}
+        <h2 className="section-title">Today&apos;s Schedule</h2>
+        <div className="schedule-list">
+          {SCHEDULE.map((slot, i) => (
+            <div key={i} className={`schedule-item ${slot.status === 'live' ? 'live' : ''}`}>
+              <div className="schedule-time">{slot.time}</div>
+              <div>
+                <div className="schedule-show">{slot.show}</div>
+                <div className="schedule-hosts">{slot.hosts}</div>
+              </div>
+              <div className="schedule-status">
+                <span className={`status-badge ${slot.status}`}>
+                  {slot.status === 'live' && <span className="status-dot" />}
+                  {slot.status === 'live' ? 'LIVE' : slot.status === 'done' ? 'Ended' : 'Upcoming'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ---- sticky player bar ---- */}
         {activeStation && (
           <div className="player-bar">
-            <div className="player-avatar" style={{ background: activeStation.color }}>
-              {activeStation.initials}
-            </div>
-
             <div className="player-info">
-              <div className="p-name">{activeStation.name}</div>
-              <div className="p-song">{nowPlaying[activeStation.id]}</div>
-            </div>
-
-            <div className="player-center">
-              <button
-                className={`big-play ${playingId ? 'on' : 'off'}`}
-                onClick={() => {
-                  if (activeStation.streamUrl) {
-                    window.open(activeStation.streamUrl, '_blank');
-                  } else {
-                    play(activeStation.id);
-                  }
-                }}
-              >
-                {playingId ? <Pause size={18} /> : <Play size={18} />}
-              </button>
-
-              <span className="player-elapsed">
-                {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}
-              </span>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
+              <span className="player-icon">{activeStation.icon}</span>
+              <div className="player-text">
+                <div className="player-name">{activeStation.name}</div>
+                <div className="player-song">{activeStation.song}</div>
               </div>
             </div>
 
+            <div className="player-controls">
+              <button className="player-btn" aria-label="Previous">
+                <SkipBack />
+              </button>
+              <button
+                className="player-btn main"
+                onClick={() => openStream(activeStation)}
+              >
+                {playingId === activeStation.id ? <Pause /> : <Play />}
+              </button>
+              <button className="player-btn" aria-label="Next">
+                <SkipForward />
+              </button>
+            </div>
+
             <div className="player-right">
-              <div className="vol-wrap">
+              <div className="player-eq">
+                <span className="pe-bar" /><span className="pe-bar" />
+                <span className="pe-bar" /><span className="pe-bar" />
+              </div>
+              <div className="player-vol-wrap">
                 <button
-                  className="icon-btn"
-                  style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text2)' }}
+                  className="player-vol-btn"
                   onClick={() => setMuted(m => !m)}
                   aria-label="Toggle mute"
                 >
-                  {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                  {muted ? <VolumeX /> : <Volume2 />}
                 </button>
                 <input
-                  type="range"
-                  min={0}
-                  max={100}
+                  type="range" min={0} max={100}
                   value={muted ? 0 : volume}
                   onChange={e => { setVolume(Number(e.target.value)); setMuted(false); }}
-                  className="vol-slider"
+                  className="player-vol-slider"
                   aria-label="Volume"
                 />
               </div>
               <button
-                className="player-share"
-                onClick={() => showToast(`Link copied for ${activeStation.name}`)}
-                aria-label="Share station"
+                className={`player-fav ${favorites.has(activeStation.id) ? 'is-fav' : ''}`}
+                onClick={() => toggleFav(activeStation.id)}
+                aria-label="Favorite"
               >
-                <Share2 size={14} />
+                <Heart fill={favorites.has(activeStation.id) ? 'currentColor' : 'none'} />
               </button>
             </div>
           </div>
