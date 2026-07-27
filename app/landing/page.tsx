@@ -206,18 +206,18 @@ export default function LandingPage() {
         .l-value strong { display: block; color: var(--gold, oklch(75% .15 78)); font-size: .82rem; }
         .l-value span { display: block; margin-top: 2px; color: oklch(93% .025 94 / .9); font-size: .66rem; }
 
-        /* ===== Footer ===== */
-        .l-footer { position: relative; z-index: 2; border-top: 1px solid oklch(98% .02 94 / .12); background: oklch(18% .04 158); padding: 48px clamp(18px, 5vw, 68px) 24px; margin-top: 80px; }
-        .l-footer-grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 32px; max-width: 1180px; margin: 0 auto; }
-        .l-footer-brand p { margin-top: 8px; color: oklch(88% .025 94 / .7); font-size: .78rem; }
-        .l-footer-col h4 { color: var(--gold); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 12px; }
+        /* ===== Footer (compact) ===== */
+        .l-footer { position: relative; z-index: 2; border-top: 1px solid oklch(98% .02 94 / .12); background: oklch(18% .04 158); padding: 24px clamp(18px, 5vw, 68px) 16px; margin-top: 40px; }
+        .l-footer-grid { display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 20px; max-width: 1180px; margin: 0 auto; }
+        .l-footer-brand p { margin-top: 6px; color: oklch(88% .025 94 / .7); font-size: .72rem; }
+        .l-footer-col h4 { color: var(--gold); font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
         .l-footer-col ul { list-style: none; padding: 0; }
-        .l-footer-col li { margin-bottom: 8px; }
-        .l-footer-col a { color: oklch(90% .025 94 / .8); text-decoration: none; font-size: .78rem; transition: color .2s; }
+        .l-footer-col li { margin-bottom: 5px; }
+        .l-footer-col a { color: oklch(90% .025 94 / .8); text-decoration: none; font-size: .72rem; transition: color .2s; }
         .l-footer-col a:hover { color: var(--gold); }
-        .l-footer-bottom { display: flex; align-items: center; justify-content: space-between; max-width: 1180px; margin: 32px auto 0; padding-top: 20px; border-top: 1px solid oklch(98% .02 94 / .1); }
-        .l-footer-copy { color: oklch(80% .025 94 / .6); font-size: .7rem; }
-        .l-footer-social { display: flex; gap: 12px; }
+        .l-footer-bottom { display: flex; align-items: center; justify-content: space-between; max-width: 1180px; margin: 14px auto 0; padding-top: 12px; border-top: 1px solid oklch(98% .02 94 / .1); }
+        .l-footer-copy { color: oklch(80% .025 94 / .6); font-size: .66rem; }
+        .l-footer-social { display: flex; gap: 10px; }
         .l-footer-social a { color: oklch(80% .025 94 / .6); transition: color .2s; }
         .l-footer-social a:hover { color: var(--gold); }
 
@@ -257,8 +257,8 @@ export default function LandingPage() {
           .l-value:last-child { border-bottom: 0; }
           .l-value strong { font-size: .7rem; }
           .l-value span { font-size: .59rem; }
-          .l-footer-grid { grid-template-columns: 1fr; gap: 24px; }
-          .l-footer-bottom { flex-direction: column; gap: 14px; text-align: center; }
+          .l-footer-grid { grid-template-columns: 1fr; gap: 16px; }
+          .l-footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
         }
       `}</style>
 
@@ -375,8 +375,8 @@ export default function LandingPage() {
           <div className="l-footer-grid">
             <div className="l-footer-brand">
               <Link href="/landing" className="l-brand" style={{ display: 'inline-flex' }}>
-                <span className="l-mark">k</span>
-                <span className="l-brand-name">kikwetu<span>.</span></span>
+                <span className="l-mark" style={{ width: 28, height: 28, fontSize: '1.1rem' }}>k</span>
+                <span className="l-brand-name" style={{ fontSize: '.95rem' }}>kikwetu<span>.</span></span>
               </Link>
               <p>Connecting Kenya, one community at a time</p>
             </div>
