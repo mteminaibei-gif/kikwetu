@@ -18,6 +18,33 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [signupAttempts, setSignupAttempts] = useState(0);
+  const [signupLockedUntil, setSignupLockedUntil] = useState<number | null>(null);
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_DURATION = 60000;
+
+  const validatePassword = (pw: string): string[] => {
+    const errors: string[] = [];
+    if (pw.length < 8) errors.push('at least 8 characters');
+    if (!/[A-Z]/.test(pw)) errors.push('one uppercase letter');
+    if (!/[a-z]/.test(pw)) errors.push('one lowercase letter');
+    if (!/[0-9]/.test(pw)) errors.push('one number');
+    return errors;
+  };
+
+  const getPasswordStrength = (pw: string): { score: number; label: string; color: string } => {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[a-z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+    if (score <= 2) return { score, label: 'Weak', color: 'var(--red)' };
+    if (score <= 4) return { score, label: 'Fair', color: 'var(--gold)' };
+    return { score, label: 'Strong', color: 'var(--green)' };
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -32,7 +59,29 @@ export default function SignupPage() {
         setError('Please fill in all fields');
         return;
       }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+
       setStep(2);
+      return;
+    }
+
+    if (signupLockedUntil && Date.now() < signupLockedUntil) {
+      const seconds = Math.ceil((signupLockedUntil - Date.now()) / 1000);
+      setError(`Too many attempts. Try again in ${seconds}s`);
+      setLoading(false);
+      return;
+    }
+
+    if (signupAttempts >= MAX_ATTEMPTS) {
+      const unlockTime = Date.now() + LOCKOUT_DURATION;
+      setSignupLockedUntil(unlockTime);
+      setError('Too many failed attempts. Please wait 1 minute.');
+      setLoading(false);
       return;
     }
 
@@ -41,8 +90,10 @@ export default function SignupPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    const pwErrors = validatePassword(formData.password);
+    if (pwErrors.length > 0) {
+      setError(`Password needs ${pwErrors.join(', ')}`);
+      setLoading(false);
       return;
     }
 
@@ -50,29 +101,33 @@ export default function SignupPage() {
     setError('');
 
     const { data, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
+      email: formData.email.trim().toLowerCase(),
       password: formData.password,
       options: {
         data: {
-          full_name: formData.fullName,
+          full_name: formData.fullName.trim(),
         },
       },
     });
 
     if (authError) {
+      setSignupAttempts(prev => prev + 1);
       setError(authError.message);
       setLoading(false);
       return;
     }
 
     if (data.user) {
-      const username = formData.fullName.toLowerCase().replace(/\s+/g, '_').slice(0, 20);
+      const username = formData.fullName.toLowerCase()
+        .replace(/[^a-z0-9_]/g, '')
+        .replace(/\s+/g, '_')
+        .slice(0, 20);
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           user_id: data.user.id,
           username,
-          full_name: formData.fullName,
+          full_name: formData.fullName.trim(),
           language: 'en',
           role: 'member',
         });
@@ -114,6 +169,8 @@ export default function SignupPage() {
     fontFamily: 'inherit' as const,
     transition: 'transform .18s ease, background .18s ease',
   };
+
+  const pwStrength = getPasswordStrength(formData.password);
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, position: 'relative' }}>
@@ -250,6 +307,18 @@ export default function SignupPage() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+
+                {formData.password && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.72rem', marginBottom: 4 }}>
+                      <span style={{ color: 'var(--text3)' }}>Password strength</span>
+                      <span style={{ color: pwStrength.color, fontWeight: 600 }}>{pwStrength.label}</span>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${(pwStrength.score / 6) * 100}%`, background: pwStrength.color, borderRadius: 2, transition: 'all .3s ease' }} />
+                    </div>
+                  </div>
+                )}
 
                 <label style={{ display: 'block', marginTop: 16, marginBottom: 6, fontSize: '.72rem', fontWeight: 800, color: 'var(--text3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Confirm password</label>
                 <div style={{ position: 'relative' }}>

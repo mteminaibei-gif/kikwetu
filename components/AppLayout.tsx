@@ -429,9 +429,19 @@ const Topbar = React.memo(function Topbar() {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    router.push('/landing');
-    showToast('Signed out');
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      // Always redirect even if signOut fails
+      router.push('/landing');
+      showToast('Signed out');
+      // Force a full page reload to clear any in-memory state
+      setTimeout(() => {
+        window.location.href = '/landing';
+      }, 500);
+    }
   };
 
   // Fetch notifications when dropdown opens
@@ -574,9 +584,19 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
     : 'GP';
 
   const handleLogout = async () => {
-    await signOut();
-    router.push('/landing');
-    showToast('Signed out');
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      // Always redirect even if signOut fails
+      router.push('/landing');
+      showToast('Signed out');
+      // Force a full page reload to clear any in-memory state
+      setTimeout(() => {
+        window.location.href = '/landing';
+      }, 500);
+    }
   };
 
   return (
@@ -936,7 +956,53 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
   }, [user]);
 
   const signOut = useCallback(async () => {
+    // Sign out from Supabase (clears session tokens)
     await supabase.auth.signOut();
+    
+    // Clear all auth-related localStorage items
+    const authKeys = [
+      'kikwetu-theme',
+      'kikwetu-event-registrations', 
+      'kikwetu_notifications',
+      'kikwetu_privacy',
+      'kikwetu_payments',
+      'kikwetu-radio-favs',
+    ];
+    authKeys.forEach(key => {
+      try { localStorage.removeItem(key); } catch {}
+    });
+    
+    // Clear Supabase auth tokens from localStorage
+    const supabaseKeys = Object.keys(localStorage).filter(
+      key => key.startsWith('sb-') || key.includes('supabase')
+    );
+    supabaseKeys.forEach(key => {
+      try { localStorage.removeItem(key); } catch {}
+    });
+    
+    // Clear all cookies (path=/ ensures all paths are covered)
+    document.cookie.split(';').forEach(cookie => {
+      const name = cookie.split('=')[0].trim();
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+    });
+    
+    // Clear IndexedDB databases
+    try {
+      const databases = await indexedDB.databases();
+      databases.forEach(db => {
+        if (db.name) indexedDB.deleteDatabase(db.name);
+      });
+    } catch {}
+    
+    // Clear service worker caches
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch {}
+    }
+    
     setUser(null);
   }, []);
 

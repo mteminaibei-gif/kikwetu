@@ -1,34 +1,70 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_DURATION = 60000;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const seconds = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setError(`Too many attempts. Try again in ${seconds}s`);
+      setLoading(false);
+      return;
+    }
+
+    if (attempts >= MAX_ATTEMPTS) {
+      const unlockTime = Date.now() + LOCKOUT_DURATION;
+      setLockedUntil(unlockTime);
+      setError('Too many failed attempts. Please wait 1 minute.');
+      setLoading(false);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password;
+
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: cleanEmail,
+      password: cleanPassword,
     });
 
     if (authError) {
-      setError(authError.message);
+      setAttempts(prev => prev + 1);
+      if (authError.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password');
+      } else {
+        setError(authError.message);
+      }
       setLoading(false);
     } else {
-      router.push('/');
+      router.push(redirectTo);
       router.refresh();
     }
   };
@@ -233,5 +269,18 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid var(--line)', borderTopColor: 'var(--gold)', borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    }>
+      <LoginPageInner />
+    </Suspense>
   );
 }
