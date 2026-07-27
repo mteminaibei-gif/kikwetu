@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { toggleVote, checkVote, toggleSave, checkSaved, createThread, toggleReaction, getReactions } from '@/lib/supabase-helpers';
 import {
   Plus, Image, MessageCircleQuestion, Video, ThumbsUp,
-  MessageCircle, Send, Bookmark, MoreHorizontal, MapPin,
+  MessageCircle, Send, Bookmark, MapPin,
   Sprout, CircleHelp, BadgeDollarSign, Ellipsis, Smile
 } from 'lucide-react';
 
@@ -40,6 +40,17 @@ interface User {
   is_verified: boolean;
 }
 
+const THREAD_SELECT = `
+  id, author_id, title, body, type, bounty_amount, tags, likes_count, comments_count, created_at,
+  profiles:author_id (
+    full_name,
+    username,
+    avatar_url,
+    county,
+    is_verified
+  )
+`;
+
 function Stories() {
   const stories = [
     { initials: 'AM', name: "Amina's garden", color: 'earth' },
@@ -50,12 +61,12 @@ function Stories() {
 
   return (
     <div className="stories">
-      <button className="story add">
+      <button type="button" className="story add">
         <span className="story-plus"><Plus className="icon-sm" /></span>
         <span>Your story</span>
       </button>
       {stories.map((s, i) => (
-        <button key={i} className="story">
+        <button type="button" key={i} className="story">
           <span className={`story-avatar avatar sm ${s.color}`}>{s.initials}</span>
           <span>{s.name}</span>
         </button>
@@ -74,10 +85,10 @@ function HeroSection() {
         <h1 className="serif">Good questions find good people.</h1>
         <p>Ask, match with an approved professional, chat privately, then tip and rate useful guidance.</p>
         <div className="hero-actions">
-          <button className="gold" onClick={() => showToast('Opening Students Area')}>
+          <button type="button" className="gold" onClick={() => { window.location.href = '/students'; }}>
             Open Students Area
           </button>
-          <button onClick={() => showToast('Ask the community')}>
+          <button type="button" onClick={() => showToast('Use the composer below to ask the community')}>
             <Plus className="icon-sm" /> Ask the community
           </button>
         </div>
@@ -121,12 +132,12 @@ function ComposerModal({
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <h2 className="serif" style={{ margin: 0, fontSize: '1.2rem' }}>New thread</h2>
-          <button onClick={onClose} className="icon-btn" style={{ fontSize: 18 }}>✕</button>
+          <button type="button" onClick={onClose} className="icon-btn" style={{ fontSize: 18 }}>✕</button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {['post', 'question'].map(t => (
-            <button key={t} onClick={() => setType(t)} className={type === t ? 'primary' : 'secondary'}>
+            <button type="button" key={t} onClick={() => setType(t)} className={type === t ? 'primary' : 'secondary'}>
               {t === 'post' ? <Sprout className="icon-sm" /> : <CircleHelp className="icon-sm" />}
               {t === 'post' ? ' Post' : ' Question'}
             </button>
@@ -165,8 +176,8 @@ function ComposerModal({
           }}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="secondary" onClick={onClose}>Cancel</button>
-          <button className="primary" onClick={handleSubmit} disabled={submitting || !title.trim()}>
+          <button type="button" className="secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="primary" onClick={() => void handleSubmit()} disabled={submitting || !title.trim()}>
             {submitting ? 'Posting...' : 'Post'}
           </button>
         </div>
@@ -176,22 +187,27 @@ function ComposerModal({
 }
 
 function Composer({ onOpenComposer }: { onOpenComposer: () => void }) {
+  const { user } = useApp();
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : user?.username?.slice(0, 2).toUpperCase() || '?';
+
   return (
     <section className="composer">
       <div className="composer-top">
-        <div className="avatar">GP</div>
-        <button className="composer-open" onClick={onOpenComposer}>
+        <div className="avatar">{initials}</div>
+        <button type="button" className="composer-open" onClick={onOpenComposer}>
           Share something useful with your county...
         </button>
       </div>
       <div className="composer-actions">
-        <button className="composer-action" onClick={onOpenComposer}>
+        <button type="button" className="composer-action" onClick={onOpenComposer}>
           <Image className="icon" /> Photo / video
         </button>
-        <button className="composer-action" onClick={onOpenComposer}>
+        <button type="button" className="composer-action" onClick={onOpenComposer}>
           <MessageCircleQuestion className="icon" /> Ask a question
         </button>
-        <button className="composer-action" onClick={() => null}>
+        <button type="button" className="composer-action" onClick={() => { window.location.href = '/professionals'; }}>
           <Video className="icon" /> Offer a session
         </button>
       </div>
@@ -226,17 +242,17 @@ function FeedPost({
 
   useEffect(() => {
     if (!user) return;
-    checkVote(user.id, 'thread', thread.id).then(v => {
+    void checkVote(user.id, 'thread', thread.id).then(v => {
       if (v) {
         setLiked(true);
         setLikeDelta(v.value === 1 ? 0 : -1);
       }
     });
-    checkSaved(user.id, 'thread', thread.id).then(s => setSaved(s));
+    void checkSaved(user.id, 'thread', thread.id).then(s => setSaved(s));
   }, [user, thread.id]);
 
   useEffect(() => {
-    getReactions('thread', thread.id).then(setReactions);
+    void getReactions('thread', thread.id).then(setReactions);
   }, [thread.id]);
 
   useEffect(() => {
@@ -248,10 +264,10 @@ function FeedPost({
         table: 'reactions',
         filter: `target_id=eq.${thread.id}`,
       }, () => {
-        getReactions('thread', thread.id).then(setReactions);
+        void getReactions('thread', thread.id).then(setReactions);
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { void supabase.removeChannel(channel); };
   }, [thread.id]);
 
   const handleVote = async () => {
@@ -262,7 +278,7 @@ function FeedPost({
     const prev = liked;
     const delta = liked ? -1 : 1;
     setLiked(!liked);
-    setLikeDelta(prev => (liked ? prev - 1 : prev + 1));
+    setLikeDelta(d => (liked ? d - 1 : d + 1));
     onVoteChange(thread.id, delta, !liked);
     try {
       await toggleVote(user.id, 'thread', thread.id, 1);
@@ -278,13 +294,14 @@ function FeedPost({
       showToast('Please sign in to save');
       return;
     }
+    const prev = saved;
     setSaved(!saved);
     onSaveChange(thread.id, !saved);
     try {
       await toggleSave(user.id, 'thread', thread.id);
     } catch {
-      setSaved(saved);
-      onSaveChange(thread.id, saved);
+      setSaved(prev);
+      onSaveChange(thread.id, prev);
       showToast('Failed to update save');
     }
   };
@@ -295,7 +312,7 @@ function FeedPost({
       return;
     }
     try {
-      const result = await toggleReaction(user.id, 'thread', thread.id, emoji);
+      await toggleReaction(user.id, 'thread', thread.id, emoji);
       const updated = await getReactions('thread', thread.id);
       setReactions(updated);
       setShowEmojiPicker(false);
@@ -327,7 +344,7 @@ function FeedPost({
             {profile?.county && <><span>·</span><span>{profile.county}</span></>}
           </div>
         </div>
-        <button className="icon-btn post-menu"><Ellipsis className="icon" /></button>
+        <button type="button" className="icon-btn post-menu"><Ellipsis className="icon" /></button>
       </div>
       <div className="post-body">
         <div className="post-type">
@@ -336,9 +353,9 @@ function FeedPost({
         </div>
         <h3>{thread.title}</h3>
         {thread.body && <p>{thread.body}</p>}
-        {thread.bounty_amount && (
+        {thread.bounty_amount ? (
           <span className="bounty"><BadgeDollarSign className="icon-sm" /> {thread.bounty_amount} tokens bounty</span>
-        )}
+        ) : null}
         {thread.tags && thread.tags.length > 0 && (
           <div className="tags">
             {thread.tags.map((tag, i) => (
@@ -351,8 +368,9 @@ function FeedPost({
         <div style={{ display: 'flex', gap: 6, padding: '0 16px', flexWrap: 'wrap' }}>
           {groupedReactions.map(r => (
             <button
+              type="button"
               key={r.emoji}
-              onClick={() => handleReaction(r.emoji)}
+              onClick={() => void handleReaction(r.emoji)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '2px 8px', borderRadius: 12, fontSize: '.8rem',
@@ -368,20 +386,23 @@ function FeedPost({
         </div>
       )}
       <div className="post-actions" style={{ position: 'relative' }}>
-        <button className={`action ${liked ? 'active' : ''}`} onClick={handleVote}>
+        <button type="button" className={`action ${liked ? 'active' : ''}`} onClick={() => void handleVote()}>
           <ThumbsUp className="icon-sm" /> <span>{thread.likes_count + likeDelta}</span>
         </button>
-        <button className="action" onClick={() => showToast('Comments opened')}>
+        <button type="button" className="action" onClick={() => { window.location.href = `/thread?id=${thread.id}`; }}>
           <MessageCircle className="icon-sm" /> <span>{thread.comments_count}</span>
         </button>
-        <button className="action" onClick={() => showToast('Share link copied')}>
+        <button type="button" className="action" onClick={() => {
+          const url = typeof window !== 'undefined' ? `${window.location.origin}/thread?id=${thread.id}` : '';
+          void navigator.clipboard?.writeText(url).then(() => showToast('Share link copied'));
+        }}>
           <Send className="icon-sm" /> <span>Share</span>
         </button>
-        <button className={`action ${saved ? 'saved' : ''}`} onClick={handleSave}>
+        <button type="button" className={`action ${saved ? 'saved' : ''}`} onClick={() => void handleSave()}>
           <Bookmark className="icon-sm" />
         </button>
         <div style={{ position: 'relative' }}>
-          <button className="action" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
+          <button type="button" className="action" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
             <Smile className="icon-sm" />
           </button>
           {showEmojiPicker && (
@@ -393,15 +414,13 @@ function FeedPost({
             }}>
               {EMOJI_OPTIONS.map(emoji => (
                 <button
+                  type="button"
                   key={emoji}
-                  onClick={() => handleReaction(emoji)}
+                  onClick={() => void handleReaction(emoji)}
                   style={{
                     fontSize: '1.2rem', padding: '4px 6px', borderRadius: 8,
                     border: 'none', background: 'transparent', cursor: 'pointer',
-                    transition: 'background 0.15s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   {emoji}
                 </button>
@@ -409,7 +428,7 @@ function FeedPost({
             </div>
           )}
         </div>
-        <button className="action"><Ellipsis className="icon-sm" /></button>
+        <button type="button" className="action"><Ellipsis className="icon-sm" /></button>
       </div>
     </article>
   );
@@ -424,12 +443,6 @@ function FeedSkeleton() {
           <div className="skeleton-shimmer" style={{ height: 14, width: 120, background: 'var(--surface2)', borderRadius: 6, marginBottom: 6 }} />
           <div className="skeleton-shimmer" style={{ height: 10, width: 80, background: 'var(--surface2)', borderRadius: 6 }} />
         </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <div className="skeleton-shimmer" style={{ height: 12, width: 60, background: 'var(--surface2)', borderRadius: 6, marginBottom: 8 }} />
-        <div className="skeleton-shimmer" style={{ height: 18, width: '90%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 8 }} />
-        <div className="skeleton-shimmer" style={{ height: 14, width: '100%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 6 }} />
-        <div className="skeleton-shimmer" style={{ height: 14, width: '70%', background: 'var(--surface2)', borderRadius: 6 }} />
       </div>
     </div>
   );
@@ -454,7 +467,7 @@ export default function Home() {
   const { user, showToast } = useApp();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
 
   const now = new Date();
@@ -462,39 +475,31 @@ export default function Home() {
 
   useEffect(() => {
     const fetchThreads = async () => {
+      setFeedError(null);
       try {
         const { data, error } = await supabase
           .from('threads')
-          .select(`
-            *,
-            profiles:user_id (
-              full_name,
-              username,
-              avatar_url,
-              county,
-              is_verified
-            )
-          `)
+          .select(THREAD_SELECT)
           .order('created_at', { ascending: false })
           .limit(20);
 
         if (error) {
-          console.log('Using mock data:', error.message);
-          setThreads(getMockThreads());
-        } else if (data && data.length > 0) {
-          setThreads(data);
+          console.error('[feed]', error.message);
+          setFeedError(error.message);
+          setThreads([]);
         } else {
-          setThreads(getMockThreads());
+          setThreads((data as Thread[]) || []);
         }
       } catch (err) {
-        console.log('Using mock data');
-        setThreads(getMockThreads());
+        console.error('[feed]', err);
+        setFeedError('Could not load feed');
+        setThreads([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchThreads();
+    void fetchThreads();
 
     const channel = supabase
       .channel('threads-feed')
@@ -502,9 +507,7 @@ export default function Home() {
         event: 'INSERT',
         schema: 'public',
         table: 'threads',
-      }, (payload) => {
-        setThreads(prev => [payload.new as Thread, ...prev]);
-      })
+      }, () => { void fetchThreads(); })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -515,7 +518,7 @@ export default function Home() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, []);
 
@@ -523,7 +526,7 @@ export default function Home() {
     setThreads(prev => prev.map(t => t.id === threadId ? { ...t, likes_count: t.likes_count + delta } : t));
   };
 
-  const handleSaveChange = (threadId: string, saved: boolean) => {
+  const handleSaveChange = (_threadId: string, saved: boolean) => {
     showToast(saved ? 'Saved' : 'Removed from saved');
   };
 
@@ -532,19 +535,20 @@ export default function Home() {
       showToast('Please sign in to post');
       return;
     }
+    // author_id must be profiles.id (not auth uuid)
     const { data, error } = await createThread(user.id, title, body, type, tags);
     if (error || !data) {
-      showToast('Failed to create post');
+      showToast(error?.message || 'Failed to create post');
       console.error(error);
       return;
     }
     const { data: fullThread } = await supabase
       .from('threads')
-      .select(`*, profiles:user_id (full_name, username, avatar_url, county, is_verified)`)
+      .select(THREAD_SELECT)
       .eq('id', data.id)
       .single();
     if (fullThread) {
-      setThreads(prev => [fullThread, ...prev]);
+      setThreads(prev => [fullThread as Thread, ...prev]);
     }
     setComposerOpen(false);
     showToast('Posted successfully!');
@@ -562,7 +566,7 @@ export default function Home() {
           <h1 className="serif">Kenya, in conversation.</h1>
           <p>Ideas, questions, and useful local knowledge from people near you.</p>
         </div>
-        <button className="select-pill">
+        <button type="button" className="select-pill">
           <MapPin className="icon-sm" /> Nairobi
         </button>
       </div>
@@ -572,6 +576,11 @@ export default function Home() {
       <Composer onOpenComposer={() => setComposerOpen(true)} />
 
       <section style={{ marginTop: 14 }}>
+        {feedError && (
+          <div style={{ padding: 12, marginBottom: 12, borderRadius: 12, background: 'var(--goldSoft)', color: 'var(--earth)', fontSize: '.8rem' }}>
+            Feed error: {feedError}. Check Supabase RLS and that migrations are applied.
+          </div>
+        )}
         {loading ? (
           <>
             <FeedSkeleton />
@@ -598,48 +607,4 @@ export default function Home() {
       </section>
     </AppLayout>
   );
-}
-
-function getMockThreads(): Thread[] {
-  return [
-    {
-      id: 'mock-1',
-      author_id: 'mock',
-      title: 'What are you planting before the short rains?',
-      body: 'I am trialling sukuma wiki in grow bags this season. The first batch is holding up nicely on a small balcony in Ruiru.',
-      type: 'post',
-      bounty_amount: null,
-      tags: ['KilimoSmart', 'Kiambu'],
-      likes_count: 48,
-      comments_count: 12,
-      created_at: new Date(Date.now() - 38 * 60000).toISOString(),
-      profiles: { full_name: 'Amina Muthoni', username: 'aminam', avatar_url: null, county: 'Kiambu', is_verified: true },
-    },
-    {
-      id: 'mock-2',
-      author_id: 'mock',
-      title: 'What should a small business check before going solar?',
-      body: 'Looking for practical advice from someone who has sized a system for a shop or workshop in Nakuru.',
-      type: 'question',
-      bounty_amount: 120,
-      tags: ['NakuruTech', 'Biashara'],
-      likes_count: 31,
-      comments_count: 8,
-      created_at: new Date(Date.now() - 60 * 60000).toISOString(),
-      profiles: { full_name: 'Anonymous', username: 'anonymous', avatar_url: null, county: 'Nairobi', is_verified: false },
-    },
-    {
-      id: 'mock-3',
-      author_id: 'mock',
-      title: 'Should we organize a community seed swap before the rains?',
-      body: null,
-      type: 'poll',
-      bounty_amount: null,
-      tags: ['KilimoSmart', 'Nairobi'],
-      likes_count: 24,
-      comments_count: 8,
-      created_at: new Date(Date.now() - 90 * 60000).toISOString(),
-      profiles: { full_name: 'Njeri Wambui', username: 'njeri_w', avatar_url: null, county: 'Nairobi', is_verified: true },
-    },
-  ];
 }
