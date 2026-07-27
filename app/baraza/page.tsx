@@ -750,8 +750,8 @@ function BarazaPageInner() {
           <button
             key={f.key}
             onClick={() => { setFilter(f.key); showToast(`Viewing ${f.label}`); }}
-            className={filter === f.key ? 'primary' : 'secondary'}
-            style={{ whiteSpace: 'nowrap' }}
+            className={`tag ${filter === f.key ? 'badge-green' : ''}`}
+            style={{ whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             {f.label}
           </button>
@@ -760,16 +760,17 @@ function BarazaPageInner() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
         {[
-          { label: 'Farming', icon: '🌾', color: 'var(--greenSoft)' },
-          { label: 'Tech', icon: '💻', color: 'var(--blueSoft)' },
-          { label: 'Culture', icon: '📖', color: 'var(--earthSoft)' },
-          { label: 'Education', icon: '🎓', color: 'var(--goldSoft)' },
-          { label: 'Business', icon: '💼', color: 'var(--greenSoft)' },
-          { label: 'Health', icon: '🏥', color: 'var(--redSoft)' },
+          { label: 'Farming', icon: '🌾', color: 'badge-green' },
+          { label: 'Tech', icon: '💻', color: 'badge-blue' },
+          { label: 'Culture', icon: '📖', color: 'badge-gold' },
+          { label: 'Education', icon: '🎓', color: 'badge-green' },
+          { label: 'Business', icon: '💼', color: 'badge-green' },
+          { label: 'Health', icon: '🏥', color: 'badge-blue' },
         ].map((topic) => (
           <button
             key={topic.label}
             onClick={() => showToast(`Viewing ${topic.label}`)}
+            className={`badge ${topic.color}`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -777,7 +778,6 @@ function BarazaPageInner() {
               padding: '10px 12px',
               borderRadius: 12,
               border: '1px solid var(--line)',
-              background: topic.color,
               cursor: 'pointer',
               fontSize: '.75rem',
               fontWeight: 700,
@@ -793,36 +793,39 @@ function BarazaPageInner() {
 
       <StoriesRow />
 
-      <section className="composer">
-        <div className="composer-top">
+      <section className="composer-fb">
+        <div className="composer-fb-top">
           <div className="avatar">GP</div>
-          <button className="composer-open" onClick={() => setComposerOpen(true)}>
+          <button className="composer-fb-input" onClick={() => setComposerOpen(true)}>
             Share something useful with your county...
           </button>
         </div>
         {composerOpen && user && (
+          <div className="composer-fb-actions">
+            {['post', 'question', 'poll', 'audio'].map(t => (
+              <button
+                key={t}
+                onClick={() => setComposerType(t as 'post' | 'question' | 'poll' | 'audio')}
+                className={`composer-fb-action ${composerType === t ? 'active' : ''}`}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  border: `1px solid ${composerType === t ? 'var(--green)' : 'var(--line)'}`,
+                  background: composerType === t ? 'var(--greenSoft)' : 'transparent',
+                  color: composerType === t ? 'var(--green)' : 'var(--text3)',
+                  fontSize: '.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+        {composerOpen && user && (
           <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg)' }}>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-              {['post', 'question', 'poll', 'audio'].map(t => (
-                <button
-                  key={t}
-                  onClick={() => setComposerType(t as 'post' | 'question' | 'poll' | 'audio')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 8,
-                    border: `1px solid ${composerType === t ? 'var(--green)' : 'var(--line)'}`,
-                    background: composerType === t ? 'var(--greenSoft)' : 'transparent',
-                    color: composerType === t ? 'var(--green)' : 'var(--text3)',
-                    fontSize: '.72rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
             <input
               placeholder="Title"
               value={composeTitle}

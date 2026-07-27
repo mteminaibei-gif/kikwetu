@@ -15,6 +15,7 @@ const MOCK_JOINED = [
     icon: '🌾',
     name: 'KilimoSmart',
     members: '2.8k',
+    membersCount: 2800,
     posts: '45.2k',
     description: 'Smart farming techniques and agricultural innovations for East African farmers.',
     tags: ['#Agriculture', '#ClimateSmart'],
@@ -26,6 +27,7 @@ const MOCK_JOINED = [
     icon: '💻',
     name: 'NairobiTech',
     members: '1.5k',
+    membersCount: 1500,
     posts: '23.1k',
     description: 'Kenya\'s leading tech community discussing startups, coding, and innovation.',
     tags: ['#Tech', '#Startups'],
@@ -37,6 +39,7 @@ const MOCK_JOINED = [
     icon: '🏥',
     name: 'Health KE',
     members: '980',
+    membersCount: 980,
     posts: '18.7k',
     description: 'Healthcare discussions, wellness tips, and medical advice for Kenyans.',
     tags: ['#Health', '#Wellness'],
@@ -51,6 +54,7 @@ const MOCK_SUGGESTED = [
     icon: '🚀',
     name: 'StartupKE',
     members: '3.2k',
+    membersCount: 3200,
     posts: '67.4k',
     description: 'Building and scaling startups in Kenya — from idea to exit.',
     tags: ['#Business', '#Funding'],
@@ -62,6 +66,7 @@ const MOCK_SUGGESTED = [
     icon: '🎤',
     name: 'Sheng Life',
     members: '1.8k',
+    membersCount: 1800,
     posts: '89.3k',
     description: 'Kenyan culture, music, and lifestyle — keeping it real.',
     tags: ['#Culture', '#Sheng'],
@@ -73,6 +78,7 @@ const MOCK_SUGGESTED = [
     icon: '⚖️',
     name: 'Legal Kenya',
     members: '650',
+    membersCount: 650,
     posts: '12.4k',
     description: 'Legal advice, rights awareness, and justice discussions.',
     tags: ['#Law', '#Rights'],
@@ -234,12 +240,12 @@ export default function SpacesPage() {
           </div>
           <div className="pro-list">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="pro-card" style={{ opacity: 0.6, pointerEvents: 'none' }}>
+              <div key={i} className="card-hover" style={{ opacity: 0.6, pointerEvents: 'none' }}>
                 <div className="avatar green skeleton" />
                 <div className="pro-copy">
-                  <div style={{ background: 'var(--bgAlt)', height: 14, width: 120, borderRadius: 6, marginBottom: 8 }} />
-                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 240, borderRadius: 6, marginBottom: 6 }} />
-                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 160, borderRadius: 6 }} />
+                  <div style={{ background: 'var(--surface2)', height: 14, width: 120, borderRadius: 6, marginBottom: 8 }} />
+                  <div style={{ background: 'var(--surface2)', height: 10, width: 240, borderRadius: 6, marginBottom: 6 }} />
+                  <div style={{ background: 'var(--surface2)', height: 10, width: 160, borderRadius: 6 }} />
                 </div>
               </div>
             ))}
@@ -255,12 +261,12 @@ export default function SpacesPage() {
           </div>
           <div className="pro-list">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="pro-card" style={{ opacity: 0.6, pointerEvents: 'none' }}>
+              <div key={i} className="card-hover" style={{ opacity: 0.6, pointerEvents: 'none' }}>
                 <div className="avatar skeleton" />
                 <div className="pro-copy">
-                  <div style={{ background: 'var(--bgAlt)', height: 14, width: 120, borderRadius: 6, marginBottom: 8 }} />
-                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 240, borderRadius: 6, marginBottom: 6 }} />
-                  <div style={{ background: 'var(--bgAlt)', height: 10, width: 160, borderRadius: 6 }} />
+                  <div style={{ background: 'var(--surface2)', height: 14, width: 120, borderRadius: 6, marginBottom: 8 }} />
+                  <div style={{ background: 'var(--surface2)', height: 10, width: 240, borderRadius: 6, marginBottom: 6 }} />
+                  <div style={{ background: 'var(--surface2)', height: 10, width: 160, borderRadius: 6 }} />
                 </div>
               </div>
             ))}
@@ -301,7 +307,7 @@ export default function SpacesPage() {
 
         <div className="pro-list">
           {joinedSpaces.map((space, i) => (
-            <div key={i} className="pro-card" onClick={() => showToast(`Opened ${space.name}`)}>
+            <div key={i} className="card-hover pro-card" onClick={() => showToast(`Opened ${space.name}`)}>
               <div className="avatar green" style={{ fontSize: '1.1rem' }}>
                 {space.icon}
               </div>
@@ -352,7 +358,7 @@ export default function SpacesPage() {
 
         <div className="pro-list">
           {suggestedSpaces.map((space, i) => (
-            <div key={i} className="pro-card" onClick={() => showToast(`Viewing ${space.name}`)}>
+            <div key={i} className="card-hover pro-card" onClick={() => showToast(`Viewing ${space.name}`)}>
               <div className="avatar" style={{ background: 'var(--goldSoft)', color: 'var(--earth)', fontSize: '1.1rem' }}>
                 {space.icon}
               </div>
@@ -407,7 +413,7 @@ export default function SpacesPage() {
             { icon: '🎯', name: 'Jobs Kenya', members: '4.3k', posts: '28.9k', desc: 'Job listings, CV tips, and career advice.', location: 'Kenya-wide', rating: 4.5 },
             { icon: '🏋️', name: 'FitKE', members: '2.9k', posts: '15.6k', desc: 'Fitness, nutrition, and wellness for Kenyans.', location: 'Nairobi', rating: 4.8 },
           ].map((space, i) => (
-            <div key={i} className="pro-card" onClick={() => showToast(`Viewing ${space.name}`)}>
+            <div key={i} className="card-hover pro-card" onClick={() => showToast(`Viewing ${space.name}`)}>
               <div className="avatar" style={{ background: 'var(--earthSoft)', color: 'var(--earth)', fontSize: '1.1rem' }}>
                 {space.icon}
               </div>
@@ -471,7 +477,7 @@ export default function SpacesPage() {
           >
             <button
               onClick={() => setShowCreate(false)}
-              style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text2)' }}
+              style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}
             >
               <X className="icon-sm" />
             </button>

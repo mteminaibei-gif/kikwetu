@@ -69,7 +69,6 @@ export default function ExplorePage() {
 
   const handleFollow = async (proUserId: string) => {
     if (!user) return showToast('Please sign in');
-    // Skip follow for mock professionals (non-UUID user_id)
     if (!proUserId || !proUserId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
       showToast('Follow not available for this professional');
       return;
@@ -232,12 +231,12 @@ export default function ExplorePage() {
 
           {!isSearching && isSearchingActive && filteredResults.length === 0 && (
             <div style={{ padding: '2rem', textAlign: 'center', opacity: 0.6 }}>
-              <div className="eyebrow">No results found for &quot;{debouncedQuery}&quot;</div>
+              <div className="eyebrow">No results found for "{debouncedQuery}"</div>
             </div>
           )}
 
           {!isSearching && isSearchingActive && (activeTab === 'All' || activeTab === 'Threads') && results.threads.map((thread) => (
-            <article key={thread.id} className="section" style={{ cursor: 'pointer' }} onClick={() => showToast('Thread opened')}>
+            <article key={thread.id} className="section card-hover" style={{ cursor: 'pointer' }} onClick={() => showToast('Thread opened')}>
               <div className="post-type"><CircleHelp className="icon-sm" /> {thread.type || 'Post'}</div>
               <div className="question-box">
                 <h4>{thread.title}</h4>
@@ -251,7 +250,7 @@ export default function ExplorePage() {
           ))}
 
           {!isSearching && isSearchingActive && (activeTab === 'All' || activeTab === 'Professionals') && results.professionals.map((pro) => (
-            <div key={pro.id} className="pro-card" style={{ marginTop: 14 }}>
+            <div key={pro.id} className="pro-card card-hover" style={{ marginTop: 14 }}>
               <div className="avatar blue">{pro.profiles?.full_name?.split(' ').map((n: string) => n[0]).join('') || '?'}</div>
               <div className="pro-copy">
                 <strong>{pro.profiles?.full_name || 'Unknown'} <span className="verified">✓</span></strong>
@@ -266,7 +265,7 @@ export default function ExplorePage() {
           ))}
 
           {!isSearching && isSearchingActive && (activeTab === 'All' || activeTab === 'Spaces') && results.spaces.map((space) => (
-            <div key={space.id} className="pro-card" style={{ marginTop: 14 }} onClick={() => showToast(`Opening ${space.name}`)}>
+            <div key={space.id} className="pro-card card-hover" style={{ marginTop: 14 }} onClick={() => showToast(`Opening ${space.name}`)}>
               <div className="avatar" style={{ background: 'var(--greenSoft)', color: 'var(--green)', fontSize: '1.1rem' }}>
                 {space.icon || '📦'}
               </div>
@@ -279,7 +278,7 @@ export default function ExplorePage() {
           ))}
 
           {!isSearching && isSearchingActive && (activeTab === 'All' || activeTab === 'People') && results.people.map((person) => (
-            <div key={person.id} className="pro-card" style={{ marginTop: 14 }} onClick={() => showToast(`Viewing ${person.full_name}`)}>
+            <div key={person.id} className="pro-card card-hover" style={{ marginTop: 14 }} onClick={() => showToast(`Viewing ${person.full_name}`)}>
               <div className="avatar blue">{person.full_name?.split(' ').map((n: string) => n[0]).join('') || '?'}</div>
               <div className="pro-copy">
                 <strong>{person.full_name || 'Unknown'}</strong>
@@ -291,7 +290,7 @@ export default function ExplorePage() {
 
           {!isSearchingActive && (
             <>
-              <article className="section" style={{ cursor: 'pointer' }} onClick={() => showToast('Thread opened')}>
+              <article className="section card-hover" style={{ cursor: 'pointer' }} onClick={() => showToast('Thread opened')}>
                 <div className="post-type"><CircleHelp className="icon-sm" /> Deep-dive inquiry</div>
                 <div className="question-box">
                   <h4>What should a small business check before going solar?</h4>
@@ -309,7 +308,7 @@ export default function ExplorePage() {
                 </div>
               </article>
 
-              <div className="pro-card" style={{ marginTop: 14 }}>
+              <div className="pro-card card-hover" style={{ marginTop: 14 }}>
                 <div className="avatar blue">JO</div>
                 <div className="pro-copy">
                   <strong>James Otieno <span className="verified">✓</span></strong>
@@ -335,7 +334,7 @@ export default function ExplorePage() {
             </div>
             <div className="right-list">
               {(trendingThreads.length > 0 ? trendingThreads : []).map((t: any, i: number) => (
-                <div key={t.id || i} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing thread`)} >
+                <div key={t.id || i} className="right-item card-hover" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing thread`)} >
                   <div className="right-copy">
                     <strong style={{ color: 'var(--green)' }}>{t.title?.slice(0, 30) || 'Trending'}</strong>
                     <span>{t.type || 'Post'}</span>
@@ -350,7 +349,7 @@ export default function ExplorePage() {
                 { tag: '#HealthKE', posts: '4.8k', desc: 'Health tips and wellness' },
                 { tag: '#StartupKE', posts: '3.5k', desc: 'Startup stories and funding' },
               ].map((t: any, i: number) => (
-                <div key={i} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${t.tag}`)}>
+                <div key={i} className="right-item card-hover" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${t.tag}`)}>
                   <div className="right-copy">
                     <strong style={{ color: 'var(--green)' }}>{t.tag}</strong>
                     <span>{t.desc}</span>
@@ -370,7 +369,7 @@ export default function ExplorePage() {
             </div>
             <div className="right-list">
               {countyTopics.map((c, i) => (
-                <div key={i} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${c.name}`)}>
+                <div key={i} className="right-item card-hover" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${c.name}`)}>
                   <div className="avatar" style={{ background: 'var(--greenSoft)', color: 'var(--green)', fontSize: '1.1rem' }}>
                     {c.icon}
                   </div>
