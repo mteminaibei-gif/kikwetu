@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import {
   ArrowUpRight, Compass, LogIn, X, MapPin,
   MessageCircleQuestion, BadgeCheck, ShieldCheck,
@@ -47,6 +48,22 @@ export default function LandingPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      setChecking(false);
+      if (session?.user) {
+        router.replace('/');
+      }
+    });
+  }, [router]);
+
+  useEffect(() => {
+    if (dialogOpen) {
+      (document.getElementById('joinDialog') as HTMLDialogElement)?.showModal();
+    }
+  }, [dialogOpen]);
 
   useEffect(() => {
     if (dialogOpen) {
@@ -67,6 +84,22 @@ export default function LandingPage() {
     showToast('Welcome to KikwetuConnect');
     setTimeout(() => router.push('/signup'), 800);
   }
+
+  if (checking) {
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
+        .landing-page { position: relative; min-height: 100vh; font-family: "DM Sans", system-ui, sans-serif; background: var(--night, oklch(22% .065 158)); color: var(--cream, oklch(96% .025 94)); }
+        .landing-page *, .landing-page *::before, .landing-page *::after { box-sizing: border-box; margin: 0; }
+        .landing-loader { display: grid; place-items: center; min-height: 100vh; }
+        .landing-spinner { width: 36px; height: 36px; border: 3px solid oklch(98% .02 94 / .15); border-top-color: var(--gold, oklch(75% .15 78)); border-radius: 50%; animation: lspin .7s linear infinite; }
+        @keyframes lspin { to { transform: rotate(360deg); } }
+      ` }} />
+      <div className="landing-page"><div className="landing-loader"><div className="landing-spinner" /></div></div>
+    </>
+  );
+}
 
   return (
     <>

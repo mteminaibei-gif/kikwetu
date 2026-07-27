@@ -438,7 +438,7 @@ export async function deleteStory(storyId: string) {
   return { error };
 }
 
-export async function uploadStoryMedia(file: File, userId: string): Promise<{ url: string | null; error: string | null }> {
+export async function uploadStoryMedia(file: File, userId: string, onProgress?: (pct: number) => void): Promise<{ url: string | null; error: string | null }> {
   const ext = file.name.split('.').pop() || 'bin';
   const path = `${userId}/${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from('stories').upload(path, file, {
@@ -446,6 +446,7 @@ export async function uploadStoryMedia(file: File, userId: string): Promise<{ ur
     upsert: false,
   });
   if (error) return { url: null, error: error.message };
+  if (onProgress) onProgress(100);
   const { data } = supabase.storage.from('stories').getPublicUrl(path);
   return { url: data?.publicUrl || null, error: null };
 }

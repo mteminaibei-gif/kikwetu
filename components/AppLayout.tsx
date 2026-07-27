@@ -412,11 +412,11 @@ const Topbar = React.memo(function Topbar() {
     setPreviewUrl(objectUrl);
     try {
       const ext = file.name.split('.').pop() || 'jpg';
-      const filePath = `${user.user_id}.${ext}`;
+      const filePath = `${user.id}.${ext}`;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('user_id', user.user_id);
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('id', user.id);
       if (updateError) throw updateError;
       setUser({ ...user, avatar_url: urlData.publicUrl });
       showToast('Avatar updated');
@@ -428,13 +428,12 @@ const Topbar = React.memo(function Topbar() {
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
       router.push('/landing');
       showToast('Signed out');
-      setTimeout(() => { window.location.href = '/landing'; }, 500);
     }
   };
 
@@ -489,22 +488,12 @@ const Topbar = React.memo(function Topbar() {
         <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
           {theme === 'dark' ? <Sun className="icon" /> : <Moon className="icon" />}
         </button>
-        <div ref={notifRef} style={{ position: 'relative' }}>
-          <button type="button" className="icon-btn" aria-label="Notifications" onClick={() => setNotifOpen(prev => !prev)}>
-            <Bell className="icon" />
-            {unreadCount > 0 && <span className="dot" />}
-          </button>
-          <NotificationDropdown
-            open={notifOpen}
-            onClose={() => setNotifOpen(false)}
-            notifications={notifications}
-            onMarkRead={handleMarkRead}
-            onMarkAllRead={handleMarkAllRead}
-            navigate={(path) => router.push(path)}
-          />
+        <div className="icon-btn" style={{ position: 'relative' }}>
+          <Bell className="icon" />
+          {unreadCount > 0 && <span className="dot" style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: '50%', background: 'var(--red)' }} />}
         </div>
-        <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
-          <span>{user?.full_name || 'Member'}</span>
+        <Link href="/profile" className="profile-pill" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: '.78rem', fontWeight: 600 }}>{user?.full_name || 'Member'}</span>
           <span
             className="avatar-wrapper"
             style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer' }}
@@ -532,13 +521,12 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
       router.push('/landing');
       showToast('Signed out');
-      setTimeout(() => { window.location.href = '/landing'; }, 500);
     }
   };
 
@@ -997,17 +985,22 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
     const getUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const authUser = session.user;
+        if (!session?.user) {
+          setLoading(false);
+          return;
+        }
+        const authUser = session.user;
           const meta = authUser.user_metadata || {};
-          let { data: profile } = await supabase.from('profiles').select('*').eq('user_id', authUser.id).single();
+let { data: profile } = await supabase.from('profiles').select('*').eq('user_id', authUser.id).single();
           if (!profile) {
             const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
             const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
+            const avatarUrl = meta.avatar_url || null;
             const { data: newProfile, error } = await supabase.from('profiles').insert({
               user_id: authUser.id,
               username,
               full_name: fullName,
+              avatar_url: avatarUrl,
               language: meta.language || 'en',
               role: 'member',
             }).select().single();
@@ -1023,8 +1016,7 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
             }
           }
           setUser(profile);
-        }
-      } catch (err) {
+        } catch (err) {
         console.log('Auth check skipped:', err);
       } finally {
         setLoading(false);
@@ -1040,10 +1032,12 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
         if (!profile) {
           const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
           const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
+          const avatarUrl = meta.avatar_url || null;
           const { data: newProfile, error } = await supabase.from('profiles').insert({
             user_id: authUser.id,
             username,
             full_name: fullName,
+            avatar_url: avatarUrl,
             language: meta.language || 'en',
             role: 'member',
           }).select().single();
@@ -1061,7 +1055,7 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
   useEffect(() => {
     if (!user) return;
     const fetchNotifications = async () => {
-      const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_read', false);
+      const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.user_id).eq('is_read', false);
       setUnreadCount(count || 0);
     };
     void fetchNotifications();

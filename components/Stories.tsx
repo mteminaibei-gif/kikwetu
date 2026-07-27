@@ -29,7 +29,6 @@ function StoriesRow() {
       const enriched = await Promise.all(
         data.map(async (s) => {
           const viewCount = await getStoryViewCount(s.id);
-          const hasViewed = user ? s.id !== undefined : false;
           let viewed = false;
           if (user) {
             const { data: existingView } = await supabase
@@ -87,70 +86,80 @@ function StoriesRow() {
 
   return (
     <>
-      <div className="stories-wrapper" style={{ position: 'relative' }}>
-        <button
-          type="button"
-          className="stories-scroll-btn stories-scroll-left"
-          onClick={() => scroll('left')}
-          aria-label="Scroll left"
-        >
-          <ChevronLeft className="icon-sm" />
-        </button>
-        <div className="stories" ref={scrollRef}>
-          {user && (
-            <button type="button" className="story add" onClick={() => setUploadOpen(true)}>
-              <span className="story-plus"><Plus className="icon-sm" /></span>
-              <span>New idea</span>
-            </button>
-          )}
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="story" style={{ background: 'var(--surface2)', animation: 'pulse 1.5s infinite' }} />
-            ))
-          ) : stories.length === 0 ? (
-            <div className="story" style={{ background: 'var(--surface2)', opacity: .6 }}>
-              <span style={{ fontSize: '.6rem', color: 'var(--text3)', textAlign: 'center', padding: '0 4px' }}>No ideas yet. Be the first!</span>
+      <div className="stories-row" ref={scrollRef}>
+        {user && (
+          <button type="button" className="story-item" onClick={() => { if (user) setUploadOpen(true); else showToast('Please sign in to share an idea'); }}>
+            <span className="story-avatar-ring is-you">
+              <span className="story-avatar-initials">+</span>
+            </span>
+            <span className="story-label">New idea</span>
+          </button>
+        )}
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surface2)', animation: 'pulse 1.5s infinite' }} />
+              <div style={{ width: 50, height: 6, borderRadius: 99, background: 'var(--surface2)', marginTop: 6, animation: 'pulse 1.5s infinite' }} />
             </div>
-          ) : stories.map((story, i) => {
-            const initials = story.profiles?.full_name
-              ? story.profiles.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-              : '??';
-            const hasMedia = !!story.media_url;
-            return (
-              <button
-                type="button"
-                key={story.id}
-                className={`story ${story.has_viewed ? 'viewed' : ''}`}
-                onClick={() => openStory(i)}
-              >
+          ))
+        ) : stories.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, opacity: .6 }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surface2)' }} />
+            <span style={{ fontSize: '.6rem', color: 'var(--text3)', marginTop: 6, maxWidth: 64, textAlign: 'center' }}>No ideas yet</span>
+          </div>
+        ) : stories.map((story, i) => {
+          const profile = story.profiles;
+          const initials = profile?.full_name
+            ? profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+            : '??';
+          const hasMedia = !!story.media_url;
+          return (
+            <button
+              type="button"
+              key={story.id}
+              className="story-item"
+              onClick={() => openStory(i)}
+            >
+              <span className="story-avatar-ring">
                 {hasMedia && story.media_type === 'image' ? (
                   <img
                     src={story.media_url}
                     alt=""
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 17 }}
+                    className="story-avatar"
+                    style={{ borderRadius: '50%' }}
                   />
                 ) : hasMedia && story.media_type === 'video' ? (
                   <video
                     src={story.media_url}
                     muted
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 17 }}
+                    className="story-avatar"
+                    style={{ borderRadius: '50%' }}
                   />
-                ) : null}
-                <span className={`story-avatar avatar sm ${!hasMedia ? (i % 3 === 0 ? 'earth' : i % 3 === 1 ? 'blue' : 'green') : ''}`} style={{ borderColor: story.has_viewed ? 'var(--line)' : 'var(--green)', borderWidth: 3 }}>
-                  {story.media_url ? '' : initials}
-                </span>
-                <span style={{ position: 'relative', zIndex: 1, textShadow: hasMedia ? '0 1px 3px rgba(0,0,0,.5)' : 'none' }}>
-                  {story.profiles?.full_name?.split(' ')[0] || 'Unknown'}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                ) : (
+                  <span className="story-avatar-initials">{initials}</span>
+                )}
+              </span>
+              <span className="story-label">
+                {profile?.full_name?.split(' ')[0] || 'Unknown'}
+              </span>
+            </button>
+          );
+        })}
         <button
           type="button"
-          className="stories-scroll-btn stories-scroll-right"
+          className="icon-btn"
+          onClick={() => scroll('left')}
+          aria-label="Scroll left"
+          style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 2, background: 'var(--surface)', borderRadius: '50%', width: 28, height: 28, display: 'grid', placeItems: 'center', boxShadow: 'var(--shadow1)' }}
+        >
+          <ChevronLeft className="icon-sm" />
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
           onClick={() => scroll('right')}
           aria-label="Scroll right"
+          style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 2, background: 'var(--surface)', borderRadius: '50%', width: 28, height: 28, display: 'grid', placeItems: 'center', boxShadow: 'var(--shadow1)' }}
         >
           <ChevronRight className="icon-sm" />
         </button>
