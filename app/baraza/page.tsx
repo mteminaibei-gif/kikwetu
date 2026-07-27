@@ -706,12 +706,13 @@ function BarazaPageInner() {
         <button className="select-pill"><Filter className="icon-sm" /> All topics</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22, overflow: 'auto' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflow: 'auto' }}>
         {filters.map((f) => (
           <button
             key={f.key}
             onClick={() => { setFilter(f.key); showToast(`Viewing ${f.label}`); }}
             className={filter === f.key ? 'primary' : 'secondary'}
+            style={{ whiteSpace: 'nowrap' }}
           >
             {f.label}
           </button>
