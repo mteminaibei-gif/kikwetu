@@ -375,18 +375,8 @@ export default function MessagesPage() {
               <button
                 key={suggestion}
                 onClick={() => { setInput(suggestion); }}
-                style={{
-                  whiteSpace: 'nowrap',
-                  padding: '6px 10px',
-                  borderRadius: 99,
-                  border: '1px solid var(--line)',
-                  background: 'var(--surface)',
-                  color: 'var(--text2)',
-                  fontSize: '.62rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
+                className="badge"
+                style={{ cursor: 'pointer' }}
               >
                 {suggestion}
               </button>
