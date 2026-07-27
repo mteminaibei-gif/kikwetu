@@ -9,12 +9,11 @@ import {
   House, Compass, Search, Layers3, GraduationCap, BadgeCheck,
   MessagesSquare, WalletCards, Store, ShieldCheck, Radio, Brain,
   UserRound, Bookmark, Settings, LogOut, Bell, Moon, Sun, Plus,
-  MapPin, TrendingUp, MoreHorizontal, Volume2, ChevronRight, X, Camera,
+  TrendingUp, MoreHorizontal, Volume2, X, Camera,
   MessageCircle, ThumbsUp, AtSign, UserPlus, Award, Calendar,
   AlertTriangle, CheckCheck, HelpCircle, FileText
 } from 'lucide-react';
 
-// ===== Types =====
 interface Profile {
   id: string;
   user_id: string;
@@ -32,26 +31,19 @@ interface Profile {
   updated_at: string;
 }
 
-// ===== Context =====
 interface AppContextType {
-  // Theme
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  // Language
   lang: 'EN' | 'SW';
   toggleLang: () => void;
-  // Create Panel
   createOpen: boolean;
   setCreateOpen: (v: boolean) => void;
-  // Toast
   toast: string;
   showToast: (msg: string) => void;
-  // Auth
   user: Profile | null;
   setUser: (user: Profile | null) => void;
   loading: boolean;
   signOut: () => Promise<void>;
-  // Notifications
   unreadCount: number;
   setUnreadCount: (v: number | ((prev: number) => number)) => void;
 }
@@ -75,36 +67,34 @@ export const AppContext = createContext<AppContextType>({
 
 export const useApp = () => useContext(AppContext);
 
-// ===== Layout Props =====
 interface AppLayoutProps {
   children: React.ReactNode;
   showRightSidebar?: boolean;
 }
 
-// ===== Navigation Config =====
 const navSections = (isAdmin: boolean) => [
   {
     title: 'Main',
     color: 'var(--green)',
     items: [
       { icon: House, label: 'Home', href: '/' },
-      { icon: Compass, label: 'Baraza feed', href: '/baraza', badge: 'New' },
+      { icon: Compass, label: 'Baraza Feed', href: '/baraza', badge: 'New' },
       { icon: Search, label: 'Explore', href: '/explore' },
       { icon: Layers3, label: 'Spaces', href: '/spaces' },
     ],
   },
   {
-    title: 'Learn & earn',
+    title: 'Learn & Earn',
     color: 'var(--gold)',
     items: [
       { icon: GraduationCap, label: 'Students Area', href: '/students', badge: '2' },
       { icon: BadgeCheck, label: 'Professionals', href: '/professionals' },
       { icon: MessagesSquare, label: 'Messages', href: '/messages', badge: '3' },
-      { icon: WalletCards, label: 'Wallet & tips', href: '/wallet' },
+      { icon: WalletCards, label: 'Wallet & Tips', href: '/wallet' },
     ],
   },
   {
-    title: 'Local life',
+    title: 'Local Life',
     color: 'var(--earth)',
     items: [
       { icon: Store, label: 'Mtaa Exchange', href: '/mtaa' },
@@ -114,7 +104,7 @@ const navSections = (isAdmin: boolean) => [
     ],
   },
   {
-    title: 'Your account',
+    title: 'Your Account',
     color: 'var(--blue)',
     items: [
       { icon: UserRound, label: 'Profile', href: '/profile' },
@@ -125,7 +115,6 @@ const navSections = (isAdmin: boolean) => [
   },
 ];
 
-// ===== Avatar Component =====
 function Avatar({ src, initials, size = 'sm', className = '', isOnline = false }: {
   src?: string | null;
   initials: string;
@@ -167,7 +156,6 @@ function Avatar({ src, initials, size = 'sm', className = '', isOnline = false }
   );
 }
 
-// ===== Notification Types =====
 const NOTIFICATION_ICONS: Record<string, React.ElementType> = {
   reply: MessageCircle,
   upvote: ThumbsUp,
@@ -253,14 +241,13 @@ function NotificationDropdown({
         space: '/spaces',
         follow: '/profile',
         tip: '/profile',
-        professional: '/learn',
-        quiz: '/learn',
+        professional: '/students',
+        quiz: '/quizzes',
         marketplace: '/mtaa',
         reaction: '/baraza',
         mention: '/baraza',
       };
-      const base = routeMap[n.target_type] || '/baraza';
-      navigate(base);
+      navigate(routeMap[n.target_type] || '/baraza');
     }
     onClose();
   };
@@ -293,6 +280,7 @@ function NotificationDropdown({
         <strong style={{ fontSize: '.88rem' }}>Notifications</strong>
         {notifications.some(n => !n.is_read) && (
           <button
+            type="button"
             onClick={onMarkAllRead}
             style={{
               background: 'none',
@@ -306,13 +294,10 @@ function NotificationDropdown({
               gap: 4,
               padding: '4px 8px',
               borderRadius: 8,
-              transition: 'background .15s',
             }}
-            onMouseEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--greenSoft)'; }}
-            onMouseLeave={(e) => { (e.target as HTMLElement).style.background = 'none'; }}
           >
             <CheckCheck className="icon-sm" />
-            Mark all read
+            Mark all as read
           </button>
         )}
       </div>
@@ -337,6 +322,7 @@ function NotificationDropdown({
                   const color = NOTIFICATION_COLORS[n.type] || 'var(--text3)';
                   return (
                     <button
+                      type="button"
                       key={n.id}
                       onClick={() => handleClick(n)}
                       style={{
@@ -348,11 +334,8 @@ function NotificationDropdown({
                         border: 'none',
                         background: n.is_read ? 'transparent' : 'var(--surface2)',
                         cursor: 'pointer',
-                        transition: 'background .12s',
                         alignItems: 'flex-start',
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface3)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = n.is_read ? 'transparent' : 'var(--surface2)'; }}
                     >
                       <div style={{ position: 'relative', flexShrink: 0, marginTop: 2 }}>
                         <div style={{
@@ -403,13 +386,11 @@ function NotificationDropdown({
   );
 }
 
-// ===== Topbar =====
 const Topbar = React.memo(function Topbar() {
   const { theme, toggleTheme, lang, toggleLang, user, setUser, unreadCount, setUnreadCount, showToast, signOut } = useApp();
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -422,51 +403,26 @@ const Topbar = React.memo(function Topbar() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_SIZE) {
+    if (file.size > 5 * 1024 * 1024) {
       showToast('Image must be under 5MB');
       return;
     }
-
-    // Before creating new object URL, revoke previous one
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
-    setUploading(true);
-
     try {
       const ext = file.name.split('.').pop() || 'jpg';
       const filePath = `${user.user_id}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const publicUrl = urlData.publicUrl;
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('user_id', user.user_id);
-
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('user_id', user.user_id);
       if (updateError) throw updateError;
-
-      setUser({ ...user, avatar_url: publicUrl });
+      setUser({ ...user, avatar_url: urlData.publicUrl });
       showToast('Avatar updated');
-    } catch (err) {
+    } catch {
       showToast('Upload failed');
       setPreviewUrl(null);
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -476,49 +432,32 @@ const Topbar = React.memo(function Topbar() {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // Always redirect even if signOut fails
       router.push('/landing');
       showToast('Signed out');
-      // Force a full page reload to clear any in-memory state
-      setTimeout(() => {
-        window.location.href = '/landing';
-      }, 500);
+      setTimeout(() => { window.location.href = '/landing'; }, 500);
     }
   };
 
-  // Fetch notifications when dropdown opens
   useEffect(() => {
     if (!notifOpen || !user) return;
-    const fetchNotifs = async () => {
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+    void (async () => {
+      const { data } = await supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
       if (data) setNotifications(data);
-    };
-    fetchNotifs();
+    })();
   }, [notifOpen, user?.id]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!notifOpen) return;
     const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setNotifOpen(false);
-      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [notifOpen]);
 
-  const handleMarkRead = async (id: string, targetType?: string | null, targetId?: string | null) => {
+  const handleMarkRead = async (id: string) => {
     await markNotificationRead(id);
-    setNotifications(prev => {
-      const updated = prev.map(n => n.id === id ? { ...n, is_read: true } : n);
-      return updated;
-    });
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
@@ -547,18 +486,14 @@ const Topbar = React.memo(function Topbar() {
       </label>
 
       <div className="top-actions">
-        <button className="icon-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
+        <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
           {theme === 'dark' ? <Sun className="icon" /> : <Moon className="icon" />}
         </button>
-        <button className="icon-btn" onClick={toggleLang} aria-label="Change language">
+        <button type="button" className="icon-btn" onClick={toggleLang} aria-label="Change language">
           <span className="eyebrow" style={{ letterSpacing: '.05em' }}>{lang}</span>
         </button>
         <div ref={notifRef} style={{ position: 'relative' }}>
-          <button
-            className="icon-btn"
-            aria-label="Notifications"
-            onClick={() => setNotifOpen(prev => !prev)}
-          >
+          <button type="button" className="icon-btn" aria-label="Notifications" onClick={() => setNotifOpen(prev => !prev)}>
             <Bell className="icon" />
             {unreadCount > 0 && <span className="dot" />}
           </button>
@@ -571,7 +506,7 @@ const Topbar = React.memo(function Topbar() {
             navigate={(path) => router.push(path)}
           />
         </div>
-        <button className="icon-btn" onClick={handleLogout} aria-label="Logout">
+        <button type="button" className="icon-btn" onClick={() => void handleLogout()} aria-label="Sign out">
           <LogOut className="icon" />
         </button>
         <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
@@ -580,50 +515,22 @@ const Topbar = React.memo(function Topbar() {
             className="avatar-wrapper"
             style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer' }}
             onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
-            onMouseEnter={(e) => { const o = e.currentTarget.querySelector('.avatar-overlay') as HTMLElement; if (o) o.style.opacity = '1'; }}
-            onMouseLeave={(e) => { const o = e.currentTarget.querySelector('.avatar-overlay') as HTMLElement; if (o) o.style.opacity = '0'; }}
           >
             <Avatar src={avatarSrc} initials={initials} size="sm" isOnline={user?.is_online} />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Upload avatar"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '50%',
-                background: 'rgba(0,0,0,0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: 0,
-                transition: 'opacity .15s',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <Camera className="icon-sm" style={{ color: '#fff' }} />
-            </button>
           </span>
         </Link>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleAvatarChange}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => void handleAvatarChange(e)} />
       </div>
     </header>
   );
 });
 
-// ===== Left Sidebar =====
 const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRoute: string }) {
   const { user, signOut, showToast } = useApp();
   const router = useRouter();
   const heshima = user?.heshima || 740;
   const level = Math.floor(heshima / 100);
+  const toNext = 100 - (heshima % 100);
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -635,13 +542,9 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // Always redirect even if signOut fails
       router.push('/landing');
       showToast('Signed out');
-      // Force a full page reload to clear any in-memory state
-      setTimeout(() => {
-        window.location.href = '/landing';
-      }, 500);
+      setTimeout(() => { window.location.href = '/landing'; }, 500);
     }
   };
 
@@ -672,45 +575,26 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
       <div className="heshima">
         <div className="ring">{heshima}</div>
         <div>
-          <strong>Heshima Rating</strong>
-          <span>Level {level} &middot; {100 - (heshima % 100)} to next</span>
+          <strong>Heshima rating</strong>
+          <span>Level {level} &middot; {toNext} to next level</span>
         </div>
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <Link href="/profile" className="profile-pill" style={{ position: 'relative' }}>
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <Avatar src={user?.avatar_url} initials={initials} size="md" isOnline={user?.is_online} />
-            <span style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: '50%',
-              background: 'oklch(24% .034 158 / .45)',
-              display: 'grid',
-              placeItems: 'center',
-              opacity: 0,
-              transition: 'opacity .18s ease',
-              pointerEvents: 'none',
-            }} className="avatar-upload-overlay">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            </span>
-          </div>
+        <Link href="/profile" className="profile-pill">
+          <Avatar src={user?.avatar_url} initials={initials} size="md" isOnline={user?.is_online} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Member'}</strong>
             <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'user'}</span>
           </div>
           <Settings className="icon-sm" style={{ color: 'var(--text3)' }} />
         </Link>
-        <style>{`.profile-pill:hover .avatar-upload-overlay { opacity: 1 !important; }`}</style>
         <button
+          type="button"
           className="icon-btn"
-          onClick={handleLogout}
+          onClick={() => void handleLogout()}
           style={{ width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', fontSize: '.78rem', color: 'var(--text3)' }}
-          aria-label="Logout"
+          aria-label="Sign out"
         >
           <LogOut className="icon-sm" />
           <span>Sign out</span>
@@ -720,7 +604,6 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
   );
 });
 
-// ===== Right Sidebar =====
 const RightSidebar = React.memo(function RightSidebar() {
   const { showToast } = useApp();
 
@@ -733,7 +616,7 @@ const RightSidebar = React.memo(function RightSidebar() {
         </div>
         <div className="right-list">
           {['#KilimoSmart', '#NairobiTech', '#ShengLife', '#HealthKE', '#StartupKE'].map((tag, i) => (
-            <div key={i} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${tag}`)}>
+            <div key={tag} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${tag}`)}>
               <div className="right-copy">
                 <strong style={{ color: 'var(--green)' }}>{tag}</strong>
                 <span>{(12.4 - i * 1.5).toFixed(1)}k posts</span>
@@ -747,39 +630,39 @@ const RightSidebar = React.memo(function RightSidebar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', animation: 'pulse 1.5s infinite' }} />
           <h3>Live Audio Baraza</h3>
-          <button className="icon-btn" style={{ marginLeft: 'auto', width: 28, height: 28 }}>
+          <button type="button" className="icon-btn" style={{ marginLeft: 'auto', width: 28, height: 28 }} aria-label="More options">
             <MoreHorizontal className="icon-sm" />
           </button>
         </div>
         <div className="tip">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <Volume2 className="icon-sm" style={{ color: 'var(--earth)' }} />
-            <span style={{ fontSize: '.68rem', color: 'var(--text3)' }}>Mie Audio</span>
+            <span style={{ fontSize: '.68rem', color: 'var(--text3)' }}>Live now</span>
           </div>
-          <p>Tech-tomasa live video to livestream conversations</p>
-          <button style={{ marginTop: 8 }} onClick={() => showToast('Joining live audio')}>
+          <p>Join livestream conversations from communities across Kenya.</p>
+          <button type="button" style={{ marginTop: 8 }} onClick={() => showToast('Joining live audio')}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-            {' '}Live Audio
+            {' '}Join live audio
           </button>
         </div>
       </div>
 
       <div className="right-block">
-        <h3>Suggested Spaces</h3>
+        <h3>Suggested spaces</h3>
         <div className="right-list">
           {[
-            { name: 'KilimoSmart', desc: 'Farming tips & climate smart agriculture', icon: '🌾', members: '2.8k' },
-            { name: 'NairobiTech', desc: 'Tech community in Nairobi', icon: '💻', members: '1.5k' },
+            { name: 'KilimoSmart', members: '2.8k' },
+            { name: 'NairobiTech', members: '1.5k' },
           ].map((space, i) => (
-            <div key={i} className="right-item">
+            <div key={space.name} className="right-item">
               <div className="avatar" style={{ background: i === 0 ? 'var(--greenSoft)' : 'var(--blueSoft)', color: i === 0 ? 'var(--green)' : 'var(--blue)', fontSize: '1rem' }}>
-                {space.icon}
+                {i === 0 ? '🌾' : '💻'}
               </div>
               <div className="right-copy">
                 <strong>{space.name}</strong>
                 <span>{space.members} members</span>
               </div>
-              <button className="follow" onClick={() => showToast(`Joined ${space.name}`)}>Join</button>
+              <button type="button" className="follow" onClick={() => showToast(`Joined ${space.name}`)}>Join</button>
             </div>
           ))}
         </div>
@@ -788,29 +671,22 @@ const RightSidebar = React.memo(function RightSidebar() {
   );
 });
 
-// ===== Mobile Nav =====
 function MobileNav({ activeRoute }: { activeRoute: string }) {
   const { setCreateOpen } = useApp();
-
   const items = [
     { icon: House, label: 'Home', href: '/' },
     { icon: GraduationCap, label: 'Learn', href: '/students' },
-    null, // create button placeholder
+    null,
     { icon: MessagesSquare, label: 'Chat', href: '/messages' },
     { icon: UserRound, label: 'Profile', href: '/profile' },
   ];
 
   return (
-    <nav className="mobile-nav">
-      {items.map((item, i) => {
+    <nav className="mobile-nav" aria-label="Mobile navigation">
+      {items.map((item) => {
         if (!item) {
           return (
-            <button
-              key="create"
-              className="create-main"
-              onClick={() => setCreateOpen(true)}
-              aria-label="Create"
-            >
+            <button key="create" type="button" className="create-main" onClick={() => setCreateOpen(true)} aria-label="Create">
               <Plus className="icon-lg" />
             </button>
           );
@@ -818,11 +694,7 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
         const Icon = item.icon;
         const isActive = activeRoute === item.href;
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={isActive ? 'active' : ''}
-          >
+          <Link key={item.href} href={item.href} className={isActive ? 'active' : ''}>
             <Icon className="icon" />
             <span>{item.label}</span>
           </Link>
@@ -832,25 +704,19 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
   );
 }
 
-// ===== Create Panel =====
 function CreatePanel() {
   const { createOpen, setCreateOpen } = useApp();
   const router = useRouter();
 
   const createOptions = [
-    { icon: HelpCircle, label: 'Ask question', desc: 'Get help from the community', action: 'question', color: 'var(--blue)' },
-    { icon: FileText, label: 'Share post', desc: 'Share knowledge or updates', action: 'post', color: 'var(--green)' },
-    { icon: Calendar, label: 'Offer session', desc: 'Offer a consultation', action: 'session', color: 'var(--gold)' },
+    { icon: HelpCircle, label: 'Ask a question', action: 'question' },
+    { icon: FileText, label: 'Share a post', action: 'post' },
+    { icon: Calendar, label: 'Offer a session', action: 'session' },
   ];
-
-  const handleCreateAction = (type: string) => {
-    setCreateOpen(false);
-    router.push(`/baraza?compose=${type}`);
-  };
 
   return (
     <div className={`create-panel ${createOpen ? 'open' : ''}`}>
-      <button className="icon-btn create-close" onClick={() => setCreateOpen(false)} aria-label="Close create panel">
+      <button type="button" className="icon-btn create-close" onClick={() => setCreateOpen(false)} aria-label="Close create panel">
         <X className="icon-sm" />
       </button>
       <div className="eyebrow">Make something useful</div>
@@ -861,9 +727,13 @@ function CreatePanel() {
           const Icon = opt.icon;
           return (
             <button
+              type="button"
               key={opt.action}
               className="create-option"
-              onClick={() => handleCreateAction(opt.action)}
+              onClick={() => {
+                setCreateOpen(false);
+                router.push(`/baraza?compose=${opt.action}`);
+              }}
             >
               <Icon className="icon" />
               <span>{opt.label}</span>
@@ -875,10 +745,8 @@ function CreatePanel() {
   );
 }
 
-// ===== Toast =====
 function Toast() {
   const { toast } = useApp();
-
   return (
     <div className={`toast ${toast ? 'show' : ''}`} role="status">
       {toast}
@@ -886,11 +754,8 @@ function Toast() {
   );
 }
 
-// ===== Main Layout =====
 export default function AppLayout({ children, showRightSidebar = true }: AppLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [lang, setLang] = useState<'EN' | 'SW'>('EN');
   const [createOpen, setCreateOpen] = useState(false);
@@ -900,7 +765,6 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Toast
   const showToast = useCallback((msg: string) => {
     if (toastTimer) clearTimeout(toastTimer);
     setToast(msg);
@@ -908,7 +772,6 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
     setToastTimer(t);
   }, [toastTimer]);
 
-  // Theme
   useEffect(() => {
     const saved = localStorage.getItem('kikwetu-theme') as 'light' | 'dark' | null;
     if (saved) {
@@ -925,14 +788,12 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
     showToast(next === 'dark' ? 'Dark mode on' : 'Light mode on');
   }, [theme, showToast]);
 
-  // Language
   const toggleLang = useCallback(() => {
     const next = lang === 'EN' ? 'SW' : 'EN';
     setLang(next);
     showToast(next === 'SW' ? 'Kiswahili helper on' : 'English view on');
   }, [lang, showToast]);
 
-  // Auth
   useEffect(() => {
     const getUser = async () => {
       try {
@@ -940,51 +801,28 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
         if (session?.user) {
           const authUser = session.user;
           const meta = authUser.user_metadata || {};
-          
-          // Try to fetch existing profile
-          let { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .single();
-          
-          // If no profile exists, create one from auth metadata
+          let { data: profile } = await supabase.from('profiles').select('*').eq('user_id', authUser.id).single();
           if (!profile) {
             const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
             const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
-            
-            const { data: newProfile, error } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: authUser.id,
-                username,
-                full_name: fullName,
-                language: meta.language || 'en',
-                role: 'member',
-              })
-              .select()
-              .single();
-            
-            if (!error && newProfile) {
-              profile = newProfile;
-            }
+            const { data: newProfile, error } = await supabase.from('profiles').insert({
+              user_id: authUser.id,
+              username,
+              full_name: fullName,
+              language: meta.language || 'en',
+              role: 'member',
+            }).select().single();
+            if (!error && newProfile) profile = newProfile;
           }
-          
-          // If profile exists but missing fields, update from auth metadata
           if (profile) {
-            const updates: Record<string, any> = {};
+            const updates: Record<string, string> = {};
             if (!profile.full_name && meta.full_name) updates.full_name = meta.full_name;
             if (!profile.username && meta.username) updates.username = meta.username;
-            
             if (Object.keys(updates).length > 0) {
-              await supabase
-                .from('profiles')
-                .update(updates)
-                .eq('id', profile.id);
+              await supabase.from('profiles').update(updates).eq('id', profile.id);
               profile = { ...profile, ...updates };
             }
           }
-          
           setUser(profile);
         }
       } catch (err) {
@@ -993,39 +831,25 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
         setLoading(false);
       }
     };
-    getUser();
+    void getUser();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         const authUser = session.user;
         const meta = authUser.user_metadata || {};
-        
-        let { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', authUser.id)
-          .single();
-        
+        let { data: profile } = await supabase.from('profiles').select('*').eq('user_id', authUser.id).single();
         if (!profile) {
           const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
           const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
-          
-          const { data: newProfile, error } = await supabase
-            .from('profiles')
-            .insert({
-              user_id: authUser.id,
-              username,
-              full_name: fullName,
-              language: meta.language || 'en',
-              role: 'member',
-            })
-            .select()
-            .single();
-          
+          const { data: newProfile, error } = await supabase.from('profiles').insert({
+            user_id: authUser.id,
+            username,
+            full_name: fullName,
+            language: meta.language || 'en',
+            role: 'member',
+          }).select().single();
           if (!error && newProfile) profile = newProfile;
         }
-        
         setUser(profile);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -1035,89 +859,31 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
     return () => subscription.unsubscribe();
   }, []);
 
-  // Notifications count
   useEffect(() => {
     if (!user) return;
-
     const fetchNotifications = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+      const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_read', false);
       setUnreadCount(count || 0);
     };
-
-    fetchNotifications();
-
-    // Real-time notifications
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      }, (payload) => {
-        setUnreadCount(prev => prev + 1);
-        const n = payload.new as Notification;
-        showToast(n.title || 'New notification');
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    void fetchNotifications();
+    const channel = supabase.channel('notifications').on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'notifications',
+      filter: `user_id=eq.${user.id}`,
+    }, (payload) => {
+      setUnreadCount(prev => prev + 1);
+      const n = payload.new as Notification;
+      showToast(n.title || 'New notification');
+    }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
   }, [user?.id]);
 
   const signOut = useCallback(async () => {
-    // Sign out from Supabase (clears session tokens)
     await supabase.auth.signOut();
-    
-    // Clear all auth-related localStorage items
-    const authKeys = [
-      'kikwetu-theme',
-      'kikwetu-event-registrations', 
-      'kikwetu_notifications',
-      'kikwetu_privacy',
-      'kikwetu_payments',
-      'kikwetu-radio-favs',
-    ];
-    authKeys.forEach(key => {
-      try { localStorage.removeItem(key); } catch {}
-    });
-    
-    // Clear Supabase auth tokens from localStorage
-    const supabaseKeys = Object.keys(localStorage).filter(
-      key => key.startsWith('sb-') || key.includes('supabase')
-    );
-    supabaseKeys.forEach(key => {
-      try { localStorage.removeItem(key); } catch {}
-    });
-    
-    // Clear all cookies (path=/ ensures all paths are covered)
-    document.cookie.split(';').forEach(cookie => {
-      const name = cookie.split('=')[0].trim();
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-    });
-    
-    // Clear IndexedDB databases
     try {
-      const databases = await indexedDB.databases();
-      databases.forEach(db => {
-        if (db.name) indexedDB.deleteDatabase(db.name);
-      });
+      Object.keys(localStorage).filter(k => k.startsWith('sb-') || k.includes('supabase')).forEach(k => localStorage.removeItem(k));
     } catch {}
-    
-    // Clear service worker caches
-    if ('caches' in window) {
-      try {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-      } catch {}
-    }
-    
     setUser(null);
   }, []);
 
@@ -1131,17 +897,11 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
       unreadCount, setUnreadCount,
     }}>
       <Topbar />
-
       <div className="layout">
         <LeftSidebar activeRoute={pathname} />
-
-        <main className="page">
-          {children}
-        </main>
-
+        <main className="page">{children}</main>
         {showRightSidebar && <RightSidebar />}
       </div>
-
       <MobileNav activeRoute={pathname} />
       <CreatePanel />
       <Toast />
