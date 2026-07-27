@@ -75,7 +75,7 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
 
         .landing-page {
@@ -260,7 +260,7 @@ export default function LandingPage() {
           .l-footer-grid { grid-template-columns: 1fr; gap: 16px; }
           .l-footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
         }
-      `}</style>
+      ` }} />
 
       <div className="landing-page">
         {/* ===== Savannah Background ===== */}

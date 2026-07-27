@@ -299,10 +299,20 @@ export async function requestSession(studentId: string, professionalId: string, 
   return { data, error };
 }
 
+const PROFILE_ALLOWED_FIELDS = [
+  'username', 'full_name', 'avatar_url', 'bio', 'county', 'language',
+  'interests', 'mpesa_number', 'notification_prefs', 'privacy_prefs',
+  'expertise_areas', 'teaching_levels', 'hourly_rate',
+];
+
 export async function updateProfile(userId: string, updates: Record<string, any>) {
+  const safeUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([k]) => PROFILE_ALLOWED_FIELDS.includes(k))
+  );
+  if (Object.keys(safeUpdates).length === 0) return { error: new Error('No valid fields to update') };
   const { error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...safeUpdates, updated_at: new Date().toISOString() })
     .eq('user_id', userId);
   return { error };
 }

@@ -25,7 +25,7 @@ function getSessionId(): string {
 
 // Queue for batching events
 let eventQueue: AnalyticsEvent[] = [];
-let flushTimer: NodeJS.Timeout | null = null;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Track an event
 export function track(event: string, properties?: Record<string, any>) {

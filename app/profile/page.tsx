@@ -118,7 +118,7 @@ export default function ProfilePage() {
         const { count } = await supabase
           .from('threads')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id);
+          .eq('author_id', user.id);
 
         if (count !== null) {
           setProfile((prev) => ({ ...prev, questions: String(count) }));

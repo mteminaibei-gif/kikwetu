@@ -247,7 +247,20 @@ function NotificationDropdown({
   const handleClick = (n: Notification) => {
     onMarkRead(n.id, n.target_type, n.target_id);
     if (n.target_type && n.target_id) {
-      navigate(`/${n.target_type}/${n.target_id}`);
+      const routeMap: Record<string, string> = {
+        thread: '/baraza',
+        reply: '/baraza',
+        space: '/spaces',
+        follow: '/profile',
+        tip: '/profile',
+        professional: '/learn',
+        quiz: '/learn',
+        marketplace: '/mtaa',
+        reaction: '/baraza',
+        mention: '/baraza',
+      };
+      const base = routeMap[n.target_type] || '/baraza';
+      navigate(base);
     }
     onClose();
   };
@@ -486,7 +499,7 @@ const Topbar = React.memo(function Topbar() {
       if (data) setNotifications(data);
     };
     fetchNotifs();
-  }, [notifOpen, user]);
+  }, [notifOpen, user?.id]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -1055,7 +1068,7 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const signOut = useCallback(async () => {
     // Sign out from Supabase (clears session tokens)
