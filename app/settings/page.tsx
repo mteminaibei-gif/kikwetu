@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 export default function SettingsPage() {
-  const { theme, toggleTheme, showToast } = useApp()
+  const { theme, toggleTheme, showToast, setUser } = useApp()
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -78,6 +78,13 @@ export default function SettingsPage() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !currentUser) return
+
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      showToast('Image must be under 5MB');
+      return;
+    }
+
     setAvatarUploading(true)
     try {
       const ext = file.name.split('.').pop() || 'jpg'
@@ -94,6 +101,9 @@ export default function SettingsPage() {
         .eq('user_id', currentUser.user_id)
       if (updateError) throw updateError
       setProfile(p => ({ ...p, avatar: publicUrl }))
+      if (currentUser) {
+        setUser({ ...currentUser, avatar_url: publicUrl });
+      }
       showToast('Avatar updated')
     } catch {
       showToast('Upload failed')
@@ -121,6 +131,7 @@ export default function SettingsPage() {
       if (currentUser) {
         const { error } = await updateProfile(currentUser.id, {
           full_name: profile.name,
+          username: profile.username.replace('@', ''),
           bio: profile.bio,
           county: profile.county,
           language: profile.language,
@@ -147,6 +158,7 @@ export default function SettingsPage() {
       if (currentUser) {
         const { error } = await updateProfile(currentUser.id, {
           full_name: profile.name,
+          username: profile.username.replace('@', ''),
           bio: profile.bio,
           county: profile.county,
           language: profile.language,

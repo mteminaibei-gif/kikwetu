@@ -11,7 +11,7 @@ import {
   UserRound, Bookmark, Settings, LogOut, Bell, Moon, Sun, Plus,
   MapPin, TrendingUp, MoreHorizontal, Volume2, ChevronRight, X, Camera,
   MessageCircle, ThumbsUp, AtSign, UserPlus, Award, Calendar,
-  AlertTriangle, CheckCheck
+  AlertTriangle, CheckCheck, HelpCircle, FileText
 } from 'lucide-react';
 
 // ===== Types =====
@@ -391,6 +391,16 @@ const Topbar = React.memo(function Topbar() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      showToast('Image must be under 5MB');
+      return;
+    }
+
+    // Before creating new object URL, revoke previous one
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
     setUploading(true);
@@ -542,8 +552,10 @@ const Topbar = React.memo(function Topbar() {
             onMouseLeave={(e) => { const o = e.currentTarget.querySelector('.avatar-overlay') as HTMLElement; if (o) o.style.opacity = '0'; }}
           >
             <Avatar src={avatarSrc} initials={initials} size="sm" />
-            <span
-              className="avatar-overlay"
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Upload avatar"
               style={{
                 position: 'absolute',
                 inset: 0,
@@ -554,10 +566,12 @@ const Topbar = React.memo(function Topbar() {
                 justifyContent: 'center',
                 opacity: 0,
                 transition: 'opacity .15s',
+                border: 'none',
+                cursor: 'pointer',
               }}
             >
               <Camera className="icon-sm" style={{ color: '#fff' }} />
-            </span>
+            </button>
           </span>
         </Link>
         <input
@@ -787,13 +801,19 @@ function MobileNav({ activeRoute }: { activeRoute: string }) {
 
 // ===== Create Panel =====
 function CreatePanel() {
-  const { createOpen, setCreateOpen, showToast } = useApp();
+  const { createOpen, setCreateOpen } = useApp();
+  const router = useRouter();
 
-  const options = [
-    { icon: MessagesSquare, label: 'Ask question', action: 'question' },
-    { icon: Store, label: 'Share post', action: 'post' },
-    { icon: BadgeCheck, label: 'Offer session', action: 'session' },
+  const createOptions = [
+    { icon: HelpCircle, label: 'Ask question', desc: 'Get help from the community', action: 'question', color: 'var(--blue)' },
+    { icon: FileText, label: 'Share post', desc: 'Share knowledge or updates', action: 'post', color: 'var(--green)' },
+    { icon: Calendar, label: 'Offer session', desc: 'Offer a consultation', action: 'session', color: 'var(--gold)' },
   ];
+
+  const handleCreateAction = (type: string) => {
+    setCreateOpen(false);
+    router.push(`/baraza?compose=${type}`);
+  };
 
   return (
     <div className={`create-panel ${createOpen ? 'open' : ''}`}>
@@ -804,16 +824,13 @@ function CreatePanel() {
       <h3>What do you want to add?</h3>
       <p>Ask clearly. Share locally. Leave people better off.</p>
       <div className="create-options">
-        {options.map((opt) => {
+        {createOptions.map((opt) => {
           const Icon = opt.icon;
           return (
             <button
               key={opt.action}
               className="create-option"
-              onClick={() => {
-                setCreateOpen(false);
-                showToast(`${opt.action[0].toUpperCase() + opt.action.slice(1)} composer ready`);
-              }}
+              onClick={() => handleCreateAction(opt.action)}
             >
               <Icon className="icon" />
               <span>{opt.label}</span>

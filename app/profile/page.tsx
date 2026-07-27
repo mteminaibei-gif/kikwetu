@@ -70,7 +70,7 @@ const MOCK_ACTIVITY = [
 ];
 
 export default function ProfilePage() {
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(MOCK_PROFILE);
   const [threadsCount, setThreadsCount] = useState<number | null>(null);
@@ -248,7 +248,11 @@ export default function ProfilePage() {
         ) : (
           <>
             <div className="profile-top">
-              <div className="avatar lg">{profile.initials}</div>
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt={profile.name} style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--line)' }} />
+              ) : (
+                <div className="avatar lg">{profile.initials}</div>
+              )}
               <div>
                 <h2>
                   {profile.name}{' '}

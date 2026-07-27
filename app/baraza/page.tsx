@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
+import { analytics } from '@/lib/analytics';
 import {
   getCurrentUser, toggleVote, checkVote, toggleSave, checkSaved,
   createThread, createReply, fetchReplies,
@@ -13,6 +14,7 @@ import {
   MessageCircle, Send, Bookmark, MoreHorizontal, Sprout,
   CircleHelp, BadgeDollarSign, Ellipsis, Filter
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface Thread {
   id: string;
@@ -76,13 +78,15 @@ function getTimeAgo(dateStr: string): string {
 function ComposerModal({
   onClose,
   onSubmit,
+  initialType = 'post',
 }: {
   onClose: () => void;
   onSubmit: (title: string, body: string, type: string, tags: string[]) => Promise<void>;
+  initialType?: string;
 }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [type, setType] = useState('post');
+  const [type, setType] = useState(initialType);
   const [tagsInput, setTagsInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -92,6 +96,7 @@ function ComposerModal({
     const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
     try {
       await onSubmit(title.trim(), body.trim(), type, tags);
+      analytics.createPost(type);
     } finally {
       setSubmitting(false);
     }
@@ -112,10 +117,24 @@ function ComposerModal({
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {['post', 'question'].map(t => (
-            <button key={t} onClick={() => setType(t)} className={type === t ? 'primary' : 'secondary'}>
-              {t === 'post' ? <Sprout className="icon-sm" /> : <CircleHelp className="icon-sm" />}
-              {t === 'post' ? ' Post' : ' Question'}
+          {['post', 'question', 'poll'].map(t => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 8,
+                border: `1px solid ${type === t ? 'var(--green)' : 'var(--line)'}`,
+                background: type === t ? 'var(--greenSoft)' : 'transparent',
+                color: type === t ? 'var(--green)' : 'var(--text3)',
+                fontSize: '.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+                transition: 'all .2s',
+              }}
+            >
+              {t}
             </button>
           ))}
         </div>
@@ -236,8 +255,8 @@ function ReplySection({
         });
       }
       setReplyBody('');
-      onReplyAdded(threadId);
       showToast('Reply posted!');
+      analytics.reply();
     } catch {
       showToast('Failed to post reply');
     } finally {
@@ -365,6 +384,7 @@ function PostCard({
     onVoteChange(threadId, delta, !liked);
     try {
       await toggleVote(user.id, 'thread', threadId, 1);
+      analytics.vote('thread', liked ? -1 : 1);
     } catch {
       setLiked(prevLiked);
       onVoteChange(threadId, -delta, liked);
@@ -535,13 +555,23 @@ function FeedSkeleton() {
   );
 }
 
-export default function BarazaFeed() {
+function BarazaPageInner() {
   const { showToast } = useApp();
+  const searchParams = useSearchParams();
+  const composeType = searchParams.get('compose');
   const [user, setUser] = useState<User | null>(null);
   const [filter, setFilter] = useState('for-you');
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerType, setComposerType] = useState<'post' | 'question' | 'poll'>('post');
+
+  useEffect(() => {
+    if (composeType) {
+      setComposerOpen(true);
+      setComposerType(composeType as 'post' | 'question' | 'poll');
+    }
+  }, [composeType]);
 
   const filters = [
     { key: 'for-you', label: 'For You' },
@@ -555,11 +585,12 @@ export default function BarazaFeed() {
   }, []);
 
   useEffect(() => {
+    analytics.pageView('baraza');
     const fetchThreads = async () => {
       try {
         const { data, error } = await supabase
           .from('threads')
-          .select('*')
+          .select('*, profiles:author_id(full_name, username, avatar_url, county, heshima, is_verified)')
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -667,7 +698,7 @@ export default function BarazaFeed() {
   return (
     <AppLayout>
       {composerOpen && (
-        <ComposerModal onClose={() => setComposerOpen(false)} onSubmit={handleCreateThread} />
+        <ComposerModal onClose={() => setComposerOpen(false)} onSubmit={handleCreateThread} initialType={composerType} />
       )}
 
       <div className="page-head">
@@ -732,6 +763,14 @@ export default function BarazaFeed() {
         ))}
       </section>
     </AppLayout>
+  );
+}
+
+export default function BarazaFeed() {
+  return (
+    <Suspense fallback={<AppLayout><div className="page"><div className="skeleton" style={{ height: 400 }} /></div></AppLayout>}>
+      <BarazaPageInner />
+    </Suspense>
   );
 }
 

@@ -72,6 +72,9 @@ export const metadata: Metadata = {
     description: "Our Knowledge, Our Stories, Our Future",
     images: ["/og-image.png"],
   },
+  icons: {
+    icon: '/favicon.svg',
+  },
   robots: {
     index: true,
     follow: true,

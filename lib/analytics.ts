@@ -1,0 +1,127 @@
+// Lightweight analytics tracking for KikwetuConnect
+// Tracks page views, interactions, and feature usage
+// Data is stored locally and optionally synced to Supabase
+
+import { supabase } from './supabase';
+
+interface AnalyticsEvent {
+  event: string;
+  properties?: Record<string, any>;
+  timestamp: string;
+  user_id?: string;
+  session_id: string;
+}
+
+// Generate a session ID for this browser session
+function getSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  let sessionId = sessionStorage.getItem('kikwetu-analytics-session');
+  if (!sessionId) {
+    sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    sessionStorage.setItem('kikwetu-analytics-session', sessionId);
+  }
+  return sessionId;
+}
+
+// Queue for batching events
+let eventQueue: AnalyticsEvent[] = [];
+let flushTimer: NodeJS.Timeout | null = null;
+
+// Track an event
+export function track(event: string, properties?: Record<string, any>) {
+  if (typeof window === 'undefined') return;
+
+  const analyticsEvent: AnalyticsEvent = {
+    event,
+    properties: {
+      ...properties,
+      url: window.location.pathname,
+      referrer: document.referrer || 'direct',
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      user_agent: navigator.userAgent,
+    },
+    timestamp: new Date().toISOString(),
+    session_id: getSessionId(),
+  };
+
+  eventQueue.push(analyticsEvent);
+
+  // Flush after 10 events or 30 seconds
+  if (eventQueue.length >= 10) {
+    flush();
+  } else if (!flushTimer) {
+    flushTimer = setTimeout(flush, 30000);
+  }
+
+  // Also log to console in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Analytics] ${event}`, properties);
+  }
+}
+
+// Flush events to Supabase
+async function flush() {
+  if (eventQueue.length === 0) return;
+  
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+
+  const events = [...eventQueue];
+  eventQueue = [];
+
+  try {
+    // Try to store in Supabase (non-blocking)
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const records = events.map(e => ({
+      ...e,
+      user_id: user?.id || null,
+    }));
+
+    await supabase.from('analytics_events').insert(records);
+  } catch {
+    // Silently fail - analytics should never break the app
+    // Events are already lost from queue, but that's acceptable
+  }
+}
+
+// Convenience tracking functions
+export const analytics = {
+  // Page views
+  pageView: (page: string) => track('page_view', { page }),
+  
+  // Auth events
+  login: (method: string) => track('auth_login', { method }),
+  signup: (method: string) => track('auth_signup', { method }),
+  logout: () => track('auth_logout'),
+  
+  // Content events
+  createPost: (type: string) => track('content_create', { type }),
+  vote: (targetType: string, value: number) => track('content_vote', { targetType, value }),
+  reply: () => track('content_reply'),
+  share: (targetType: string) => track('content_share', { targetType }),
+  
+  // Social events
+  follow: (targetUserId: string) => track('social_follow', { targetUserId }),
+  unfollow: (targetUserId: string) => track('social_unfollow', { targetUserId }),
+  joinSpace: (spaceId: string) => track('social_join_space', { spaceId }),
+  
+  // Commerce events
+  sendTip: (amount: number, toUserId: string) => track('commerce_tip', { amount, toUserId }),
+  createListing: (category: string, price: number) => track('commerce_listing', { category, price }),
+  
+  // Feature events
+  takeQuiz: (quizId: string, score: number) => track('feature_quiz', { quizId, score }),
+  uploadAvatar: () => track('feature_avatar_upload'),
+  sendAlert: (type: string) => track('feature_safety_alert', { type }),
+  
+  // Search events
+  search: (query: string, resultCount: number) => track('search', { query, resultCount }),
+};
+
+// Flush on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flush);
+}

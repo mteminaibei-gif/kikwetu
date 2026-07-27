@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { analytics } from '@/lib/analytics';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -137,6 +138,7 @@ export default function SignupPage() {
       }
 
       router.push('/onboarding');
+      analytics.signup('email');
     }
   };
 

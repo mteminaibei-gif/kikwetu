@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useState, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
+import { analytics } from '@/lib/analytics';
 
 function LoginPageInner() {
   const router = useRouter();
@@ -66,6 +67,7 @@ function LoginPageInner() {
     } else {
       router.push(redirectTo);
       router.refresh();
+      analytics.login('password');
     }
   };
 
