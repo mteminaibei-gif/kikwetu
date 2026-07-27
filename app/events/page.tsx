@@ -91,7 +91,7 @@ export default function EventsPage() {
     async function load() {
       const { data } = await supabase
         .from('threads')
-        .select('*, profiles:user_id(full_name, username, avatar_url)')
+        .select('*, profiles:author_id(full_name, username, avatar_url)')
         .contains('tags', ['event'])
         .order('created_at', { ascending: false })
         .limit(20)

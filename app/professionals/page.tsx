@@ -173,6 +173,11 @@ export default function ProfessionalsPage() {
       showToast('Please log in to follow professionals');
       return;
     }
+    // Skip follow for mock professionals (non-UUID user_id)
+    if (!pro.user_id || !pro.user_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      showToast('Follow not available for this professional');
+      return;
+    }
     try {
       const isNowFollowing = await toggleFollow(currentUser.id, pro.user_id);
       setFollowingMap((prev) => ({ ...prev, [pro.user_id]: isNowFollowing }));

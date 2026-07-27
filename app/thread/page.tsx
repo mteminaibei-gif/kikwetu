@@ -109,7 +109,7 @@ function ThreadPageInner() {
       }
       const { data } = await supabase
         .from('threads')
-        .select('*, profiles:user_id(full_name, username, avatar_url, county, heshima, is_verified)')
+        .select('*, profiles:author_id(full_name, username, avatar_url, county, heshima, is_verified)')
         .eq('id', threadId)
         .single();
       if (data) {
