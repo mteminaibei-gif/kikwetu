@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser, createThread, requestSession } from '@/lib/supabase-helpers';
+import { getCurrentUser, createThread, requestSession, toggleFollow, checkFollowing } from '@/lib/supabase-helpers';
 import {
   GraduationCap, BadgeCheck, MessagesSquare, Plus, CircleHelp,
   MessageCircleQuestion, ThumbsUp, Send, Award, BookOpen, Target,
@@ -36,10 +36,30 @@ export default function StudentsPage() {
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
   const [sessionModalPro, setSessionModalPro] = useState<Professional | null>(null);
   const [sessionTitle, setSessionTitle] = useState('');
   const [sessionDesc, setSessionDesc] = useState('');
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser || !professionals.length) return;
+    async function checkAll() {
+      const map: Record<string, boolean> = {};
+      for (const pro of professionals) {
+        map[pro.user_id] = await checkFollowing(currentUser!.user_id, pro.user_id);
+      }
+      setFollowingMap(map);
+    }
+    checkAll();
+  }, [currentUser, professionals]);
+
+  const handleFollow = async (proUserId: string) => {
+    if (!currentUser) return showToast('Please sign in');
+    const nowFollowing = await toggleFollow(currentUser.user_id, proUserId);
+    setFollowingMap(prev => ({ ...prev, [proUserId]: nowFollowing }));
+    showToast(nowFollowing ? 'Following' : 'Unfollowed');
+  };
 
   useEffect(() => {
     async function init() {
@@ -472,7 +492,7 @@ export default function StudentsPage() {
                 <span>{pro.badge} · private sessions · 4.9 rating</span>
               </div>
               <div className="pro-actions">
-                <button className="follow" onClick={(e) => { e.stopPropagation(); showToast(`Following ${pro.name}`); }}>Follow</button>
+                <button className="follow" onClick={(e) => { e.stopPropagation(); handleFollow(pro.user_id); }}>{followingMap[pro.user_id] ? 'Following' : 'Follow'}</button>
                 <button className="primary" onClick={(e) => { e.stopPropagation(); setSessionModalPro(pro); }}>Request consult</button>
               </div>
             </div>

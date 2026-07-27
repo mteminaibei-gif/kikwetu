@@ -304,7 +304,7 @@ export default function MtaaExchange() {
 
       try {
         const { data, error } = await supabase
-          .from('listings')
+          .from('marketplace_listings')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(20);

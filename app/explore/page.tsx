@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/supabase-helpers';
+import { getCurrentUser, toggleFollow, checkFollowing } from '@/lib/supabase-helpers';
 import {
   Search, TrendingUp, CircleHelp, BadgeDollarSign, Users, Tag,
   MapPin, Sprout, MessageCircle, ThumbsUp, Send, Ellipsis, BadgeCheck
@@ -49,7 +49,44 @@ export default function ExplorePage() {
   const [results, setResults] = useState<SearchResult>({ threads: [], professionals: [], spaces: [], people: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [trendingThreads, setTrendingThreads] = useState<any[]>([]);
+  const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    getCurrentUser().then(u => setCurrentUser(u));
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const allPros = [...results.professionals];
+    if (allPros.length === 0) return;
+    async function checkAll() {
+      const map: Record<string, boolean> = {};
+      for (const pro of allPros) {
+        const userId = pro.user_id || pro.id;
+        if (userId) map[userId] = await checkFollowing(currentUser!.user_id, userId);
+      }
+      setFollowingMap(prev => ({ ...prev, ...map }));
+    }
+    checkAll();
+  }, [currentUser, results.professionals]);
+
+  const handleFollow = async (proUserId: string) => {
+    if (!currentUser) return showToast('Please sign in');
+    const nowFollowing = await toggleFollow(currentUser.user_id, proUserId);
+    setFollowingMap(prev => ({ ...prev, [proUserId]: nowFollowing }));
+    showToast(nowFollowing ? 'Following' : 'Unfollowed');
+  };
+
+  const handleShare = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url || window.location.href);
+      showToast('Link copied to clipboard');
+    } catch {
+      showToast('Could not copy link');
+    }
+  };
 
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -208,7 +245,7 @@ export default function ExplorePage() {
               </div>
               <div className="post-actions">
                 <button className="action"><ThumbsUp className="icon-sm" /> <span>{thread.vote_count || 0}</span></button>
-                <button className="action"><Send className="icon-sm" /> <span>Share</span></button>
+                <button className="action" onClick={(e) => { e.stopPropagation(); handleShare(window.location.href); }}><Send className="icon-sm" /> <span>Share</span></button>
               </div>
             </article>
           ))}
@@ -222,7 +259,7 @@ export default function ExplorePage() {
                 <span>Rating: {pro.rating || 'N/A'} · {pro.county || ''}</span>
               </div>
               <div className="pro-actions">
-                <button className="follow">Follow</button>
+                <button className="follow" onClick={() => handleFollow(pro.user_id || pro.id)}>{followingMap[pro.user_id || pro.id] ? 'Following' : 'Follow'}</button>
                 <button className="primary" onClick={() => showToast('Request sent')}>Request consult</button>
               </div>
             </div>
@@ -268,7 +305,7 @@ export default function ExplorePage() {
                 <div className="post-actions">
                   <button className="action"><ThumbsUp className="icon-sm" /> <span>31</span></button>
                   <button className="action"><CircleHelp className="icon-sm" /> <span>8 answers</span></button>
-                  <button className="action"><Send className="icon-sm" /> <span>Share</span></button>
+                  <button className="action" onClick={(e) => { e.stopPropagation(); handleShare(window.location.href); }}><Send className="icon-sm" /> <span>Share</span></button>
                 </div>
               </article>
 
@@ -280,7 +317,7 @@ export default function ExplorePage() {
                   <span>Approved professional · private sessions · 4.9 rating</span>
                 </div>
                 <div className="pro-actions">
-                  <button className="follow">Follow</button>
+                  <button className="follow" onClick={() => handleFollow('mock-jo')}>{followingMap['mock-jo'] ? 'Following' : 'Follow'}</button>
                   <button className="primary" onClick={() => showToast('Request sent')}>Request consult</button>
                 </div>
               </div>

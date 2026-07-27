@@ -319,6 +319,7 @@ function PostCard({
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [voted, setVoted] = useState<number | null>(null);
+  const [votedPoll, setVotedPoll] = useState<number | null>(null);
   const [likeDelta, setLikeDelta] = useState(0);
 
   useEffect(() => {
@@ -331,6 +332,26 @@ function PostCard({
     });
     checkSaved(user.id, 'thread', threadId).then(s => setSaved(s));
   }, [user, threadId]);
+
+  const handlePollVote = async (optionIndex: number) => {
+    if (!user || votedPoll !== null || !threadId) return;
+    try {
+      await toggleVote(user.id, 'thread', threadId, 1);
+      setVotedPoll(optionIndex);
+      onAction('Vote recorded');
+    } catch {
+      onAction('Failed to record vote');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      onAction('Link copied to clipboard');
+    } catch {
+      onAction('Could not copy link');
+    }
+  };
 
   const handleVote = async () => {
     if (!user || !threadId) {
@@ -418,21 +439,23 @@ function PostCard({
             {post.content.options.map((opt, i) => (
               <button
                 key={i}
-                onClick={() => { setVoted(i); onAction('Vote recorded'); }}
+                onClick={() => handlePollVote(i)}
+                disabled={votedPoll !== null}
                 style={{
                   display: 'block', width: '100%', padding: '10px 12px', marginBottom: 6,
-                  borderRadius: 10, border: voted === i ? '1px solid var(--green)' : '1px solid var(--line)',
-                  background: voted === i ? 'var(--greenSoft)' : 'var(--bg)', color: 'var(--text)',
+                  borderRadius: 10, border: votedPoll === i ? '1px solid var(--green)' : '1px solid var(--line)',
+                  background: votedPoll === i ? 'var(--greenSoft)' : 'var(--bg)', color: 'var(--text)',
                   textAlign: 'left', position: 'relative', overflow: 'hidden', fontSize: '.78rem',
-                  fontWeight: voted === i ? 700 : 400, cursor: 'pointer',
+                  fontWeight: votedPoll === i ? 700 : 400, cursor: votedPoll !== null ? 'default' : 'pointer',
+                  opacity: votedPoll !== null && votedPoll !== i ? 0.6 : 1,
                 }}
               >
-                {voted !== null && (
+                {votedPoll !== null && (
                   <div style={{ position: 'absolute', inset: 0, width: `${opt.pct}%`, background: 'var(--greenSoft)', opacity: .4, transition: 'width .3s ease' }} />
                 )}
                 <span style={{ position: 'relative', zIndex: 1 }}>
                   {opt.label}
-                  {voted !== null && <span style={{ float: 'right', color: 'var(--text3)' }}>{opt.pct}%</span>}
+                  {votedPoll !== null && <span style={{ float: 'right', color: 'var(--text3)' }}>{opt.pct}%</span>}
                 </span>
               </button>
             ))}
@@ -471,7 +494,7 @@ function PostCard({
           <MessageCircle className="icon-sm" />
           <span>{'answers' in post.stats ? `${post.stats.answers} answers` : post.stats.comments}</span>
         </button>
-        <button className="action" onClick={() => onAction('Share link copied')}>
+        <button className="action" onClick={handleShare}>
           <Send className="icon-sm" /> <span>Share</span>
         </button>
         <button className={`action ${saved ? 'saved' : ''}`} onClick={handleSave}>

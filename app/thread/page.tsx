@@ -1,16 +1,35 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
 import { getCurrentUser, toggleVote, toggleSave, createReply, fetchReplies } from '@/lib/supabase-helpers';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, CircleHelp, BadgeDollarSign, ThumbsUp, MessageCircle,
   Send, Bookmark, Ellipsis, BadgeCheck, Award, Star,
   MessageCircleQuestion, Edit
 } from 'lucide-react';
+
+interface Thread {
+  id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  likes_count: number;
+  created_at: string;
+  user_id: string;
+  profiles?: {
+    full_name: string;
+    username: string;
+    avatar_url: string;
+    county: string;
+    heshima: number;
+    is_verified: boolean;
+  };
+}
 
 interface Reply {
   id: string;
@@ -47,25 +66,67 @@ const guidanceOffers = [
   },
 ];
 
-export default function ThreadPage() {
+function timeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
+function ThreadPageInner() {
+  const searchParams = useSearchParams();
+  const threadIdParam = searchParams.get('id');
+
   const { showToast, user } = useApp();
   const [liked, setLiked] = useState(false);
-  const [voteCount, setVoteCount] = useState(24);
+  const [voteCount, setVoteCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [threadId] = useState('1');
+  const [threadId] = useState(threadIdParam || '1');
+  const [thread, setThread] = useState<Thread | null>(null);
+  const [loading, setLoading] = useState(true);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [replyText, setReplyText] = useState('');
-  const [replyCount, setReplyCount] = useState(1);
+  const [replyCount, setReplyCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const channelRef = useRef<any>(null);
   const repliesListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function fetchThread() {
+      if (!threadId) {
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from('threads')
+        .select('*, profiles:user_id(full_name, username, avatar_url, county, heshima, is_verified)')
+        .eq('id', threadId)
+        .single();
+      if (data) {
+        setThread(data);
+        setVoteCount(data.likes_count || 0);
+      }
+      setLoading(false);
+    }
+    fetchThread();
+  }, [threadId]);
 
   useEffect(() => {
     async function init() {
       const profile = await getCurrentUser();
       setCurrentUser(profile);
 
+      if (!threadId) return;
       const { data: replyData } = await fetchReplies(threadId);
       if (replyData) {
         setReplies(replyData as unknown as Reply[]);
@@ -76,6 +137,8 @@ export default function ThreadPage() {
   }, [threadId]);
 
   useEffect(() => {
+    if (!threadId) return;
+
     const channel = supabase
       .channel('thread-replies-realtime')
       .on(
@@ -174,6 +237,41 @@ export default function ThreadPage() {
     showToast('Answer accepted');
   };
 
+  if (loading) {
+    return (
+      <AppLayout showRightSidebar={false}>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Students Area</div>
+            <h1 className="serif">Thread view.</h1>
+          </div>
+        </div>
+        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)' }}>
+          Loading thread...
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!thread) {
+    return (
+      <AppLayout showRightSidebar={false}>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Students Area</div>
+            <h1 className="serif">Thread view.</h1>
+          </div>
+        </div>
+        <Link href="/students" className="back" onClick={() => showToast('Back to Students')}>
+          <ArrowLeft className="icon-sm" /> Back to Students
+        </Link>
+        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--muted)' }}>
+          Thread not found.
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout showRightSidebar={false}>
       <div className="page-head">
@@ -193,26 +291,35 @@ export default function ThreadPage() {
         </div>
 
         <h2 className="serif" style={{ fontSize: '1.1rem', margin: '0 0 8px' }}>
-          How do I price a small digital service without undercutting myself?
+          {thread.title || 'Untitled thread'}
         </h2>
 
         <p className="thread-copy">
-          I can build simple websites and product mockups, but I keep pricing from fear.
+          {thread.body || ''}
         </p>
 
         <div className="tags" style={{ marginTop: 12 }}>
-          <span className="tag">#TechAndStartups</span>
+          {(thread.tags || []).map((tag, i) => (
+            <span key={i} className="tag">#{tag}</span>
+          ))}
           <span className="tag gold">{replyCount} replies</span>
         </div>
 
         <div className="thread-meta" style={{ marginTop: 12 }}>
-          <div className="avatar">GP</div>
+          <div className="avatar">
+            {thread.profiles?.full_name
+              ? thread.profiles.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+              : '??'}
+          </div>
           <div>
-            <strong>Grid Pulse <span className="verified">✓</span></strong>
+            <strong>
+              {thread.profiles?.full_name || 'Anonymous'}
+              {thread.profiles?.is_verified && <BadgeCheck className="icon-sm" style={{ color: 'var(--green)', verticalAlign: 'middle' }} />}
+            </strong>
             <div className="meta">
-              <span>Asked today</span>
+              <span>{thread.created_at ? timeAgo(thread.created_at) : 'Unknown'}</span>
               <span>·</span>
-              <span>Nairobi</span>
+              <span>{thread.profiles?.county || ''}</span>
             </div>
           </div>
         </div>
@@ -268,7 +375,11 @@ export default function ThreadPage() {
           {replies.map((reply) => (
             <div key={reply.id} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--border)' }}>
               <div className="answer-head">
-                <div className="avatar earth">AM</div>
+                <div className="avatar earth">
+                  {reply.profiles?.full_name
+                    ? reply.profiles.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+                    : '??'}
+                </div>
                 <div>
                   <strong>
                     {reply.profiles?.full_name || 'User'} {reply.profiles?.is_verified && <BadgeCheck className="icon-sm" style={{ color: 'var(--green)', verticalAlign: 'middle' }} />}
@@ -349,5 +460,20 @@ export default function ThreadPage() {
         </div>
       </section>
     </AppLayout>
+  );
+}
+
+export default function ThreadPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="page" style={{ display: 'grid', gap: 16 }}>
+          <div style={{ height: 40, width: '60%', borderRadius: 10, background: 'var(--surface)', animation: 'shimmer 1.5s infinite' }} />
+          <div style={{ height: 200, borderRadius: 14, background: 'var(--surface)', animation: 'shimmer 1.5s infinite' }} />
+        </div>
+      </AppLayout>
+    }>
+      <ThreadPageInner />
+    </Suspense>
   );
 }

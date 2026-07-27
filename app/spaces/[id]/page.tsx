@@ -1,258 +1,260 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/Button';
-import { QuestionCard } from '@/components/QuestionCard';
-import { DebateCard } from '@/components/DebateCard';
-import { Badge } from '@/components/ui/Badge';
-import { Users, Settings, Share2, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import {
+  ArrowLeft, Users, MessageSquare, Bookmark, Share2,
+  Settings, ChevronRight, Clock, ThumbsUp, MessageCircle,
+  Plus, Search, Award, Star, ExternalLink
+} from 'lucide-react'
+import AppLayout, { useApp } from '@/components/AppLayout'
+import { supabase } from '@/lib/supabase'
+import { joinSpace, checkSpaceMember, createThread } from '@/lib/supabase-helpers'
 
 export default function SpaceDetailPage() {
-  const params = useParams();
-  const spaceId = params.id;
+  const searchParams = useSearchParams()
+  const spaceId = searchParams.get('id')
+  const { user, showToast } = useApp()
 
-  const [activeTab, setActiveTab] = useState<'posts' | 'mjadala' | 'quiz'>('posts');
-  const [isJoined, setIsJoined] = useState(false);
+  const [space, setSpace] = useState<any>(null)
+  const [threads, setThreads] = useState<any[]>([])
+  const [isMember, setIsMember] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'posts' | 'questions' | 'polls'>('posts')
+  const [showCreate, setShowCreate] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newBody, setNewBody] = useState('')
 
-  // Mock space data
-  const space = {
-    id: spaceId,
-    name: 'Kilimo Tech',
-    icon: '🌾',
-    description: 'Smart Farming Innovations in Kenya',
-    tagline: 'Learn, share, and grow sustainable farming practices',
-    members: 2845,
-    posts: 1234,
-    verified: true,
-    banner: 'linear-gradient(135deg, #2d7c4a 0%, #4a9d63 100%)',
-    headerImage: 'https://via.placeholder.com/1200x300',
-    moderators: [
-      { name: 'Dr. Kipchoge', avatar: 'https://via.placeholder.com/40' },
-      { name: 'Sarah Mwangi', avatar: 'https://via.placeholder.com/40' },
-    ],
-  };
+  useEffect(() => {
+    if (!spaceId) return
+    async function load() {
+      const { data: spaceData } = await supabase
+        .from('spaces')
+        .select('*')
+        .eq('id', spaceId)
+        .single()
+      if (spaceData) setSpace(spaceData)
 
-  const posts = [
-    {
-      id: '1',
-      type: 'question' as const,
-      author: {
-        id: 'farmer1',
-        name: 'Farmer Benson',
-        username: '@farmer_benson',
-        avatar: 'https://via.placeholder.com/48',
-      },
-      content: 'Welcome to Kilimo Tech! How are you using tech on your farm?',
-      tags: ['#Kilimo', '#Innovation'],
-      upvotes: 234,
-      replies: 12,
-      verified: true,
-    },
-    {
-      id: '2',
-      type: 'question' as const,
-      author: {
-        id: 'user2',
-        name: 'Jane Kipchoge',
-        username: '@jane_k',
-        avatar: 'https://via.placeholder.com/48',
-      },
-      content: 'Mavuno ya parachichi yashuka, nifanye ninf? (Harvest prices dropped, what should I do?)',
-      tags: ['#FarmingAdvice', '#Kiswahili'],
-      upvotes: 45,
-      replies: 12,
-      verified: false,
-    },
-  ];
+      const { data: threadData } = await supabase
+        .from('threads')
+        .select('*, profiles:user_id(full_name, username, avatar_url, heshima, is_verified)')
+        .eq('space_id', spaceId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (threadData) setThreads(threadData)
 
-  const debates = [
-    {
-      id: '1',
-      type: 'debate' as const,
-      author: {
-        id: 'mjadala1',
-        name: 'Mjadala Live',
-        username: '@mjadala',
-        avatar: 'https://via.placeholder.com/48',
-      },
-      title: 'Organic vs Conventional Farming in Kenya',
-      description: 'Live debate - 3 participants',
-      isLive: true,
-      participants: [
-        'https://via.placeholder.com/32',
-        'https://via.placeholder.com/32',
-        'https://via.placeholder.com/32',
-      ],
-    },
-  ];
+      if (user) {
+        const member = await checkSpaceMember(spaceId!, user.user_id)
+        setIsMember(member)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [spaceId, user])
+
+  const handleJoinLeave = async () => {
+    if (!user || !spaceId) return
+    const nowMember = await joinSpace(spaceId, user.user_id)
+    setIsMember(nowMember)
+    setSpace((s: any) => ({
+      ...s,
+      members_count: s.members_count + (nowMember ? 1 : -1)
+    }))
+    showToast(nowMember ? `Joined ${space.name}` : `Left ${space.name}`)
+  }
+
+  const handleCreatePost = async () => {
+    if (!user || !newTitle.trim() || !spaceId) return
+    const { data, error } = await createThread(user.id, newTitle, newBody, 'post', [], undefined, spaceId)
+    if (data) {
+      setThreads(prev => [{ ...data, profiles: { full_name: user.full_name, username: user.username, avatar_url: user.avatar_url, heshima: user.heshima, is_verified: user.is_verified } }, ...prev])
+      setNewTitle('')
+      setNewBody('')
+      setShowCreate(false)
+      showToast('Post created')
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      showToast('Link copied')
+    } catch {
+      showToast('Share this space')
+    }
+  }
+
+  if (loading) return <AppLayout><div className="page"><div className="skeleton" style={{ height: 200 }} /></div></AppLayout>
+  if (!space) return <AppLayout><div className="page"><h2>Space not found</h2></div></AppLayout>
+
+  const tabs = [
+    { key: 'posts', label: 'Posts', count: threads.filter(t => t.type === 'post').length },
+    { key: 'questions', label: 'Questions', count: threads.filter(t => t.type === 'question').length },
+    { key: 'polls', label: 'Polls', count: threads.filter(t => t.type === 'poll').length },
+  ]
+
+  const filteredThreads = threads.filter(t => {
+    if (activeTab === 'posts') return t.type === 'post'
+    if (activeTab === 'questions') return t.type === 'question'
+    if (activeTab === 'polls') return t.type === 'poll'
+    return true
+  })
 
   return (
-    <Layout rightSidebar={<SpaceRightSidebar space={space} />}>
-      <div className="bg-bg-primary">
+    <AppLayout>
+      <div className="page">
         {/* Space Header */}
-        <div
-          className="h-48 md:h-64 bg-cover bg-center relative"
-          style={{ backgroundImage: `url(${space.headerImage})` }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-kikwetu-green to-kikwetu-orange opacity-80" />
-          <div className="absolute inset-0 flex items-end justify-between p-4 md:p-6">
-            <div className="flex items-center gap-4">
-              <div className="text-5xl md:text-6xl bg-white bg-opacity-20 p-4 rounded-lg backdrop-blur-md">
-                {space.icon}
-              </div>
-              <div className="text-white">
-                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-                  {space.name}
-                  {space.verified && <Badge variant="verified" size="sm">✓</Badge>}
-                </h1>
-                <p className="text-sm opacity-90">{space.description}</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={isJoined ? 'ghost' : 'primary'}
-                size="md"
-                onClick={() => setIsJoined(!isJoined)}
-              >
-                {isJoined ? 'Joined' : 'Join'}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <div style={{ marginBottom: 24 }}>
+          <Link href="/spaces" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text3)', fontSize: '.8rem', textDecoration: 'none', marginBottom: 16 }}>
+            <ArrowLeft size={16} /> Back to Spaces
+          </Link>
 
-        {/* Tagline & Stats */}
-        <div className="border-b border-border-light px-4 md:px-6 py-4">
-          <p className="text-text-secondary mb-4">{space.tagline}</p>
-          <div className="flex flex-wrap gap-6 text-sm">
-            <div>
-              <p className="font-semibold text-text-primary">{space.members.toLocaleString()}</p>
-              <p className="text-text-tertiary flex items-center gap-1">
-                <Users className="w-4 h-4" /> Members
-              </p>
+          <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 64, height: 64, borderRadius: 18, background: space.color || 'var(--greenSoft)', display: 'grid', placeItems: 'center', fontSize: '2rem' }}>
+                {space.icon || '🏠'}
+              </div>
+              <div>
+                <h1 className="serif" style={{ fontSize: '1.8rem' }}>{space.name}</h1>
+                <p style={{ color: 'var(--text3)', fontSize: '.85rem', marginTop: 4 }}>{space.description}</p>
+                <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: '.8rem', color: 'var(--text3)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={14} /> {space.members_count} members</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageSquare size={14} /> {threads.length} posts</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-text-primary">{space.posts.toLocaleString()}</p>
-              <p className="text-text-tertiary">Posts</p>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleShare} className="icon-btn" title="Share"><Share2 size={18} /></button>
+              {user && (
+                <button
+                  onClick={handleJoinLeave}
+                  className={isMember ? 'btn-outline' : 'btn-primary'}
+                  style={{ minWidth: 100 }}
+                >
+                  {isMember ? 'Leave' : 'Join'}
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-border-light sticky top-14 bg-bg-primary z-10">
-          <div className="px-4 md:px-6 flex gap-6">
-            {['posts', 'mjadala', 'quiz'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as 'posts' | 'mjadala' | 'quiz')}
-                className={`py-3 font-medium text-sm border-b-2 transition ${
-                  activeTab === tab
-                    ? 'border-kikwetu-orange text-kikwetu-orange'
-                    : 'border-transparent text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {tab === 'posts' && 'Posts'}
-                {tab === 'mjadala' && 'Mjadala (Debates)'}
-                {tab === 'quiz' && 'Quiz'}
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 20 }}>
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              style={{
+                padding: '10px 16px', border: 'none', background: 'transparent', cursor: 'pointer',
+                fontSize: '.85rem', fontWeight: activeTab === tab.key ? 700 : 500,
+                color: activeTab === tab.key ? 'var(--green)' : 'var(--text3)',
+                borderBottom: activeTab === tab.key ? '2px solid var(--green)' : '2px solid transparent',
+                transition: 'all .2s',
+              }}
+            >
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </div>
+
+        {/* Create Post */}
+        {user && isMember && (
+          <div style={{ marginBottom: 20 }}>
+            {!showCreate ? (
+              <button onClick={() => setShowCreate(true)} className="btn-outline" style={{ width: '100%', justifyContent: 'center' }}>
+                <Plus size={16} /> Create a post
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="divide-y divide-border-light">
-          {activeTab === 'posts' && (
-            <>
-              {posts.map((post) => (
-                <QuestionCard
-                  key={post.id}
-                  author={post.author}
-                  content={post.content}
-                  tags={post.tags}
-                  upvotes={post.upvotes}
-                  replies={post.replies}
-                  verified={post.verified}
+            ) : (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
+                <input
+                  placeholder="Post title..."
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg)', color: 'var(--text)', fontSize: '.9rem', marginBottom: 8 }}
                 />
-              ))}
-            </>
-          )}
-
-          {activeTab === 'mjadala' && (
-            <>
-              {debates.map((debate) => (
-                <DebateCard
-                  key={debate.id}
-                  author={debate.author}
-                  title={debate.title}
-                  description={debate.description}
-                  isLive={debate.isLive}
-                  participants={debate.participants}
+                <textarea
+                  placeholder="What's on your mind?"
+                  value={newBody}
+                  onChange={e => setNewBody(e.target.value)}
+                  rows={3}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--bg)', color: 'var(--text)', fontSize: '.9rem', resize: 'vertical' }}
                 />
-              ))}
-            </>
-          )}
-
-          {activeTab === 'quiz' && (
-            <div className="p-6 text-center">
-              <Zap className="w-12 h-12 text-text-tertiary mx-auto mb-3" />
-              <h3 className="text-lg font-semibold text-text-primary mb-2">Coming Soon!</h3>
-              <p className="text-text-secondary">Quizzes for this space will be available soon.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </Layout>
-  );
-}
-
-// Right Sidebar Component
-interface SpaceRightSidebarProps {
-  space: any;
-}
-
-const SpaceRightSidebar: React.FC<SpaceRightSidebarProps> = ({ space }) => {
-  return (
-    <div className="bg-bg-secondary border-l border-border-light overflow-y-auto p-4">
-      {/* Moderators */}
-      <div className="mb-6">
-        <h3 className="font-bold text-text-primary mb-3 text-sm">Moderators</h3>
-        <div className="space-y-3">
-          {space.moderators.map((mod: any, idx: number) => (
-            <div key={idx} className="flex items-center gap-3">
-              <img src={mod.avatar} alt={mod.name} className="w-10 h-10 rounded-full" />
-              <div>
-                <p className="text-sm font-medium text-text-primary">{mod.name}</p>
-                <p className="text-xs text-text-tertiary">Moderator</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                  <button onClick={() => setShowCreate(false)} className="btn-outline">Cancel</button>
+                  <button onClick={handleCreatePost} className="btn-primary" disabled={!newTitle.trim()}>Post</button>
+                </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Thread List */}
+        <div style={{ display: 'grid', gap: 12 }}>
+          {filteredThreads.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
+              <MessageSquare size={32} style={{ opacity: .3, marginBottom: 8 }} />
+              <p>No posts yet. Be the first to share something!</p>
             </div>
+          ) : filteredThreads.map(thread => (
+            <Link
+              key={thread.id}
+              href={`/thread?id=${thread.id}`}
+              style={{
+                display: 'block', padding: 16, background: 'var(--surface)', border: '1px solid var(--line)',
+                borderRadius: 14, textDecoration: 'none', color: 'var(--text)',
+                transition: 'transform .2s var(--ease), box-shadow .2s var(--ease)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--greenSoft)', display: 'grid', placeItems: 'center', fontSize: '.7rem', fontWeight: 700, color: 'var(--green)' }}>
+                  {thread.profiles?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                </div>
+                <div>
+                  <div style={{ fontSize: '.8rem', fontWeight: 600 }}>{thread.profiles?.full_name || 'Anonymous'}</div>
+                  <div style={{ fontSize: '.7rem', color: 'var(--text3)' }}>@{thread.profiles?.username || 'user'}</div>
+                </div>
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>{thread.title}</h3>
+              {thread.body && <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.5 }}>{thread.body.slice(0, 200)}{thread.body.length > 200 ? '...' : ''}</p>}
+              <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: '.75rem', color: 'var(--text3)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><ThumbsUp size={13} /> {thread.likes_count || 0}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MessageCircle size={13} /> {thread.comments_count || 0}</span>
+              </div>
+            </Link>
           ))}
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="border-t border-border-light pt-4 space-y-2">
-        <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-bg-tertiary transition text-text-secondary text-sm">
-          <Share2 className="w-4 h-4" />
-          Share Space
-        </button>
-        <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-bg-tertiary transition text-text-secondary text-sm">
-          <Settings className="w-4 h-4" />
-          Settings
-        </button>
-      </div>
-
-      {/* Rules */}
-      <div className="border-t border-border-light mt-4 pt-4">
-        <h4 className="font-semibold text-text-primary text-sm mb-3">Community Guidelines</h4>
-        <ul className="text-xs text-text-tertiary space-y-2">
-          <li>• Be respectful and constructive</li>
-          <li>• No harassment or hate speech</li>
-          <li>• Share verified information</li>
-          <li>• Keep discussions on-topic</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
+      <style jsx>{`
+        .icon-btn {
+          display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px;
+          border: 1px solid var(--line); background: var(--surface); color: var(--text2); cursor: pointer;
+          transition: all .2s;
+        }
+        .icon-btn:hover { background: var(--surface2); color: var(--text); }
+        .btn-primary {
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 8px 18px; border-radius: 10px; border: 0; font-weight: 700; font-size: .85rem;
+          background: var(--gold); color: var(--green2); cursor: pointer; transition: all .2s;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px oklch(73% .145 78 / .25); }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-outline {
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 8px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+          color: var(--text); font-weight: 600; font-size: .85rem; cursor: pointer; transition: all .2s;
+        }
+        .btn-outline:hover { border-color: var(--green); color: var(--green); }
+        .skeleton {
+          background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+          background-size: 200% 100%; border-radius: 12px; animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+      `}</style>
+    </AppLayout>
+  )
+}

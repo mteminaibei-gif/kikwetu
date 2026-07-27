@@ -80,7 +80,7 @@ export default function NyumbaKumiPage() {
 
       try {
         const { data, error } = await supabase
-          .from('safety_alerts')
+          .from('nyumba_kumi_alerts')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(20);
@@ -113,7 +113,7 @@ export default function NyumbaKumiPage() {
       .channel('nyumba-kumi-realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'safety_alerts' },
+        { event: 'INSERT', schema: 'public', table: 'nyumba_kumi_alerts' },
         (payload) => {
           const item = payload.new as any;
           const newAlert: AlertItem = {
