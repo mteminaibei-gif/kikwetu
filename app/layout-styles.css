@@ -725,77 +725,7 @@
 
 .toast.show { transform: translate(-50%, 0); }
 
-/* ===== Stories / empty / tip (minimal kept) ===== */
-.stories {
-  display: flex;
-  gap: 12px;
-  overflow: auto;
-  padding: 2px 0 21px;
-  scrollbar-width: none;
-}
-.stories::-webkit-scrollbar { display: none; }
-.story {
-  position: relative;
-  display: grid;
-  place-items: end center;
-  flex: 0 0 96px;
-  height: 132px;
-  padding: 10px 6px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 17px;
-  color: oklch(98% .01 94);
-  background: var(--green2);
-  box-shadow: var(--shadow1);
-  text-align: center;
-  cursor: pointer;
-}
-.story > * { position: relative; z-index: 1; }
-.story span:last-child { font-size: .7rem; font-weight: 800; line-height: 1.1; }
-.story-avatar { position: absolute !important; top: 10px; left: 10px; border: 3px solid var(--surface); }
-.story.add { color: var(--text); background: var(--surface); }
-.story.add span:last-child { color: var(--text2); }
-.story.viewed { border-color: var(--line2); opacity: 0.7; }
-.story.viewed::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 17px;
-  background: rgba(0,0,0,0.15);
-  z-index: 2;
-}
-.story.viewed > * { position: relative; z-index: 3; }
-.stories-wrapper { position: relative; }
-.stories-scroll-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text2);
-  cursor: pointer;
-  box-shadow: var(--shadow1);
-}
-.stories-scroll-left { left: -6px; }
-.stories-scroll-right { right: -6px; }
-.stories-scroll-btn:hover { background: var(--greenSoft); color: var(--green); border-color: var(--green); }
-.story-plus {
-  position: absolute;
-  top: 28px;
-  display: grid;
-  place-items: center;
-  width: 37px;
-  height: 37px;
-  border-radius: 50%;
-  color: var(--surface);
-  background: var(--green);
-}
+/* ===== Stories (moved to globals.css) ===== */
 
 .empty {
   padding: 44px 20px;
@@ -857,8 +787,7 @@
   .page-head p { font-size: .82rem; }
 
   .hero { padding: 16px; border-radius: 16px; }
-  .stories { padding-top: 2px; gap: 8px; }
-  .story { flex-basis: 76px; height: 108px; border-radius: 14px; }
+  /* Stories responsive handled in globals.css */
 
   .composer { padding: 12px; border-radius: 14px; }
   .composer-action { font-size: .65rem; min-height: 32px; }

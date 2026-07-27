@@ -86,6 +86,7 @@ function StoriesRow() {
 
   return (
     <>
+      <div style={{ position: 'relative' }}>
       <div className="stories-row" ref={scrollRef}>
         {user && (
           <button type="button" className="story-item" onClick={() => { if (user) setUploadOpen(true); else showToast('Please sign in to share an idea'); }}>
@@ -163,6 +164,7 @@ function StoriesRow() {
         >
           <ChevronRight className="icon-sm" />
         </button>
+      </div>
       </div>
 
       {uploadOpen && (
