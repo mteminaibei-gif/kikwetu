@@ -390,6 +390,10 @@ body, .topbar, .sidebar, .nav-item, button, input, select, textarea, section {
     font-size: .82rem !important;
   }
 
+  .composer-actions {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
   .toast {
     bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
   }

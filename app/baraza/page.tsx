@@ -116,8 +116,8 @@ function ComposerModal({
           <button onClick={onClose} className="icon-btn" style={{ fontSize: 18 }}>✕</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {['post', 'question', 'poll'].map(t => (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {['post', 'question', 'poll', 'audio'].map(t => (
             <button
               key={t}
               onClick={() => setType(t)}
@@ -563,12 +563,12 @@ function BarazaPageInner() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
   const [composerOpen, setComposerOpen] = useState(false);
-  const [composerType, setComposerType] = useState<'post' | 'question' | 'poll'>('post');
+  const [composerType, setComposerType] = useState<'post' | 'question' | 'poll' | 'audio'>('post');
 
   useEffect(() => {
     if (composeType) {
       setComposerOpen(true);
-      setComposerType(composeType as 'post' | 'question' | 'poll');
+      setComposerType(composeType as 'post' | 'question' | 'poll' | 'audio');
     }
   }, [composeType]);
 
@@ -725,14 +725,17 @@ function BarazaPageInner() {
           </button>
         </div>
         <div className="composer-actions">
-          <button className="composer-action" onClick={() => setComposerOpen(true)}>
-            <Image className="icon" /> Photo / video
+          <button className="composer-action" onClick={() => { setComposerType('post'); setComposerOpen(true); }}>
+            <Image className="icon" /> Post
           </button>
-          <button className="composer-action" onClick={() => setComposerOpen(true)}>
-            <MessageCircleQuestion className="icon" /> Ask a question
+          <button className="composer-action" onClick={() => { setComposerType('question'); setComposerOpen(true); }}>
+            <MessageCircleQuestion className="icon" /> Question
           </button>
-          <button className="composer-action" onClick={() => null}>
-            <Video className="icon" /> Offer a session
+          <button className="composer-action" onClick={() => { setComposerType('poll'); setComposerOpen(true); }}>
+            <CircleHelp className="icon" /> Poll
+          </button>
+          <button className="composer-action" onClick={() => { setComposerType('audio'); setComposerOpen(true); }}>
+            <Video className="icon" /> Audio
           </button>
         </div>
       </section>
@@ -870,7 +873,7 @@ function threadToPost(thread: Thread) {
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : '??';
-  const type = thread.type === 'question' ? 'question' : 'post';
+  const type = thread.type || 'post';
 
   const base = {
     type,
@@ -892,6 +895,7 @@ function threadToPost(thread: Thread) {
   if (type === 'question') {
     return {
       ...base,
+      stats: { likes: thread.likes_count, answers: thread.comments_count },
       content: {
         tag: 'Deep-dive inquiry',
         title: thread.title,
@@ -899,7 +903,46 @@ function threadToPost(thread: Thread) {
         bounty: thread.bounty_amount ? `${thread.bounty_amount} tokens bounty` : '',
         tags: (thread.tags || []).map(t => `#${t}`),
       },
-      stats: { likes: thread.likes_count, answers: thread.comments_count },
+    };
+  }
+
+  if (type === 'poll') {
+    let options: { label: string; pct: number }[] = [];
+    try {
+      if (thread.body) {
+        const parsed = JSON.parse(thread.body);
+        if (Array.isArray(parsed)) {
+          options = parsed.map((o: { label?: string; text?: string; pct?: number }) => ({
+            label: o.label || o.text || 'Option',
+            pct: o.pct || 0,
+          }));
+        }
+      }
+    } catch { /* not JSON, use as plain text */ }
+    if (options.length === 0) {
+      options = thread.body ? thread.body.split('\n').filter(Boolean).map(l => ({ label: l.trim(), pct: 0 })) : [{ label: 'Yes', pct: 50 }, { label: 'No', pct: 50 }];
+    }
+    return {
+      ...base,
+      content: {
+        tag: 'Community poll',
+        title: thread.title,
+        options,
+        tags: (thread.tags || []).map(t => `#${t}`),
+      },
+    };
+  }
+
+  if (type === 'audio') {
+    return {
+      ...base,
+      content: {
+        tag: 'Audio note',
+        title: thread.title,
+        body: thread.body || '',
+        audio: { duration: '0:00', elapsed: '0:00', progress: 0 },
+        tags: (thread.tags || []).map(t => `#${t}`),
+      },
     };
   }
 

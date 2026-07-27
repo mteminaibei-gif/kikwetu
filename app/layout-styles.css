@@ -490,7 +490,7 @@
 
 .composer-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 5px;
   margin-top: 13px;
   padding-top: 12px;
@@ -517,6 +517,7 @@
 .composer-action .icon { color: var(--green); }
 .composer-action:nth-child(2) .icon { color: var(--earth); }
 .composer-action:nth-child(3) .icon { color: var(--blue); }
+.composer-action:nth-child(4) .icon { color: var(--red); }
 
 /* ===== Post (core) ===== */
 .post {
@@ -676,7 +677,7 @@
 
 .create-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-top: 16px;
 }

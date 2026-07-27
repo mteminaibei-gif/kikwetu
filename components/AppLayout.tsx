@@ -11,7 +11,7 @@ import {
   UserRound, Bookmark, Settings, LogOut, Bell, Moon, Sun, Plus,
   TrendingUp, MoreHorizontal, Volume2, X, Camera,
   MessageCircle, ThumbsUp, AtSign, UserPlus, Award, Calendar,
-  AlertTriangle, CheckCheck, HelpCircle, FileText
+  AlertTriangle, CheckCheck, HelpCircle, FileText, BarChart3, Mic
 } from 'lucide-react';
 
 interface Profile {
@@ -706,9 +706,10 @@ function CreatePanel() {
   const router = useRouter();
 
   const createOptions = [
-    { icon: HelpCircle, label: 'Ask a question', description: 'Post to the Baraza for answers', action: 'question' },
-    { icon: FileText, label: 'Share a post', description: 'Share knowledge with your community', action: 'post' },
-    { icon: Calendar, label: 'Offer a session', description: 'Help someone with your expertise', action: 'session' },
+    { icon: FileText, label: 'Post', description: 'Share a photo, update, or local insight', action: 'post' },
+    { icon: HelpCircle, label: 'Question', description: 'Ask the Baraza for answers', action: 'question' },
+    { icon: BarChart3, label: 'Poll', description: 'Let your county vote on something', action: 'poll' },
+    { icon: Mic, label: 'Audio', description: 'Record an audio note or tip', action: 'audio' },
   ];
 
   return (

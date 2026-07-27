@@ -149,11 +149,11 @@ function ComposerModal({
           <button type="button" onClick={onClose} className="icon-btn" style={{ fontSize: 18 }}>✕</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {['post', 'question'].map(t => (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {['post', 'question', 'poll'].map(t => (
             <button type="button" key={t} onClick={() => setType(t)} className={type === t ? 'primary' : 'secondary'}>
-              {t === 'post' ? <Sprout className="icon-sm" /> : <CircleHelp className="icon-sm" />}
-              {t === 'post' ? ' Post' : ' Question'}
+              {t === 'post' ? <Sprout className="icon-sm" /> : t === 'question' ? <CircleHelp className="icon-sm" /> : <CircleHelp className="icon-sm" />}
+              {` ${t.charAt(0).toUpperCase() + t.slice(1)}`}
             </button>
           ))}
         </div>
@@ -216,13 +216,13 @@ function Composer({ onOpenComposer }: { onOpenComposer: () => void }) {
       </div>
       <div className="composer-actions">
         <button type="button" className="composer-action" onClick={onOpenComposer}>
-          <Image className="icon" /> Photo / video
+          <Image className="icon" /> Post
         </button>
         <button type="button" className="composer-action" onClick={onOpenComposer}>
-          <MessageCircleQuestion className="icon" /> Ask a question
+          <MessageCircleQuestion className="icon" /> Question
         </button>
-        <button type="button" className="composer-action" onClick={() => { window.location.href = '/professionals'; }}>
-          <Video className="icon" /> Offer a session
+        <button type="button" className="composer-action" onClick={onOpenComposer}>
+          <Video className="icon" /> Poll
         </button>
       </div>
     </section>
@@ -522,13 +522,37 @@ export default function Home() {
         event: 'INSERT',
         schema: 'public',
         table: 'threads',
-      }, () => { void fetchThreads(); })
+      }, async (payload) => {
+        const newThread = payload.new as Thread;
+        const { data: withProfile } = await supabase
+          .from('threads')
+          .select(THREAD_SELECT)
+          .eq('id', newThread.id)
+          .single();
+        if (withProfile) {
+          setThreads(prev => {
+            const normalized = normalizeThread(withProfile as Record<string, unknown>);
+            if (prev.some(t => t.id === normalized.id)) return prev;
+            return [normalized, ...prev];
+          });
+        }
+      })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'threads',
       }, (payload) => {
         setThreads(prev => prev.map(t => t.id === (payload.new as Thread).id ? { ...t, ...(payload.new as Partial<Thread>) } : t));
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'replies',
+      }, (payload) => {
+        const reply = payload.new as { thread_id: string };
+        setThreads(prev => prev.map(t =>
+          t.id === reply.thread_id ? { ...t, comments_count: t.comments_count + 1 } : t
+        ));
       })
       .subscribe();
 
