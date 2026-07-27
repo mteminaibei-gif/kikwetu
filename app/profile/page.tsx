@@ -134,7 +134,7 @@ export default function ProfilePage() {
   async function handleSaveProfile() {
     if (!currentUser) return;
     setSaving(true);
-    const { error } = await updateProfile(currentUser.id, {
+    const { error } = await updateProfile(currentUser.user_id, {
       full_name: editName,
       bio: editBio,
       county: editCounty,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { supabase } from '@/lib/supabase';
@@ -74,6 +75,7 @@ type ReviewItem = typeof MOCK_REVIEW_QUEUE[number];
 
 export default function AdminPage() {
   const { showToast } = useApp();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>(MOCK_REVIEW_QUEUE);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -85,8 +87,15 @@ export default function AdminPage() {
         const user = await getCurrentUser();
         setCurrentUser(user);
         setIsAdmin(user?.role === 'admin');
+        if (user && user.role !== 'admin') {
+          showToast('Admin access required');
+          router.push('/');
+          return;
+        }
       } catch {
-        // not logged in or no profile
+        showToast('Please log in');
+        router.push('/login');
+        return;
       }
 
       try {

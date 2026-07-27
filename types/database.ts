@@ -23,6 +23,13 @@ export interface Database {
           heshima: number
           is_verified: boolean
           is_online: boolean
+          interests: string[]
+          mpesa_number: string | null
+          notification_prefs: Json | null
+          privacy_prefs: Json | null
+          expertise_areas: string
+          teaching_levels: string[]
+          hourly_rate: number | null
           created_at: string
           updated_at: string
         }
@@ -39,6 +46,13 @@ export interface Database {
           heshima?: number
           is_verified?: boolean
           is_online?: boolean
+          interests?: string[]
+          mpesa_number?: string | null
+          notification_prefs?: Json | null
+          privacy_prefs?: Json | null
+          expertise_areas?: string
+          teaching_levels?: string[]
+          hourly_rate?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -55,6 +69,13 @@ export interface Database {
           heshima?: number
           is_verified?: boolean
           is_online?: boolean
+          interests?: string[]
+          mpesa_number?: string | null
+          notification_prefs?: Json | null
+          privacy_prefs?: Json | null
+          expertise_areas?: string
+          teaching_levels?: string[]
+          hourly_rate?: number | null
           created_at?: string
           updated_at?: string
         }

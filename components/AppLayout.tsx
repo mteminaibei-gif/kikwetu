@@ -82,7 +82,7 @@ interface AppLayoutProps {
 }
 
 // ===== Navigation Config =====
-const navSections = [
+const navSections = (isAdmin: boolean) => [
   {
     title: 'Main',
     items: [
@@ -116,6 +116,7 @@ const navSections = [
       { icon: UserRound, label: 'Profile', href: '/profile' },
       { icon: Bookmark, label: 'Saved', href: '/saved' },
       { icon: Settings, label: 'Settings', href: '/settings' },
+      ...(isAdmin ? [{ icon: ShieldCheck, label: 'Admin', href: '/admin' }] : []),
     ],
   },
 ];
@@ -615,7 +616,7 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
 
   return (
     <aside className="sidebar left-sidebar">
-      {navSections.map((section) => (
+      {navSections(user?.role === 'admin').map((section) => (
         <div key={section.title} className="nav-section">
           <div className="nav-title">{section.title}</div>
           {section.items.map((item) => {

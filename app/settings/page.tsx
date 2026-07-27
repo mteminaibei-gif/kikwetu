@@ -129,15 +129,16 @@ export default function SettingsPage() {
     setSaveSuccess(false)
     try {
       if (currentUser) {
-        const { error } = await updateProfile(currentUser.id, {
+        const { error } = await updateProfile(currentUser.user_id, {
           full_name: profile.name,
           username: profile.username.replace('@', ''),
           bio: profile.bio,
           county: profile.county,
           language: profile.language,
-          mpesa_number: payments.mpesaNumber,
         })
         if (error) throw error
+        // Sync global state
+        setUser({ ...currentUser, full_name: profile.name, username: profile.username.replace('@', ''), bio: profile.bio, county: profile.county, language: profile.language })
       }
       localStorage.setItem('kikwetu_notifications', JSON.stringify(notifications))
       localStorage.setItem('kikwetu_privacy', JSON.stringify(privacy))
@@ -156,7 +157,7 @@ export default function SettingsPage() {
     setSaving(true)
     try {
       if (currentUser) {
-        const { error } = await updateProfile(currentUser.id, {
+        const { error } = await updateProfile(currentUser.user_id, {
           full_name: profile.name,
           username: profile.username.replace('@', ''),
           bio: profile.bio,
@@ -164,6 +165,7 @@ export default function SettingsPage() {
           language: profile.language,
         })
         if (error) throw error
+        setUser({ ...currentUser, full_name: profile.name, username: profile.username.replace('@', ''), bio: profile.bio, county: profile.county, language: profile.language })
       }
       showToast('Profile updated')
     } catch {
@@ -178,7 +180,8 @@ export default function SettingsPage() {
     if (currentUser) {
       setSaving(true)
       try {
-        await updateProfile(currentUser.id, { notification_prefs: notifications })
+        await updateProfile(currentUser.user_id, { notification_prefs: notifications })
+        setUser({ ...currentUser, notification_prefs: notifications } as any)
         showToast('Notification preferences saved')
       } catch {
         showToast('Notification preferences saved locally')
@@ -195,7 +198,8 @@ export default function SettingsPage() {
     if (currentUser) {
       setSaving(true)
       try {
-        await updateProfile(currentUser.id, { privacy_prefs: privacy })
+        await updateProfile(currentUser.user_id, { privacy_prefs: privacy })
+        setUser({ ...currentUser, privacy_prefs: privacy } as any)
         showToast('Privacy settings saved')
       } catch {
         showToast('Privacy settings saved locally')
@@ -212,7 +216,8 @@ export default function SettingsPage() {
     if (currentUser) {
       setSaving(true)
       try {
-        await updateProfile(currentUser.id, { mpesa_number: payments.mpesaNumber })
+        await updateProfile(currentUser.user_id, { mpesa_number: payments.mpesaNumber })
+        setUser({ ...currentUser, mpesa_number: payments.mpesaNumber } as any)
         showToast('Payment settings saved')
       } catch {
         showToast('Payment settings saved locally')

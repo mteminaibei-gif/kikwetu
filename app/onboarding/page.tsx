@@ -156,7 +156,7 @@ export default function OnboardingPage() {
         role,
         bio: bio || null,
         interests: selectedInterests,
-        notification_preferences: notifications,
+        notification_prefs: notifications,
       };
 
       if (avatarUrl) updates.avatar_url = avatarUrl;

@@ -5,7 +5,7 @@ export async function getCurrentUser() {
   if (!user) return null;
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, user_id, username, full_name, avatar_url, bio, county, language, role, heshima, is_verified, is_online, created_at, updated_at')
+    .select('id, user_id, username, full_name, avatar_url, bio, county, language, role, heshima, is_verified, is_online, interests, mpesa_number, notification_prefs, privacy_prefs, expertise_areas, teaching_levels, hourly_rate, created_at, updated_at')
     .eq('user_id', user.id)
     .single();
   return profile;
@@ -303,7 +303,7 @@ export async function updateProfile(userId: string, updates: Record<string, any>
   const { error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', userId);
+    .eq('user_id', userId);
   return { error };
 }
 
