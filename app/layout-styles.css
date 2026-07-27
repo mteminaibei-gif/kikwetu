@@ -1588,6 +1588,7 @@
   .mobile-nav a {
     display: grid;
     place-items: center;
+    place-self: center;
     gap: 1px;
     min-height: 47px;
     border: 0;
@@ -1608,9 +1609,10 @@
   }
 
   .mobile-nav .create-main {
+    place-self: center;
     width: 48px;
     height: 48px;
-    margin: -18px auto 0;
+    margin-top: -18px;
     border: 5px solid var(--bg);
     border-radius: 50%;
     color: var(--surface);
