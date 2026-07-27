@@ -680,7 +680,7 @@ function BarazaPageInner() {
     }
     const { data: fullThread } = await supabase
       .from('threads')
-      .select('*')
+      .select('*, profiles:author_id (full_name, username, avatar_url, county, heshima, is_verified)')
       .eq('id', data.id)
       .single();
     if (fullThread) {

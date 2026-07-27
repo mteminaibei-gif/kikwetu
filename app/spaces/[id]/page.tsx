@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -12,7 +12,15 @@ import AppLayout, { useApp } from '@/components/AppLayout'
 import { supabase } from '@/lib/supabase'
 import { joinSpace, checkSpaceMember, createThread } from '@/lib/supabase-helpers'
 
-export default function SpaceDetailPage() {
+export default function SpaceDetailPageWrapper() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>}>
+      <SpaceDetailContent />
+    </Suspense>
+  );
+}
+
+function SpaceDetailContent() {
   const searchParams = useSearchParams()
   const spaceId = searchParams.get('id')
   const { user, showToast } = useApp()
@@ -45,7 +53,7 @@ export default function SpaceDetailPage() {
       if (threadData) setThreads(threadData)
 
       if (user) {
-        const member = await checkSpaceMember(spaceId!, user.user_id)
+        const member = await checkSpaceMember(spaceId!, user.id)
         setIsMember(member)
       }
       setLoading(false)
@@ -55,7 +63,7 @@ export default function SpaceDetailPage() {
 
   const handleJoinLeave = async () => {
     if (!user || !spaceId) return
-    const nowMember = await joinSpace(spaceId, user.user_id)
+    const nowMember = await joinSpace(spaceId, user.id)
     setIsMember(nowMember)
     setSpace((s: any) => ({
       ...s,

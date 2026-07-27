@@ -127,7 +127,7 @@ export default function SpacesPage() {
           await Promise.all(
             all.map(async (s: any) => {
               if (s.id) {
-                status[s.id] = await checkSpaceMember(s.id, user.user_id);
+                status[s.id] = await checkSpaceMember(s.id, user.id);
               }
             })
           );
@@ -149,7 +149,7 @@ export default function SpacesPage() {
     if (!space.id) return;
 
     const wasMember = memberStatus[space.id] || false;
-    const newStatus = await joinSpace(space.id, user.user_id);
+    const newStatus = await joinSpace(space.id, user.id);
 
     setMemberStatus((prev) => ({ ...prev, [space.id]: newStatus }));
 
@@ -180,7 +180,7 @@ export default function SpacesPage() {
         name: newName.trim(),
         description: newDesc.trim(),
         icon: newIcon || '🏘️',
-        created_by: user.user_id,
+        created_by: user.id,
         members_count: 1,
       })
       .select()

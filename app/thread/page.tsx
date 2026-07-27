@@ -20,7 +20,7 @@ interface Thread {
   tags: string[];
   likes_count: number;
   created_at: string;
-  user_id: string;
+  author_id: string;
   profiles?: {
     full_name: string;
     username: string;

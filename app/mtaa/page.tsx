@@ -331,7 +331,7 @@ export default function MtaaExchange() {
         if (user) {
           const savedIds: Record<string, boolean> = {};
           for (const l of MOCK_LISTINGS) {
-            const isSaved = await checkSaved(user.user_id, 'listing', String(l.id));
+            const isSaved = await checkSaved(user.id, 'listing', String(l.id));
             savedIds[String(l.id)] = isSaved;
           }
           setSavedMap(savedIds);
@@ -351,7 +351,7 @@ export default function MtaaExchange() {
     }
     setCreating(true);
     const { data, error } = await createListing(
-      user.user_id,
+      user.id,
       newTitle,
       newDescription,
       Number(newPrice) || 0,
@@ -397,12 +397,12 @@ export default function MtaaExchange() {
       return;
     }
     const sellerId = (sellerListing as any).seller_id;
-    if (sellerId && sellerId === user.user_id) {
+    if (sellerId && sellerId === user.id) {
       showToast('This is your listing');
       return;
     }
     if (sellerId) {
-      const { data } = await createConversation([user.user_id, sellerId], `Hi, I'm interested in "${sellerListing.title}"`);
+      const { data } = await createConversation([user.id, sellerId], `Hi, I'm interested in "${sellerListing.title}"`);
       if (data) {
         showToast('Conversation started');
       } else {
@@ -432,7 +432,7 @@ export default function MtaaExchange() {
       showToast('Sign in to save');
       return;
     }
-    const result = await toggleSave(user.user_id, 'listing', String(listing.id));
+    const result = await toggleSave(user.id, 'listing', String(listing.id));
     setSavedMap((prev) => ({ ...prev, [String(listing.id)]: result }));
     showToast(result ? 'Saved' : 'Removed from saved');
   }

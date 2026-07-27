@@ -69,7 +69,12 @@ export default function ExplorePage() {
 
   const handleFollow = async (proUserId: string) => {
     if (!user) return showToast('Please sign in');
-    const nowFollowing = await toggleFollow(user.user_id, proUserId);
+    // Skip follow for mock professionals (non-UUID user_id)
+    if (!proUserId || !proUserId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      showToast('Follow not available for this professional');
+      return;
+    }
+    const nowFollowing = await toggleFollow(user.id, proUserId);
     setFollowingMap(prev => ({ ...prev, [proUserId]: nowFollowing }));
     showToast(nowFollowing ? 'Following' : 'Unfollowed');
   };
