@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { StoriesRow } from '@/components/Stories';
 import { supabase } from '@/lib/supabase';
 import { analytics } from '@/lib/analytics';
 import {
@@ -716,6 +717,8 @@ function BarazaPageInner() {
           </button>
         ))}
       </div>
+
+      <StoriesRow />
 
       <section className="composer">
         <div className="composer-top">

@@ -367,3 +367,85 @@ export async function getReactions(targetType: 'thread' | 'reply', targetId: str
     .eq('target_id', targetId);
   return data || [];
 }
+
+export interface Story {
+  id: string;
+  user_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  media_duration_seconds: number | null;
+  caption: string;
+  created_at: string;
+  expires_at: string;
+  profiles?: {
+    full_name: string;
+    username: string;
+    avatar_url: string | null;
+    county: string | null;
+    is_verified: boolean;
+  };
+  view_count?: number;
+  has_viewed?: boolean;
+}
+
+const STORY_SELECT = `
+  id, user_id, media_url, media_type, media_duration_seconds, caption, created_at, expires_at,
+  profiles:user_id (
+    full_name, username, avatar_url, county, is_verified
+  )
+`;
+
+export async function fetchActiveStories() {
+  const { data, error } = await supabase
+    .from('stories')
+    .select(STORY_SELECT)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false });
+  return { data: data as Story[] | null, error };
+}
+
+export async function createStory(userId: string, mediaUrl: string, mediaType: 'image' | 'video', caption: string, durationSeconds?: number) {
+  const { data, error } = await supabase
+    .from('stories')
+    .insert({
+      user_id: userId,
+      media_url: mediaUrl,
+      media_type: mediaType,
+      caption: caption || '',
+      media_duration_seconds: durationSeconds || null,
+    })
+    .select(STORY_SELECT)
+    .single();
+  return { data: data as Story | null, error };
+}
+
+export async function viewStory(storyId: string, viewerId: string) {
+  await supabase
+    .from('story_views')
+    .upsert({ story_id: storyId, viewer_id: viewerId }, { onConflict: 'story_id,viewer_id' });
+}
+
+export async function getStoryViewCount(storyId: string) {
+  const { count } = await supabase
+    .from('story_views')
+    .select('id', { count: 'exact', head: true })
+    .eq('story_id', storyId);
+  return count || 0;
+}
+
+export async function deleteStory(storyId: string) {
+  const { error } = await supabase.from('stories').delete().eq('id', storyId);
+  return { error };
+}
+
+export async function uploadStoryMedia(file: File, userId: string): Promise<{ url: string | null; error: string | null }> {
+  const ext = file.name.split('.').pop() || 'bin';
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('stories').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) return { url: null, error: error.message };
+  const { data } = supabase.storage.from('stories').getPublicUrl(path);
+  return { url: data?.publicUrl || null, error: null };
+}

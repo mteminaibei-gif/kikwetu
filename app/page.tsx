@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
+import { StoriesRow } from '@/components/Stories';
 import { supabase } from '@/lib/supabase';
 import { toggleVote, checkVote, toggleSave, checkSaved, createThread, toggleReaction, getReactions } from '@/lib/supabase-helpers';
 import {
@@ -63,30 +64,6 @@ function normalizeThread(row: Record<string, unknown>): Thread {
     profiles = raw as ThreadProfile;
   }
   return { ...(row as unknown as Thread), profiles };
-}
-
-function Stories() {
-  const stories = [
-    { initials: 'AM', name: "Amina's garden", color: 'earth' },
-    { initials: 'KT', name: 'Kisumu Tech', color: 'blue' },
-    { initials: 'NW', name: 'Njeri speaks', color: 'green' },
-    { initials: 'MA', name: 'Mombasa now', color: 'earth' },
-  ];
-
-  return (
-    <div className="stories">
-      <button type="button" className="story add">
-        <span className="story-plus"><Plus className="icon-sm" /></span>
-        <span>Your story</span>
-      </button>
-      {stories.map((s, i) => (
-        <button type="button" key={i} className="story">
-          <span className={`story-avatar avatar sm ${s.color}`}>{s.initials}</span>
-          <span>{s.name}</span>
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function HeroSection() {
@@ -610,7 +587,7 @@ export default function Home() {
         </button>
       </div>
 
-      <Stories />
+      <StoriesRow />
       <HeroSection />
       <Composer onOpenComposer={() => setComposerOpen(true)} />
 
