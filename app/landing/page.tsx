@@ -65,12 +65,6 @@ export default function LandingPage() {
     }
   }, [dialogOpen]);
 
-  useEffect(() => {
-    if (dialogOpen) {
-      (document.getElementById('joinDialog') as HTMLDialogElement)?.showModal();
-    }
-  }, [dialogOpen]);
-
   function showToast(msg: string) {
     setToast(msg);
     setToastVisible(true);
