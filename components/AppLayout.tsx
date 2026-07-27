@@ -598,69 +598,264 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
   );
 });
 
-const RightSidebar = React.memo(function RightSidebar() {
+import AdBanner from '@/components/AdBanner';
+
+const TRENDING_TOPICS = [
+  { tag: '#KilimoSmart', posts: '12.4k', color: 'var(--green)' },
+  { tag: '#NairobiTech', posts: '10.9k', color: 'var(--blue)' },
+  { tag: '#ShengLife', posts: '8.2k', color: 'var(--earth)' },
+  { tag: '#HealthKE', posts: '7.8k', color: 'var(--red)' },
+  { tag: '#StartupKE', posts: '6.5k', color: 'var(--gold)' },
+  { tag: '#BarazaTalks', posts: '5.3k', color: 'var(--green)' },
+  { tag: '#MtaaExchange', posts: '4.1k', color: 'var(--blue)' },
+];
+
+const LIVE_AUDIO = [
+  { title: 'Kilimo Roundtable', host: 'Amina & James', listeners: 320, live: true },
+  { title: 'Nairobi Tech AMA', host: 'Sarah Mutua', listeners: 180, live: true },
+  { title: 'Sheng Dictionary Live', host: 'Dj Ochieng', listeners: 450, live: true },
+];
+
+const SUGGESTED_SPACES = [
+  { name: 'KilimoSmart', emoji: '🌾', members: '2.8k', color: 'var(--greenSoft)', textColor: 'var(--green)' },
+  { name: 'NairobiTech', emoji: '💻', members: '1.5k', color: 'var(--blueSoft)', textColor: 'var(--blue)' },
+  { name: 'Health Warriors', emoji: '🏥', members: '980', color: 'var(--redSoft)', textColor: 'var(--red)' },
+  { name: 'Green Kenya', emoji: '🌿', members: '760', color: 'var(--greenSoft)', textColor: 'var(--green)' },
+  { name: 'Sheng Lounge', emoji: '🎭', members: '620', color: 'var(--goldSoft)', textColor: 'var(--earth)' },
+];
+
+const SUGGESTED_PEOPLE = [
+  { name: 'Amina Hassan', initials: 'AH', bio: 'Agronomist • KilimoSmart', color: 'var(--greenSoft)', textColor: 'var(--green)' },
+  { name: 'Brian Kiprop', initials: 'BK', bio: 'Software Engineer • NairobiTech', color: 'var(--blueSoft)', textColor: 'var(--blue)' },
+  { name: 'Wanjiku Mwangi', initials: 'WM', bio: 'Nurse • Health Warriors', color: 'var(--redSoft)', textColor: 'var(--red)' },
+  { name: 'Otieno Ouma', initials: 'OO', bio: 'Environmentalist • Green Kenya', color: 'var(--greenSoft)', textColor: 'var(--green)' },
+  { name: 'Fatuma Osman', initials: 'FO', bio: 'Content Creator • Sheng Lounge', color: 'var(--goldSoft)', textColor: 'var(--earth)' },
+];
+
+interface RightSidebarProps {
+  pathname: string;
+}
+
+const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebarProps) {
   const { showToast } = useApp();
+
+  const isHome = pathname === '/';
+  const isBaraza = pathname === '/baraza';
+  const isExplore = pathname === '/explore';
+  const isSpaces = pathname === '/spaces' || pathname.startsWith('/spaces/');
+  const isStudents = pathname === '/students';
+  const isProfessionals = pathname === '/professionals';
+  const isMessages = pathname === '/messages';
+  const isQuizzes = pathname === '/quizzes';
+  const isMtaa = pathname === '/mtaa';
+  const isNyumbaKumi = pathname === '/nyumba-kumi';
+  const isRadio = pathname === '/radio';
+  const isProfile = pathname === '/profile';
 
   return (
     <aside className="right-sidebar">
-      <div className="right-block">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <TrendingUp className="icon" style={{ color: 'var(--gold)' }} />
-          <h3>Trending in Kenya</h3>
-        </div>
-        <div className="right-list">
-          {['#KilimoSmart', '#NairobiTech', '#ShengLife', '#HealthKE', '#StartupKE'].map((tag, i) => (
-            <div key={tag} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${tag}`)}>
-              <div className="right-copy">
-                <strong style={{ color: 'var(--green)' }}>{tag}</strong>
-                <span>{(12.4 - i * 1.5).toFixed(1)}k posts</span>
-              </div>
+      {/* Trending Topics - Home, Baraza, Explore, Profile */}
+      {(isHome || isBaraza || isExplore || isProfile) && (
+        <div className="right-block">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingUp className="icon" style={{ color: 'var(--gold)' }} />
+              <h3>Trending in Kenya</h3>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="right-block">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', animation: 'pulse 1.5s infinite' }} />
-          <h3>Live Audio Baraza</h3>
-          <button type="button" className="icon-btn" style={{ marginLeft: 'auto', width: 28, height: 28 }} aria-label="More options">
-            <MoreHorizontal className="icon-sm" />
-          </button>
-        </div>
-        <div className="tip">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <Volume2 className="icon-sm" style={{ color: 'var(--earth)' }} />
-            <span style={{ fontSize: '.68rem', color: 'var(--text3)' }}>Live now</span>
+            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('View all trending')}>
+              <MoreHorizontal className="icon-sm" />
+            </button>
           </div>
-          <p>Join livestream conversations from communities across Kenya.</p>
-          <button type="button" style={{ marginTop: 8 }} onClick={() => showToast('Joining live audio')}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-            {' '}Join live audio
-          </button>
+          <div className="right-list">
+            {TRENDING_TOPICS.map((topic, i) => (
+              <div key={topic.tag} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${topic.tag}`)}>
+                <div className="right-copy">
+                  <strong style={{ color: topic.color }}>{topic.tag}</strong>
+                  <span>{topic.posts} posts</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="right-block">
-        <h3>Suggested spaces</h3>
-        <div className="right-list">
-          {[
-            { name: 'KilimoSmart', members: '2.8k' },
-            { name: 'NairobiTech', members: '1.5k' },
-          ].map((space, i) => (
-            <div key={space.name} className="right-item">
-              <div className="avatar" style={{ background: i === 0 ? 'var(--greenSoft)' : 'var(--blueSoft)', color: i === 0 ? 'var(--green)' : 'var(--blue)', fontSize: '1rem' }}>
-                {i === 0 ? '🌾' : '💻'}
-              </div>
-              <div className="right-copy">
-                <strong>{space.name}</strong>
-                <span>{space.members} members</span>
-              </div>
-              <button type="button" className="follow" onClick={() => showToast(`Joined ${space.name}`)}>Join</button>
+      {/* Live Audio Baraza - Home, Baraza, Radio */}
+      {(isHome || isBaraza || isRadio) && (
+        <div className="right-block">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', animation: 'pulse 1.5s infinite' }} />
+              <h3>Live Audio Baraza</h3>
             </div>
-          ))}
+            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('View all live audio')}>
+              <MoreHorizontal className="icon-sm" />
+            </button>
+          </div>
+          <div className="right-list">
+            {LIVE_AUDIO.map((audio, i) => (
+              <div key={i} className="right-item" style={{ cursor: 'pointer', padding: '10px', borderRadius: 10 }} onClick={() => showToast(`Joining ${audio.title}`)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="avatar" style={{ background: i === 0 ? 'var(--greenSoft)' : i === 1 ? 'var(--blueSoft)' : 'var(--goldSoft)', color: i === 0 ? 'var(--green)' : i === 1 ? 'var(--blue)' : 'var(--earth)', fontSize: '.9rem' }}>
+                    <Volume2 className="icon-sm" />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <strong style={{ fontSize: '.78rem', display: 'block' }}>{audio.title}</strong>
+                    <span style={{ fontSize: '.65rem', color: 'var(--text3)' }}>{audio.host} · {audio.listeners} listening</span>
+                  </div>
+                  {audio.live && (
+                    <span style={{ fontSize: '.55rem', fontWeight: 800, padding: '2px 6px', borderRadius: 99, background: 'var(--red)', color: 'var(--surface)', animation: 'pulse 1.5s infinite' }}>LIVE</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Suggested Spaces - Home, Explore, Spaces */}
+      {(isHome || isExplore || isSpaces) && (
+        <div className="right-block">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h3>Suggested spaces</h3>
+            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('Browse all spaces')}>
+              <MoreHorizontal className="icon-sm" />
+            </button>
+          </div>
+          <div className="right-list">
+            {SUGGESTED_SPACES.map((space, i) => (
+              <div key={space.name} className="right-item">
+                <div className="avatar" style={{ background: space.color, color: space.textColor, fontSize: '1rem' }}>
+                  {space.emoji}
+                </div>
+                <div className="right-copy">
+                  <strong>{space.name}</strong>
+                  <span>{space.members} members</span>
+                </div>
+                <button type="button" className="follow" onClick={() => showToast(`Joined ${space.name}`)}>Join</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ad Banner - All pages (rotating) */}
+      <AdBanner variant="sidebar" index={0} />
+
+      {/* Suggested People - Explore, Profile, Students, Professionals */}
+      {(isExplore || isProfile || isStudents || isProfessionals) && (
+        <div className="right-block">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h3>People you may know</h3>
+            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('Find more people')}>
+              <MoreHorizontal className="icon-sm" />
+            </button>
+          </div>
+          <div className="right-list">
+            {SUGGESTED_PEOPLE.map((person, i) => (
+              <div key={person.name} className="right-item">
+                <div className="avatar" style={{ background: person.color, color: person.textColor, fontSize: '.7rem' }}>
+                  {person.initials}
+                </div>
+                <div className="right-copy">
+                  <strong style={{ fontSize: '.78rem' }}>{person.name}</strong>
+                  <span style={{ fontSize: '.62rem' }}>{person.bio}</span>
+                </div>
+                <button type="button" className="follow" style={{ fontSize: '.6rem', padding: '4px 8px' }} onClick={() => showToast(`Following ${person.name}`)}>Follow</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quiz-specific: Subject Heshima & Daily Challenge */}
+      {isQuizzes && (
+        <div className="right-block">
+          <h3>Your Subject Heshima</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {['Agriculture', 'Culture', 'Rights & Law', 'Health', 'Tech', 'Environment'].map((subject) => (
+              <div key={subject} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '.72rem', color: 'var(--text2)' }}>{subject}</span>
+                <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--gold)' }}>0</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Mtaa-specific: Featured Listings */}
+      {isMtaa && (
+        <div className="right-block">
+          <h3>Featured listings</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+            {[
+              { title: 'Fresh Sukuma Wiki', price: 'KES 150', location: 'Ruiru', emoji: '🥬' },
+              { title: 'Solar Cleaning', price: 'KES 2,000', location: 'Nakuru', emoji: '☀️' },
+              { title: 'Handwoven Baskets', price: 'KES 800', location: 'Kisumu', emoji: '🧺' },
+            ].map((item, i) => (
+              <div key={i} style={{ padding: '10px', borderRadius: 10, background: 'var(--bg)', cursor: 'pointer' }} onClick={() => showToast(`Viewing ${item.title}`)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.2rem' }}>{item.emoji}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <strong style={{ fontSize: '.76rem' }}>{item.title}</strong>
+                    <span style={{ fontSize: '.62rem', color: 'var(--text3)' }}>{item.location}</span>
+                  </div>
+                  <span style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--green)' }}>{item.price}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Nyumba Kumi-specific: Emergency Contacts */}
+      {isNyumbaKumi && (
+        <div className="right-block">
+          <h3>Emergency contacts</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+            {[
+              { name: 'Police', number: '999', icon: '🚓' },
+              { name: 'Ambulance', number: '1199', icon: '🚑' },
+              { name: 'Fire', number: '112', icon: '🚒' },
+              { name: 'Childline', number: '116', icon: '📞' },
+              { name: 'Red Cross', number: '0800 721 111', icon: '➕' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 10, background: 'var(--bg)' }}>
+                <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <strong style={{ fontSize: '.74rem' }}>{item.name}</strong>
+                  <span style={{ fontSize: '.7rem', fontFamily: 'monospace', color: 'var(--text2)' }}>{item.number}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Radio-specific: Schedule */}
+      {isRadio && (
+        <div className="right-block">
+          <h3>Upcoming shows</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+            {[
+              { time: '6:00 AM', show: 'Jambo Kenya', station: 'Citizen Radio' },
+              { time: '10:00 AM', show: 'The Drive Show', station: 'NRG Radio' },
+              { time: '2:00 PM', show: 'Afternoon Vibe', station: 'Kiss FM' },
+              { time: '6:00 PM', show: 'Evening Talk', station: 'Spice FM' },
+            ].map((item, i) => (
+              <div key={i} style={{ padding: '8px', borderRadius: 10, background: 'var(--bg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.7rem' }}>
+                  <span style={{ color: 'var(--text3)' }}>{item.time}</span>
+                  <span style={{ color: 'var(--green)', fontWeight: 700 }}>{item.show}</span>
+                </div>
+                <div style={{ fontSize: '.62rem', color: 'var(--text3)' }}>{item.station}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ad Banner - second ad on longer pages */}
+      <AdBanner variant="sidebar" index={1} />
     </aside>
   );
 });
@@ -904,7 +1099,7 @@ export default function AppLayout({ children, showRightSidebar = true }: AppLayo
       <div className="layout">
         <LeftSidebar activeRoute={pathname} />
         <main className="page">{children}</main>
-        {showRightSidebar && <RightSidebar />}
+        {showRightSidebar && <RightSidebar pathname={pathname} />}
       </div>
       <MobileNav activeRoute={pathname} />
       <CreatePanel />

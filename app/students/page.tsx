@@ -8,14 +8,9 @@ import { getCurrentUser, createThread, requestSession, toggleFollow, checkFollow
 import {
   GraduationCap, BadgeCheck, MessagesSquare, Plus, CircleHelp,
   MessageCircleQuestion, ThumbsUp, Send, Award, BookOpen, Target,
-  ChevronRight, Tag, X,
+  ChevronRight, Tag, X, CalendarCheck, ArrowLeft, FileText,
+  Smartphone, Star, Clock3,
 } from 'lucide-react';
-
-const stats = [
-  { label: 'Sessions', value: '6', icon: BookOpen, color: 'var(--greenSoft)', textColor: 'var(--green)' },
-  { label: 'Questions', value: '18', icon: MessageCircleQuestion, color: 'var(--goldSoft)', textColor: 'var(--earth)' },
-  { label: 'Badges', value: '4', icon: Award, color: 'var(--earthSoft)', textColor: 'var(--earth)' },
-];
 
 const MOCK_STUDENTS = [
   { name: 'Njeri Wambui', initials: 'NW', color: 'earth', topic: 'Urban farming and climate education', badge: 'Approved professional', user_id: 'mock-nw' },
@@ -24,7 +19,39 @@ const MOCK_STUDENTS = [
   { name: 'Ruth Kilonzo', initials: 'RK', color: 'earth', topic: 'County procurement and tenders', badge: 'Approved professional', user_id: 'mock-rk' },
 ];
 
+const MOCK_SESSIONS = [
+  { id: '1', pro: MOCK_STUDENTS[1], title: 'Solar basics for a small retail shop', date: 'Tomorrow, 4:30 PM EAT', duration: '45 minutes', status: 'upcoming' as const },
+  { id: '2', pro: MOCK_STUDENTS[0], title: 'Urban farming: grow bags that do not leak', date: 'Yesterday', duration: '30 minutes', status: 'completed' as const },
+];
+
+const MOCK_THREAD = {
+  title: 'How do I price a small digital service without undercutting myself?',
+  body: 'I can build simple websites and product mockups, but I keep pricing from fear. I want a practical way to quote clients.',
+  author: 'Grid Pulse',
+  authorInitials: 'GP',
+  time: 'Asked today',
+  location: 'Nairobi',
+  tags: ['#TechAndStartups'],
+  offers: 2,
+  upvotes: 31,
+  answers: 8,
+  guidanceOffers: [
+    { pro: MOCK_STUDENTS[0], topic: 'Value-based pricing', date: 'Tomorrow', duration: '30 min' },
+    { pro: MOCK_STUDENTS[1], topic: 'Real client example', date: 'Wednesday', duration: '45 min' },
+  ],
+};
+
+const MOCK_CHAT = [
+  { id: '1', sender: 'pro', initials: 'JO', color: 'blue', text: 'Hi Grid Pulse. Bring your power bill if you have it. If not, a list of appliances and hours is enough.', time: '4:02 PM' },
+  { id: '2', sender: 'me', text: 'Perfect. I am trying to avoid buying more system than the shop needs.', time: '4:06 PM', read: true },
+  { id: '3', sender: 'pro', initials: 'JO', color: 'blue', text: 'That is the right starting point. We will map essential load first, then test two realistic budgets.', time: '4:08 PM', attachment: { name: 'solar-session-prep.pdf', size: 'Checklist · 184 KB' } },
+];
+
+const TOPIC_OPTIONS = ['#TechAndStartups', 'Nairobi', 'Urban farming', 'Solar energy', 'Tender docs'];
+const TIP_OPTIONS = [300, 500, 1000, 1500];
+
 type Professional = typeof MOCK_STUDENTS[number];
+type StudentTab = 'overview' | 'sessions' | 'thread' | 'ask' | 'chat' | 'wallet';
 
 export default function StudentsPage() {
   const { showToast } = useApp();
@@ -33,14 +60,20 @@ export default function StudentsPage() {
   const [professionals, setProfessionals] = useState<Professional[]>(MOCK_STUDENTS);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [showQuestionForm, setShowQuestionForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<StudentTab>('overview');
 
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
   const [sessionModalPro, setSessionModalPro] = useState<Professional | null>(null);
   const [sessionTitle, setSessionTitle] = useState('');
   const [sessionDesc, setSessionDesc] = useState('');
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(['#TechAndStartups']);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState(MOCK_CHAT);
+  const [tipAmount, setTipAmount] = useState(500);
+  const [tipRating, setTipRating] = useState(0);
 
   useEffect(() => {
     if (!currentUser || !professionals.length) return;
@@ -121,7 +154,7 @@ export default function StudentsPage() {
       showToast('Question published!');
       setQuestion('');
       setQuestionTitle('');
-      setShowQuestionForm(false);
+      setActiveTab('thread');
     } catch {
       showToast('Failed to publish. Try again.');
     } finally {
@@ -153,6 +186,26 @@ export default function StudentsPage() {
     }
   }
 
+  function handleSendMessage() {
+    if (!chatInput.trim()) return;
+    setChatMessages(prev => [
+      ...prev,
+      { id: String(Date.now()), sender: 'me', text: chatInput, time: 'now', read: false },
+    ]);
+    setChatInput('');
+    showToast('Message sent privately');
+  }
+
+  function handleConfirmTip() {
+    if (!tipRating) {
+      showToast('Choose a rating first');
+      return;
+    }
+    const net = Math.round(tipAmount * 0.9);
+    showToast(`M-Pesa prompt sent, professional receives KSh ${net.toLocaleString()}`);
+    setActiveTab('overview');
+  }
+
   if (loading) {
     return (
       <AppLayout>
@@ -163,62 +216,6 @@ export default function StudentsPage() {
             <p>Ask questions, learn from experts, and track your progress.</p>
           </div>
         </div>
-        <div className="grid2">
-          <section className="section">
-            <div className="section-head">
-              <div>
-                <div className="eyebrow">Your learning loop</div>
-                <h2 className="serif">Progress so far.</h2>
-              </div>
-            </div>
-            <div className="stats">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="stat">
-                  <div className="avatar skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
-                  <div className="skeleton" style={{ width: 30, height: 14, borderRadius: 4 }} />
-                  <div className="skeleton" style={{ width: 50, height: 10, borderRadius: 4 }} />
-                </div>
-              ))}
-            </div>
-          </section>
-          <section className="section">
-            <div className="section-head">
-              <div>
-                <div className="eyebrow">Upcoming</div>
-                <h2 className="serif">Your next session.</h2>
-              </div>
-            </div>
-            <div className="post">
-              <div className="post-head">
-                <div className="avatar skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 4 }} />
-                  <div className="skeleton" style={{ width: 80, height: 10, borderRadius: 4, marginTop: 4 }} />
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-        <section className="section" style={{ marginTop: 22 }}>
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Approved professionals</div>
-              <h2 className="serif">Learn from the best.</h2>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 14 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="pro-card">
-                <div className="avatar skeleton" style={{ width: 48, height: 48, borderRadius: 12 }} />
-                <div className="pro-copy">
-                  <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 4 }} />
-                  <div className="skeleton" style={{ width: 180, height: 10, borderRadius: 4, marginTop: 6 }} />
-                  <div className="skeleton" style={{ width: 100, height: 10, borderRadius: 4, marginTop: 4 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
       </AppLayout>
     );
   }
@@ -250,21 +247,12 @@ export default function StudentsPage() {
                 placeholder="Session title (e.g. Solar basics)"
                 value={sessionTitle}
                 onChange={(e) => setSessionTitle(e.target.value)}
-                style={{
-                  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)',
-                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.88rem',
-                }}
               />
               <textarea
                 placeholder="Brief description of what you want to learn..."
                 value={sessionDesc}
                 onChange={(e) => setSessionDesc(e.target.value)}
                 rows={3}
-                style={{
-                  padding: '10px 14px', borderRadius: 10, border: '1px solid var(--line)',
-                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.88rem',
-                  fontFamily: 'inherit', resize: 'vertical',
-                }}
               />
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button className="secondary" onClick={() => setSessionModalPro(null)}>Cancel</button>
@@ -280,276 +268,434 @@ export default function StudentsPage() {
       <div className="page-head">
         <div>
           <div className="eyebrow">Students Area</div>
-          <h1 className="serif">From stuck to I can do this.</h1>
-          <p>Ask questions, learn from experts, and track your progress.</p>
+          <h1 className="serif">{activeTab === 'sessions' ? 'Your private guidance room.' : activeTab === 'thread' ? MOCK_THREAD.title.slice(0, 50) + '...' : activeTab === 'ask' ? 'Turn the stuck feeling into a clear question.' : activeTab === 'chat' ? 'Your guidance circle.' : activeTab === 'wallet' ? 'Thank useful guidance.' : 'Ask better. Learn privately.'}</h1>
+          <p>{activeTab === 'sessions' ? 'Everything before, during, and after a consultation lives here.' : activeTab === 'thread' ? 'Give professionals enough context to offer useful guidance.' : activeTab === 'ask' ? 'Give professionals enough context to offer useful guidance.' : activeTab === 'chat' ? 'Ask follow-ups, share context, and keep session advice in one place.' : activeTab === 'wallet' ? 'Tips move through M-Pesa. The platform fee is visible before confirmation.' : 'Post a question, compare approved professionals, book a private consultation, then tip and rate useful guidance.'}</p>
         </div>
+        {activeTab === 'sessions' && (
+          <button className="primary" onClick={() => setActiveTab('overview')}>
+            <Plus className="icon-sm" /> Book session
+          </button>
+        )}
       </div>
 
-      <section className="hero">
-        <div className="hero-content">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="primary" onClick={() => setShowQuestionForm(true)}>
-              <Plus className="icon-sm" /> Ask a question
-            </button>
-            <button className="secondary" onClick={() => showToast('Browse experts')}>
-              <BadgeCheck className="icon-sm" /> Browse experts
-            </button>
-            <button className="secondary" onClick={() => showToast('Messages opened')}>
-              <MessagesSquare className="icon-sm" /> Messages
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {showQuestionForm && (
-        <section className="section" style={{ marginBottom: 22 }}>
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Ask the community</div>
-              <h2 className="serif">Post your question.</h2>
-            </div>
-            <button className="secondary" onClick={() => setShowQuestionForm(false)}>Cancel</button>
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <input
-              type="text"
-              placeholder="Question title (e.g. How do I start urban farming?)"
-              value={questionTitle}
-              onChange={(e) => setQuestionTitle(e.target.value)}
-              style={{
-                width: '100%', padding: 12, borderRadius: 10,
-                border: '1px solid var(--line)', background: 'var(--surface)',
-                color: 'var(--text)', fontSize: '.88rem', marginBottom: 10, boxSizing: 'border-box',
-              }}
-            />
-            <textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="What are you stuck on? Be specific and someone from the community or an expert will help."
-              style={{
-                width: '100%',
-                minHeight: 100,
-                padding: 12,
-                borderRadius: 10,
-                border: '1px solid var(--line)',
-                background: 'var(--surface)',
-                color: 'var(--text)',
-                fontSize: '.82rem',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-              <button className="secondary" onClick={() => setShowQuestionForm(false)}>Cancel</button>
-              <button
-                className="primary"
-                onClick={handlePublishQuestion}
-                disabled={submitting}
-              >
-                <Send className="icon-sm" /> {submitting ? 'Publishing...' : 'Publish'}
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <div className="grid2">
-        <section className="section">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Your learning loop</div>
-              <h2 className="serif">Progress so far.</h2>
-            </div>
-          </div>
-
-          <div className="stats">
-            {stats.map((s) => {
-              const Icon = s.icon;
-              return (
-                <div key={s.label} className="stat" onClick={() => showToast(`${s.value} ${s.label}`)}>
-                  <div className="avatar" style={{ background: s.color, color: s.textColor }}>
-                    <Icon className="icon-sm" />
-                  </div>
-                  <strong>{s.value}</strong>
-                  <span>{s.label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)' }}>Overall progress</span>
-              <span style={{ fontSize: '.68rem', color: 'var(--green)', fontWeight: 700 }}>68%</span>
-            </div>
-            <div style={{ height: 8, borderRadius: 99, background: 'var(--line)', overflow: 'hidden' }}>
-              <div style={{ width: '68%', height: '100%', background: 'var(--green)', borderRadius: 99 }} />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <div className="tag"><Target className="icon-sm" /> 4 goals completed</div>
-              <div className="tag gold"><Award className="icon-sm" /> 2 badges earned</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="section-head">
-            <div>
-              <div className="eyebrow">Upcoming</div>
-              <h2 className="serif">Your next session.</h2>
-            </div>
-          </div>
-
-          <div className="post" style={{ cursor: 'pointer' }} onClick={() => showToast('Session details opened')}>
-            <div className="post-head">
-              <div className="avatar blue">JO</div>
-              <div className="author">
-                <strong>James Otieno <span className="verified">✓</span></strong>
-                <div className="meta">
-                  <span>Solar basics</span>
-                  <span>·</span>
-                  <span>Tomorrow 10:00 AM</span>
-                </div>
-              </div>
-              <ChevronRight className="icon" style={{ color: 'var(--text3)' }} />
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: '.78rem', color: 'var(--text2)' }}>
-                Private session on sizing a solar system for a small shop in Nakuru.
-              </p>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <div className="tag"><MessagesSquare className="icon-sm" /> Private session</div>
-                <div className="tag"><BadgeCheck className="icon-sm" /> Verified</div>
+      {activeTab === 'overview' && (
+        <>
+          <section className="hero">
+            <div className="hero-content">
+              <div className="eyebrow" style={{ color: 'var(--gold)' }}>Your learning hub</div>
+              <h1 className="serif">From &ldquo;I am stuck&rdquo; to &ldquo;I can do this.&rdquo;</h1>
+              <p>Ask, match, chat, meet, tip, rate. M-Pesa fees are shown before you confirm.</p>
+              <div className="hero-actions">
+                <button className="gold" onClick={() => setActiveTab('ask')}>
+                  <MessageCircleQuestion className="icon-sm" /> Ask a question
+                </button>
+                <button onClick={() => showToast('Browse experts')}>
+                  <BadgeCheck className="icon-sm" /> Browse experts
+                </button>
+                <button onClick={() => setActiveTab('chat')}>
+                  <MessagesSquare className="icon-sm" /> Open messages
+                </button>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="primary" onClick={(e) => { e.stopPropagation(); showToast('Joining session'); }}>
-                Join session
+          </section>
+
+          <div className="grid2">
+            <section className="section">
+              <div className="section-head">
+                <div>
+                  <div className="eyebrow">Your learning loop</div>
+                  <h2 className="serif">Keep moving.</h2>
+                </div>
+              </div>
+              <div className="stats">
+                <div className="stat">
+                  <strong>6</strong>
+                  <span>sessions completed</span>
+                </div>
+                <div className="stat">
+                  <strong>18</strong>
+                  <span>questions asked</span>
+                </div>
+                <div className="stat">
+                  <strong>4</strong>
+                  <span>badges earned</span>
+                </div>
+              </div>
+              <div className="progress-track">
+                <div className="progress-value" />
+              </div>
+              <p className="muted" style={{ marginTop: 6, fontSize: '.63rem' }}>68% toward your Curious neighbour badge.</p>
+            </section>
+
+            <section className="section">
+              <div className="section-head">
+                <div>
+                  <div className="eyebrow">Upcoming</div>
+                  <h2 className="serif">Your next session.</h2>
+                </div>
+              </div>
+              <button className="quick" onClick={() => setActiveTab('chat')}>
+                <div className="avatar sm blue">JO</div>
+                <div className="quick-copy">
+                  <strong>James Otieno</strong>
+                  <span>Solar basics · tomorrow · 4:30 PM</span>
+                </div>
+                <span className="status ready">Open</span>
               </button>
-              <button className="secondary" onClick={(e) => { e.stopPropagation(); showToast('Message sent to James'); }}>
-                Message
-              </button>
-            </div>
+            </section>
           </div>
 
-          <div style={{ marginTop: 14 }}>
+          <section className="section" style={{ marginTop: 13 }}>
             <div className="section-head">
               <div>
                 <div className="eyebrow">Quick help</div>
                 <h2 className="serif">Common questions.</h2>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { icon: CircleHelp, text: 'How do I ask a good question?', tag: 'Guide' },
-                { icon: GraduationCap, text: 'What badges can I earn?', tag: 'Rewards' },
-                { icon: Target, text: 'How do I track my learning goals?', tag: 'Progress' },
-              ].map((item, i) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={i}
-                    className="quick"
-                    onClick={() => showToast(item.text)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--line)', cursor: 'pointer' }}
+            <button className="quick" onClick={() => showToast('How do I ask a good question?')}>
+              <div className="quick-icon"><CircleHelp className="icon-sm" /></div>
+              <div className="quick-copy">
+                <strong>How do I ask a good question?</strong>
+                <span>Guide</span>
+              </div>
+              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
+            </button>
+            <button className="quick" onClick={() => showToast('What badges can I earn?')}>
+              <div className="quick-icon" style={{ color: 'var(--earth)', background: 'var(--earthSoft)' }}><Award className="icon-sm" /></div>
+              <div className="quick-copy">
+                <strong>What badges can I earn?</strong>
+                <span>Rewards</span>
+              </div>
+              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
+            </button>
+            <button className="quick" onClick={() => showToast('How do I track my learning goals?')}>
+              <div className="quick-icon"><Target className="icon-sm" /></div>
+              <div className="quick-copy">
+                <strong>How do I track my learning goals?</strong>
+                <span>Progress</span>
+              </div>
+              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
+            </button>
+          </section>
+
+          <section className="section" style={{ marginTop: 13 }}>
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Ask the community</div>
+                <h2 className="serif">Need an answer?</h2>
+              </div>
+            </div>
+            <button className="quick" onClick={() => setActiveTab('ask')}>
+              <div className="quick-icon" style={{ color: 'var(--earth)', background: 'var(--goldSoft)' }}><MessageCircleQuestion className="icon-sm" /></div>
+              <div className="quick-copy">
+                <strong>How do I price a digital service?</strong>
+                <span>#TechAndStartups · 2 offers</span>
+              </div>
+              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
+            </button>
+          </section>
+
+          <section className="section" style={{ marginTop: 13 }}>
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Approved professionals</div>
+                <h2 className="serif">Learn from the best.</h2>
+              </div>
+              <button className="secondary" onClick={() => showToast('View all professionals')}>
+                View all <ChevronRight className="icon-sm" />
+              </button>
+            </div>
+            {professionals.map((pro) => (
+              <div key={pro.initials} className="pro">
+                <div className={`avatar sm ${pro.color}`}>{pro.initials}</div>
+                <div className="pro-copy">
+                  <strong>{pro.name} <span className="verified">✓</span></strong>
+                  <p>{pro.topic}</p>
+                  <span>{pro.badge} · private sessions · 4.9 rating</span>
+                </div>
+                <div className="pro-actions">
+                  <button className="follow" onClick={() => handleFollow(pro.user_id)}>
+                    {followingMap[pro.user_id] ? 'Following' : 'Follow'}
+                  </button>
+                  <button className="primary" onClick={() => setSessionModalPro(pro)}>Request</button>
+                </div>
+              </div>
+            ))}
+          </section>
+        </>
+      )}
+
+      {activeTab === 'sessions' && (
+        <>
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Upcoming</div>
+                <h2 className="serif">Do not miss the useful bit.</h2>
+              </div>
+            </div>
+            {MOCK_SESSIONS.filter(s => s.status === 'upcoming').map((session) => (
+              <div key={session.id} className="offer">
+                <div className={`avatar ${session.pro.color}`}>{session.pro.initials}</div>
+                <div className="offer-copy">
+                  <strong>{session.pro.name} <span className="verified">✓</span></strong>
+                  <p>{session.title}</p>
+                  <span>{session.date} · {session.duration} · Private chat</span>
+                </div>
+                <button className="primary" onClick={() => setActiveTab('chat')}>Enter</button>
+              </div>
+            ))}
+          </section>
+
+          <section className="section" style={{ marginTop: 13 }}>
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Completed</div>
+                <h2 className="serif">Close the loop.</h2>
+              </div>
+            </div>
+            {MOCK_SESSIONS.filter(s => s.status === 'completed').map((session) => (
+              <div key={session.id} className="offer">
+                <div className={`avatar ${session.pro.color}`}>{session.pro.initials}</div>
+                <div className="offer-copy">
+                  <strong>{session.pro.name} <span className="verified">✓</span></strong>
+                  <p>{session.title}</p>
+                  <span>Completed {session.date} · {session.duration}</span>
+                </div>
+                <button className="primary" onClick={() => setActiveTab('wallet')}>Tip & rate</button>
+              </div>
+            ))}
+          </section>
+        </>
+      )}
+
+      {activeTab === 'thread' && (
+        <>
+          <button className="secondary" onClick={() => setActiveTab('overview')} style={{ marginBottom: 12 }}>
+            <ArrowLeft className="icon-sm" /> Students Area
+          </button>
+          <section className="section">
+            <div className="eyebrow">Your question</div>
+            <h1 className="serif" style={{ marginTop: 6, fontSize: '1.65rem', lineHeight: 1.05 }}>{MOCK_THREAD.title}</h1>
+            <p style={{ marginTop: 9, color: 'var(--text2)', fontSize: '.72rem' }}>{MOCK_THREAD.body}</p>
+            <div className="tags">
+              {MOCK_THREAD.tags.map(t => <span key={t} className="tag">{t}</span>)}
+              <span className="tag gold">{MOCK_THREAD.offers} offers</span>
+            </div>
+            <div className="question-footer">
+              <button><ThumbsUp className="icon-sm" /> {MOCK_THREAD.upvotes}</button>
+              <button><MessageCircleQuestion className="icon-sm" /> {MOCK_THREAD.answers} answers</button>
+              <span className="spacer" />
+              <button onClick={() => showToast('Saved')}>Bookmark</button>
+            </div>
+          </section>
+
+          <section className="section" style={{ marginTop: 13 }}>
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Guidance offers</div>
+                <h2 className="serif">Choose your next conversation.</h2>
+              </div>
+            </div>
+            {MOCK_THREAD.guidanceOffers.map((offer, i) => (
+              <div key={i} className="offer">
+                <div className={`avatar ${offer.pro.color}`}>{offer.pro.initials}</div>
+                <div className="offer-copy">
+                  <strong>{offer.pro.name} <span className="verified">✓</span></strong>
+                  <p>{offer.topic} · {offer.date} · {offer.duration}</p>
+                </div>
+                <button className="primary" onClick={() => setSessionModalPro(offer.pro)}>Book</button>
+              </div>
+            ))}
+          </section>
+        </>
+      )}
+
+      {activeTab === 'ask' && (
+        <section className="section">
+          <div className="eyebrow">Ask Kikwetu</div>
+          <h1 className="serif" style={{ marginTop: 6, fontSize: '1.45rem', lineHeight: 1.05 }}>Turn the stuck feeling into a clear question.</h1>
+          <div style={{ marginTop: 14 }}>
+            <div className="form-field">
+              <label>Question title</label>
+              <input
+                type="text"
+                value={questionTitle}
+                onChange={(e) => setQuestionTitle(e.target.value)}
+                placeholder="How do I price a small digital service without undercutting myself?"
+              />
+            </div>
+            <div className="form-field">
+              <label>Context</label>
+              <textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                rows={5}
+                placeholder="I can build simple websites and product mockups, but I keep pricing from fear. I want a practical way to quote clients."
+              />
+            </div>
+            <div className="form-field">
+              <label>Topics and bounty</label>
+              <div className="choice-row">
+                {TOPIC_OPTIONS.map(t => (
+                  <button
+                    key={t}
+                    className={`choice ${selectedTopics.includes(t) ? 'selected' : ''}`}
+                    onClick={() => setSelectedTopics(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
                   >
-                    <div className="quick-icon">
-                      <Icon className="icon" style={{ color: 'var(--green)' }} />
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="primary" style={{ width: '100%', marginTop: 15 }} onClick={handlePublishQuestion}>
+              <Send className="icon-sm" /> Publish question
+            </button>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'chat' && (
+        <section className="chat">
+          <div className="chat-main">
+            <div className="chat-top">
+              <div className="avatar sm blue">JO</div>
+              <div>
+                <strong>James Otieno <span className="verified">✓</span></strong>
+                <p><span className="live-dot" /> Online now · Approved solar mentor</p>
+              </div>
+            </div>
+            <div className="session-bar">
+              <strong>Upcoming private session</strong>
+              <span>Solar basics for a small retail shop · Tomorrow, 4:30 PM EAT · 45 minutes</span>
+              <div className="session-actions">
+                <button onClick={() => showToast('Session details')}>Details</button>
+                <button className="join" onClick={() => showToast('Joining room')}>Join room</button>
+              </div>
+            </div>
+            <div className="chat-body">
+              {chatMessages.map((msg) => (
+                <div key={msg.id} className={`message-row ${msg.sender === 'me' ? 'mine' : ''}`}>
+                  {msg.sender !== 'me' && <div className={`avatar sm ${msg.color}`}>{msg.initials}</div>}
+                  <div className="message-bubble">
+                    {msg.text}
+                    {msg.attachment && (
+                      <div className="attachment">
+                        <span className="attachment-icon"><FileText className="icon-sm" /></span>
+                        <span className="attachment-copy">
+                          <strong>{msg.attachment.name}</strong>
+                          <span>{msg.attachment.size}</span>
+                        </span>
+                      </div>
+                    )}
+                    <div className="message-time">
+                      {msg.time}
+                      {msg.read && <span className="read"> ✓✓</span>}
                     </div>
-                    <div className="quick-copy" style={{ flex: 1 }}>
-                      <strong style={{ fontSize: '.78rem' }}>{item.text}</strong>
-                      <span style={{ fontSize: '.62rem', color: 'var(--text3)' }}>{item.tag}</span>
-                    </div>
-                    <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
                   </div>
-                );
-              })}
+                </div>
+              ))}
+            </div>
+            <div className="chat-input">
+              <button className="secondary" onClick={() => showToast('Attach file')}>
+                <FileText className="icon-sm" />
+              </button>
+              <input
+                id="messageInput"
+                type="text"
+                placeholder="Type a private message..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              />
+              <button className="primary" onClick={handleSendMessage}>
+                <Send className="icon-sm" />
+              </button>
             </div>
           </div>
         </section>
-      </div>
+      )}
 
-      <section className="section" style={{ marginTop: 22 }}>
-        <div className="section-head">
-          <div>
-            <div className="eyebrow">Approved professionals</div>
-            <h2 className="serif">Learn from the best.</h2>
-          </div>
-          <button className="secondary" onClick={() => showToast('View all professionals')}>
-            View all <ChevronRight className="icon-sm" />
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 14 }}>
-          {professionals.map((pro) => (
-            <div key={pro.initials} className="pro-card" onClick={() => showToast(`Viewing ${pro.name}`)}>
-              <div className="avatar" style={{ background: `var(--${pro.color === 'earth' ? 'earthSoft' : pro.color === 'blue' ? 'blueSoft' : 'greenSoft'})`, color: `var(--${pro.color})` }}>
-                {pro.initials}
+      {activeTab === 'wallet' && (
+        <>
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Close your last session</div>
+                <h2 className="serif">Tip and rate Njeri.</h2>
               </div>
+            </div>
+            <div className="pro">
+              <div className="avatar earth">NW</div>
               <div className="pro-copy">
-                <strong>{pro.name} <span className="verified">✓</span></strong>
-                <p>{pro.topic}</p>
-                <span>{pro.badge} · private sessions · 4.9 rating</span>
-              </div>
-              <div className="pro-actions">
-                <button className="follow" onClick={(e) => { e.stopPropagation(); handleFollow(pro.user_id); }}>{followingMap[pro.user_id] ? 'Following' : 'Follow'}</button>
-                <button className="primary" onClick={(e) => { e.stopPropagation(); setSessionModalPro(pro); }}>Request consult</button>
+                <strong>Njeri Wambui <span className="verified">✓</span></strong>
+                <p>Urban farming: grow bags that do not leak</p>
+                <span>Completed yesterday · suggested KSh 1,000</span>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section" style={{ marginTop: 22 }}>
-        <div className="section-head">
-          <div>
-            <div className="eyebrow">Ask the community</div>
-            <h2 className="serif">Need an answer?</h2>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 14 }}>
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="What are you stuck on? Be specific and someone from the community or an expert will help."
-            style={{
-              width: '100%',
-              minHeight: 100,
-              padding: 12,
-              borderRadius: 10,
-              border: '1px solid var(--line)',
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              fontSize: '.82rem',
-              fontFamily: 'inherit',
-              resize: 'vertical',
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="secondary" onClick={() => showToast('Add a photo')}>
-                <Plus className="icon-sm" /> Add photo
-              </button>
-              <button className="secondary" onClick={() => showToast('Add topic tags')}>
-                <Tag className="icon-sm" /> Add tags
-              </button>
+            <div className="tip-choices">
+              {TIP_OPTIONS.map(amount => (
+                <button
+                  key={amount}
+                  className={`tip-choice ${tipAmount === amount ? 'selected' : ''}`}
+                  onClick={() => setTipAmount(amount)}
+                >
+                  KSh {amount.toLocaleString()}
+                </button>
+              ))}
             </div>
-            <button
-              className="primary"
-              onClick={() => {
-                if (question.trim()) {
-                  setShowQuestionForm(true);
-                } else {
-                  showToast('Please write your question first');
-                }
-              }}
-            >
-              <Send className="icon-sm" /> Publish
+            <div className="stars">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} className={`star ${tipRating >= n ? 'on' : ''}`} onClick={() => setTipRating(n)}>★</button>
+              ))}
+            </div>
+            <div className="money">
+              <div className="money-row">
+                <span>Your tip</span>
+                <strong>KSh {tipAmount.toLocaleString()}</strong>
+              </div>
+              <div className="money-row fee">
+                <span>Platform service fee, 10%</span>
+                <strong>-KSh {Math.round(tipAmount * 0.1).toLocaleString()}</strong>
+              </div>
+              <div className="money-row total">
+                <span>Professional receives</span>
+                <strong>KSh {Math.round(tipAmount * 0.9).toLocaleString()}</strong>
+              </div>
+              <div className="mpesa">
+                <span className="mpesa-mark">M</span>
+                <span>M-Pesa confirmation and receipt next</span>
+              </div>
+            </div>
+            <button className="primary" style={{ width: '100%', marginTop: 12 }} onClick={handleConfirmTip}>
+              <Smartphone className="icon-sm" /> Confirm tip via M-Pesa
             </button>
-          </div>
-        </div>
-      </section>
+          </section>
+
+          <section className="section" style={{ marginTop: 13 }}>
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Transparent platform split</div>
+                <h2 className="serif">No mystery math.</h2>
+              </div>
+            </div>
+            <div className="money">
+              <div className="money-row">
+                <span>Platform fee</span>
+                <strong>10%</strong>
+              </div>
+              <div className="money-row">
+                <span>M-Pesa processing</span>
+                <strong>Included</strong>
+              </div>
+              <div className="money-row total">
+                <span>Professional receives</span>
+                <strong>90% of your tip</strong>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
     </AppLayout>
   );
 }

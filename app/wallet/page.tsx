@@ -7,8 +7,11 @@ import { supabase } from '@/lib/supabase';
 import { getCurrentUser, sendTip } from '@/lib/supabase-helpers';
 import {
   WalletCards, Plus, CalendarDays, Star, ThumbsUp, MessageCircle,
-  ArrowUpRight, ArrowDownLeft, ExternalLink, ChevronRight,
+  ArrowUpRight, ArrowDownLeft, ExternalLink, ChevronRight, Download,
+  Smartphone, Clock,
 } from 'lucide-react';
+
+type WalletTab = 'student' | 'professional' | 'history';
 
 const tipAmounts = [500, 750, 1000, 1500];
 
@@ -50,6 +53,15 @@ export default function WalletPage() {
   const [selectedRecipient, setSelectedRecipient] = useState(MOCK_RECIPIENTS[0]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [sending, setSending] = useState(false);
+  const [activeTab, setActiveTab] = useState<WalletTab>('student');
+
+  const MOCK_PRO_PAYOUTS = [
+    { from: 'Wanjiku M.', amount: 450, date: 'Jul 25, 2026', status: 'completed' },
+    { from: 'Kipchoge A.', amount: 675, date: 'Jul 23, 2026', status: 'completed' },
+    { from: 'Amina H.', amount: 1350, date: 'Jul 20, 2026', status: 'completed' },
+  ];
+  const proTotal = MOCK_PRO_PAYOUTS.reduce((s, p) => s + p.amount, 0);
+  const proFee = Math.round(proTotal * 0.1);
 
   useEffect(() => {
     async function init() {
@@ -230,12 +242,29 @@ export default function WalletPage() {
           <h1 className="serif">Thank useful guidance.</h1>
           <p>Top up your wallet, send tips, and track your generosity.</p>
         </div>
-        <button className="secondary">
-          <CalendarDays className="icon-sm" /> This month <ChevronRight className="icon-sm" />
+        <button className="secondary" onClick={() => showToast('Statement downloaded')}>
+          <Download className="icon-sm" /> Statement
         </button>
       </div>
 
-      <div className="grid2">
+      <div className="tabs" style={{ marginBottom: 14 }}>
+        {([
+          { id: 'student' as const, label: 'Student wallet' },
+          { id: 'professional' as const, label: 'Professional wallet' },
+          { id: 'history' as const, label: 'History' },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'student' && (
+      <div>
         <section className="section">
           <div className="section-head">
             <div>
@@ -476,7 +505,6 @@ export default function WalletPage() {
             <ThumbsUp className="icon-sm" /> Confirm tip
           </button>
         </section>
-      </div>
 
       <section className="section" style={{ marginTop: 22 }}>
         <div className="section-head">
@@ -531,6 +559,139 @@ export default function WalletPage() {
           })}
         </div>
       </section>
+      </div>
+      )}
+
+      {activeTab === 'professional' && (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Professional wallet</div>
+              <h2 className="serif">Your earnings.</h2>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'var(--earth)',
+            color: 'var(--surface)',
+            borderRadius: 16,
+            padding: 24,
+            marginTop: 14,
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: -20,
+              right: -20,
+              width: 100,
+              height: 100,
+              borderRadius: '50%',
+              background: 'oklch(100% 0 0 / .1)',
+            }} />
+            <div className="eyebrow" style={{ color: 'var(--earthSoft)', marginBottom: 8 }}>Net earnings (after 10% fee)</div>
+            <div className="money" style={{ fontSize: '2rem', fontWeight: 800, color: '#fff' }}>
+              KSh {proTotal.toLocaleString()}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <WalletCards className="icon-sm" style={{ color: 'var(--earthSoft)' }} />
+              <span style={{ fontSize: '.78rem', color: 'var(--earthSoft)' }}>M-Pesa payouts processed within 24 hours</span>
+            </div>
+          </div>
+
+          <div className="money" style={{ marginTop: 16 }}>
+            <div className="money-row">
+              <span>Tips received (3)</span>
+              <strong>KSh {(proTotal + proFee).toLocaleString()}</strong>
+            </div>
+            <div className="money-row fee">
+              <span>Platform fee (10%)</span>
+              <strong>-KSh {proFee.toLocaleString()}</strong>
+            </div>
+            <div className="money-row total">
+              <span>Net to you</span>
+              <strong>KSh {proTotal.toLocaleString()}</strong>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>Recent payouts</div>
+            {MOCK_PRO_PAYOUTS.map((payout, i) => (
+              <div key={i} className="alert" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="avatar sm green">{payout.from.split(' ').map(w => w[0]).join('')}</div>
+                <div className="alert-copy">
+                  <strong>KSh {payout.amount.toLocaleString()}</strong>
+                  <div style={{ fontSize: '.72rem', color: 'var(--text3)' }}>
+                    From {payout.from} · {payout.date} · {payout.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="primary"
+            style={{ marginTop: 16, width: '100%' }}
+            onClick={() => showToast('Withdrawal via M-Pesa initiated')}
+          >
+            <Smartphone className="icon-sm" /> Withdraw via M-Pesa
+          </button>
+        </section>
+      )}
+
+      {activeTab === 'history' && (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <div className="eyebrow">Transaction history</div>
+              <h2 className="serif">All activity.</h2>
+            </div>
+            <button className="secondary" onClick={() => showToast('Statement downloaded')}>
+              <Download className="icon-sm" /> Export
+            </button>
+          </div>
+
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {transactions.map((tx, i) => {
+              const Icon = tx.icon;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line)',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => showToast(tx.label)}
+                >
+                  <div className="avatar" style={{
+                    background: tx.type === 'in' ? 'var(--greenSoft)' : 'var(--earthSoft)',
+                    color: tx.color,
+                  }}>
+                    <Icon className="icon-sm" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: '.82rem', display: 'block' }}>{tx.label}</strong>
+                    <span style={{ fontSize: '.68rem', color: 'var(--text3)' }}>{tx.time}</span>
+                  </div>
+                  <span className="mono" style={{
+                    fontSize: '.85rem',
+                    fontWeight: 700,
+                    color: tx.type === 'in' ? 'var(--green)' : 'var(--earth)',
+                  }}>
+                    {tx.amount}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {showConfirm && (
         <div

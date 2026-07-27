@@ -12,6 +12,7 @@ import {
 import {
   ShieldCheck, Plus, AlertTriangle, CheckCircle, MapPin,
   Clock, Phone, Users, ChevronRight, Bell, Shield, Eye,
+  Map, Send, UsersRound, Settings2, RefreshCcw, X,
 } from 'lucide-react';
 
 const MOCK_ALERTS = [
@@ -22,6 +23,7 @@ const MOCK_ALERTS = [
     time: '2h ago',
     confirmations: 12,
     type: 'urgent',
+    category: 'urgent',
     icon: AlertTriangle,
   },
   {
@@ -31,6 +33,7 @@ const MOCK_ALERTS = [
     time: '4h ago',
     confirmations: 8,
     type: 'urgent',
+    category: 'urgent',
     icon: AlertTriangle,
   },
   {
@@ -40,8 +43,36 @@ const MOCK_ALERTS = [
     time: 'Tomorrow 6PM',
     confirmations: 24,
     type: 'calm',
+    category: 'community',
     icon: Users,
   },
+  {
+    id: 4,
+    title: 'Stray dog sighting',
+    area: 'Kilimani, Nairobi',
+    time: '6h ago',
+    confirmations: 5,
+    type: 'urgent',
+    category: 'urgent',
+    icon: AlertTriangle,
+  },
+  {
+    id: 5,
+    title: 'Neighbourhood watch patrol schedule',
+    area: 'Westlands, Nairobi',
+    time: '1d ago',
+    confirmations: 18,
+    type: 'calm',
+    category: 'community',
+    icon: Users,
+  },
+];
+
+const MOCK_CIRCLE = [
+  { name: 'Wanjiku M.', initials: 'WM', role: 'Chair', online: true },
+  { name: 'Kipchoge A.', initials: 'KA', role: 'Member', online: true },
+  { name: 'Amina H.', initials: 'AH', role: 'Member', online: false },
+  { name: 'Otieno K.', initials: 'OK', role: 'Secretary', online: true },
 ];
 
 const emergencyContacts = [
@@ -51,8 +82,6 @@ const emergencyContacts = [
   { label: 'Nyumba Kumi Chair', number: '+254 700 123 456', icon: Users },
 ];
 
-type AlertItem = typeof MOCK_ALERTS[number];
-
 const alertTypes = [
   { key: 'safety', label: 'Safety' },
   { key: 'maintenance', label: 'Maintenance' },
@@ -60,11 +89,15 @@ const alertTypes = [
   { key: 'emergency', label: 'Emergency' },
 ];
 
+type AlertItem = typeof MOCK_ALERTS[number];
+type NkTab = 'all' | 'urgent' | 'community' | 'circle' | 'settings';
+
 export default function NyumbaKumiPage() {
   const { showToast } = useApp();
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<AlertItem[]>(MOCK_ALERTS);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<NkTab>('all');
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState('safety');
@@ -72,6 +105,12 @@ export default function NyumbaKumiPage() {
   const [reportDescription, setReportDescription] = useState('');
   const [reportLocation, setReportLocation] = useState('');
   const [reporting, setReporting] = useState(false);
+
+  const filteredAlerts = activeTab === 'all'
+    ? alerts
+    : activeTab === 'urgent' || activeTab === 'community'
+      ? alerts.filter(a => a.category === activeTab)
+      : alerts;
 
   useEffect(() => {
     async function init() {
@@ -95,6 +134,7 @@ export default function NyumbaKumiPage() {
             time: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently',
             confirmations: item.confirmations ?? 0,
             type: item.type === 'calm' ? 'calm' : 'urgent',
+            category: item.type === 'calm' ? 'community' : 'urgent',
             icon: item.type === 'calm' ? Users : AlertTriangle,
           })));
         }
@@ -123,6 +163,7 @@ export default function NyumbaKumiPage() {
             time: 'Just now',
             confirmations: item.confirmations ?? 0,
             type: item.type === 'calm' ? 'calm' : 'urgent',
+            category: item.type === 'calm' ? 'community' : 'urgent',
             icon: item.type === 'calm' ? Users : AlertTriangle,
           };
           setAlerts((prev) => [newAlert, ...prev]);
@@ -161,6 +202,7 @@ export default function NyumbaKumiPage() {
         time: 'Just now',
         confirmations: 0,
         type: reportType === 'community' ? 'calm' : 'urgent',
+        category: reportType === 'community' ? 'community' : 'urgent',
         icon: typeIcon,
       };
       setAlerts((prev) => [newAlert, ...prev]);
@@ -218,23 +260,61 @@ export default function NyumbaKumiPage() {
         <div>
           <div className="eyebrow">Nyumba Kumi</div>
           <h1 className="serif">Look out for your neighbourhood.</h1>
-          <p>Community-driven safety alerts and local emergency coordination.</p>
+          <p>Clear alerts, useful context, and calm coordination for the people around you.</p>
         </div>
         <button className="primary" onClick={() => setShowReportModal(true)}>
-          <Plus className="icon-sm" /> Report incident
+          <AlertTriangle className="icon-sm" /> Post an alert
+        </button>
+      </div>
+
+      <section className="hero">
+        <div className="hero-content">
+          <div className="eyebrow" style={{ color: 'var(--gold)' }}>Westlands circle</div>
+          <h1 className="serif">Safer works better together.</h1>
+          <p>Share verified local updates, confirm what you see, and keep urgent information useful instead of noisy. Your exact address stays private.</p>
+          <div className="hero-actions">
+            <button className="gold" onClick={() => showToast('Neighbourhood map opened')}>
+              <Map className="icon-sm" /> Open neighbourhood map
+            </button>
+            <button onClick={() => showToast('Private group invite copied')}>
+              <Send className="icon-sm" /> Share group
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="tabs">
+        {([
+          { id: 'all' as const, label: 'All' },
+          { id: 'urgent' as const, label: 'Urgent' },
+          { id: 'community' as const, label: 'Community' },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontSize: '.72rem', color: 'var(--text3)' }}>
+          {filteredAlerts.length} updates · {filteredAlerts.reduce((sum, a) => sum + a.confirmations, 0)} confirmations
+        </span>
+        <button className="secondary" onClick={() => showToast('Refreshed')} style={{ fontSize: '.62rem', minHeight: 28 }}>
+          <RefreshCcw className="icon-sm" /> Refresh
         </button>
       </div>
 
       <section className="section">
         <div className="section-head">
           <h2><ShieldCheck className="icon-sm" /> Active Alerts</h2>
-          <button className="secondary" onClick={() => showToast('Viewing all alerts')}>
-            View all <ChevronRight className="icon-sm" />
-          </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {alerts.map((alert) => (
+          {filteredAlerts.map((alert) => (
             <div
               key={alert.id}
               className={`alert ${alert.type === 'calm' ? 'calm' : ''}`}
@@ -285,17 +365,17 @@ export default function NyumbaKumiPage() {
         </div>
       </section>
 
-      <section className="section">
-        <div className="section-head">
-          <h2><Phone className="icon-sm" /> Emergency Contacts</h2>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+      <div className="grid2" style={{ marginTop: 14 }}>
+        <section className="section">
+          <div className="section-head">
+            <h2><Phone className="icon-sm" /> Emergency Contacts</h2>
+          </div>
           {emergencyContacts.map((contact) => (
             <button
               key={contact.label}
               className="alert"
               onClick={() => showToast(`Calling ${contact.label}`)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
             >
               <div className="alert-icon">
                 <contact.icon className="icon" />
@@ -306,69 +386,83 @@ export default function NyumbaKumiPage() {
               </div>
             </button>
           ))}
-        </div>
-      </section>
+        </section>
 
-      <div className="grid2" style={{ marginTop: 14 }}>
         <section className="section">
           <div className="section-head">
             <h2><Eye className="icon-sm" /> Your neighbourhood</h2>
           </div>
           <div className="stats">
             <div className="stat">
-              <div className="stat-value" style={{ color: 'var(--red)' }}>3</div>
-              <div className="stat-label">Alerts today</div>
+              <strong>{alerts.filter(a => a.type === 'urgent').length}</strong>
+              <span>Active alerts</span>
             </div>
             <div className="stat">
-              <div className="stat-value" style={{ color: 'var(--green)' }}>44</div>
-              <div className="stat-label">Confirmed by</div>
+              <strong>{alerts.reduce((sum, a) => sum + a.confirmations, 0)}</strong>
+              <span>Total confirms</span>
             </div>
             <div className="stat">
-              <div className="stat-value" style={{ color: 'var(--gold)' }}>128</div>
-              <div className="stat-label">Active neighbours</div>
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="section-head">
-            <h2><Shield className="icon-sm" /> How Nyumba Kumi works</h2>
-          </div>
-          <div className="right-list">
-            <div className="right-item">
-              <div className="right-copy">
-                <strong>Quick alerts</strong>
-                <p>Report an incident or hazard in seconds. Your neighbours are notified instantly.</p>
-              </div>
-              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
-            </div>
-            <div className="right-item">
-              <div className="right-copy">
-                <strong>Confirm or dispute</strong>
-                <p>Verify alerts from your area so the community knows what is real.</p>
-              </div>
-              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
-            </div>
-            <div className="right-item">
-              <div className="right-copy">
-                <strong>Community jury</strong>
-                <p>Resolved disputes through a fair, transparent neighbourhood process.</p>
-              </div>
-              <ChevronRight className="icon-sm" style={{ color: 'var(--text3)' }} />
+              <strong>128</strong>
+              <span>Active neighbours</span>
             </div>
           </div>
         </section>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 50 }}>
-        <button
-          className="primary"
-          onClick={() => setShowReportModal(true)}
-          style={{ width: 52, height: 52, borderRadius: '50%', padding: 0, display: 'grid', placeItems: 'center', boxShadow: '0 4px 14px rgba(0,0,0,.2)' }}
-        >
-          <Bell className="icon" />
-        </button>
-      </div>
+      <section className="section" style={{ marginTop: 14 }}>
+        <div className="section-head">
+          <div>
+            <div className="eyebrow">Your circle</div>
+            <h2 className="serif">Trusted neighbours.</h2>
+          </div>
+          <button className="secondary" onClick={() => setActiveTab('circle')}>
+            <UsersRound className="icon-sm" /> Manage
+          </button>
+        </div>
+        {MOCK_CIRCLE.map((member) => (
+          <div key={member.name} className="alert" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="avatar sm" style={{ background: member.online ? 'var(--greenSoft)' : 'var(--surface2)', color: member.online ? 'var(--green)' : 'var(--text3)' }}>
+              {member.initials}
+            </div>
+            <div className="alert-copy">
+              <strong>{member.name}</strong>
+              <div style={{ fontSize: '.72rem', color: 'var(--text3)' }}>
+                {member.role} · {member.online ? 'Online' : 'Offline'}
+              </div>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="section" style={{ marginTop: 14 }}>
+        <div className="section-head">
+          <div>
+            <div className="eyebrow">How Nyumba Kumi works</div>
+            <h2 className="serif">Clear process, calm coordination.</h2>
+          </div>
+        </div>
+        <div className="alert" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="alert-icon"><AlertTriangle className="icon" /></div>
+          <div className="alert-copy">
+            <strong>Quick alerts</strong>
+            <p style={{ fontSize: '.68rem', color: 'var(--text2)' }}>Report an incident or hazard in seconds. Your neighbours are notified instantly.</p>
+          </div>
+        </div>
+        <div className="alert" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="alert-icon"><CheckCircle className="icon" /></div>
+          <div className="alert-copy">
+            <strong>Confirm or dispute</strong>
+            <p style={{ fontSize: '.68rem', color: 'var(--text2)' }}>Verify alerts from your area so the community knows what is real.</p>
+          </div>
+        </div>
+        <div className="alert" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="alert-icon"><Shield className="icon" /></div>
+          <div className="alert-copy">
+            <strong>Community jury</strong>
+            <p style={{ fontSize: '.68rem', color: 'var(--text2)' }}>Resolve disputes through a fair, transparent neighbourhood process.</p>
+          </div>
+        </div>
+      </section>
 
       {showReportModal && (
         <div
@@ -395,7 +489,12 @@ export default function NyumbaKumiPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 16 }}>Report an incident</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Post an alert</h2>
+              <button onClick={() => setShowReportModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}>
+                <X size={18} />
+              </button>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
@@ -413,32 +512,29 @@ export default function NyumbaKumiPage() {
                   ))}
                 </div>
               </div>
-              <div>
-                <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Title *</label>
+              <div className="form-field">
+                <label>Title *</label>
                 <input
                   value={reportTitle}
                   onChange={(e) => setReportTitle(e.target.value)}
                   placeholder="What happened?"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)' }}
                 />
               </div>
-              <div>
-                <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Description</label>
+              <div className="form-field">
+                <label>Description</label>
                 <textarea
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   rows={3}
                   placeholder="Provide more details"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)', resize: 'vertical' }}
                 />
               </div>
-              <div>
-                <label style={{ fontSize: '.75rem', color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Location</label>
+              <div className="form-field">
+                <label>Location</label>
                 <input
                   value={reportLocation}
                   onChange={(e) => setReportLocation(e.target.value)}
                   placeholder="e.g. Kileleshwa, Nairobi"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--text)' }}
                 />
               </div>
             </div>
@@ -448,7 +544,7 @@ export default function NyumbaKumiPage() {
                 Cancel
               </button>
               <button className="primary" onClick={handleCreateAlert} disabled={reporting}>
-                {reporting ? 'Reporting...' : 'Report incident'}
+                {reporting ? 'Reporting...' : 'Post alert'}
               </button>
             </div>
           </div>

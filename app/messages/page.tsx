@@ -369,6 +369,29 @@ export default function MessagesPage() {
               <Send className="icon-sm" />
             </button>
           </div>
+
+          <div style={{ display: 'flex', gap: 6, padding: '0 14px 10px', overflow: 'auto' }}>
+            {['Send appliance list', 'Confirm session time', 'Share power bill'].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => { setInput(suggestion); }}
+                style={{
+                  whiteSpace: 'nowrap',
+                  padding: '6px 10px',
+                  borderRadius: 99,
+                  border: '1px solid var(--line)',
+                  background: 'var(--surface)',
+                  color: 'var(--text2)',
+                  fontSize: '.62rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </AppLayout>

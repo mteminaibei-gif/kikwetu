@@ -247,6 +247,9 @@ function ListingCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
           <div className={`avatar sm ${listing.seller.color}`}>{listing.seller.initials}</div>
           <span style={{ fontSize: '.72rem', color: 'var(--text2)', fontWeight: 700 }}>{listing.seller.name}</span>
+          <span style={{ padding: '2px 6px', borderRadius: 99, background: 'var(--greenSoft)', color: 'var(--green)', fontSize: '.55rem', fontWeight: 800 }}>
+            Verified
+          </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
@@ -473,6 +476,22 @@ export default function MtaaExchange() {
           <MapPin className="icon-sm" /> Nairobi <ChevronRight className="icon-sm" />
         </button>
       </div>
+
+      <section className="hero">
+        <div className="hero-content">
+          <div className="eyebrow" style={{ color: 'var(--gold)' }}>Your local marketplace</div>
+          <h1 className="serif">Good things are already nearby.</h1>
+          <p>Buy from neighbours, discover trusted services, and keep more value inside the community. Sellers keep their phone private until they choose to connect.</p>
+          <div className="hero-actions">
+            <button className="gold" onClick={() => showToast('Showing listings near Nairobi')}>
+              <MapPin className="icon-sm" /> Near Nairobi
+            </button>
+            <button onClick={() => showToast('Saved listings opened')}>
+              <Heart className="icon-sm" /> Saved listings
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="section" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

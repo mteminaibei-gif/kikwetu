@@ -718,6 +718,39 @@ function BarazaPageInner() {
         ))}
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+        {[
+          { label: 'Farming', icon: '🌾', color: 'var(--greenSoft)' },
+          { label: 'Tech', icon: '💻', color: 'var(--blueSoft)' },
+          { label: 'Culture', icon: '📖', color: 'var(--earthSoft)' },
+          { label: 'Education', icon: '🎓', color: 'var(--goldSoft)' },
+          { label: 'Business', icon: '💼', color: 'var(--greenSoft)' },
+          { label: 'Health', icon: '🏥', color: 'var(--redSoft)' },
+        ].map((topic) => (
+          <button
+            key={topic.label}
+            onClick={() => showToast(`Viewing ${topic.label}`)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 12,
+              border: '1px solid var(--line)',
+              background: topic.color,
+              cursor: 'pointer',
+              fontSize: '.75rem',
+              fontWeight: 700,
+              color: 'var(--text)',
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '1.1rem' }}>{topic.icon}</span>
+            {topic.label}
+          </button>
+        ))}
+      </div>
+
       <StoriesRow />
 
       <section className="composer">
