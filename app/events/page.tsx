@@ -91,7 +91,7 @@ export default function EventsPage() {
     async function load() {
       const { data } = await supabase
         .from('threads')
-        .select('*, profiles:user_id(full_name, username, avatar_url)')
+        .select('*, profiles:author_id(full_name, username, avatar_url)')
         .contains('tags', ['event'])
         .order('created_at', { ascending: false })
         .limit(20)
@@ -196,7 +196,6 @@ export default function EventsPage() {
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold">Events</h1>
@@ -211,7 +210,6 @@ export default function EventsPage() {
           <p className="text-gray-400">Discover and join events happening in your community</p>
         </div>
 
-        {/* Filter Tabs */}
         <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2">
           {CATEGORIES.map((cat) => (
             <button
@@ -228,7 +226,6 @@ export default function EventsPage() {
           ))}
         </div>
 
-        {/* Events Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
@@ -255,7 +252,6 @@ export default function EventsPage() {
                 key={event.id}
                 className="bg-[#1a1f26] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition group"
               >
-                {/* Event Image */}
                 {event.image && (
                   <div className="relative aspect-[2/1] overflow-hidden">
                     <img
@@ -275,7 +271,6 @@ export default function EventsPage() {
                   </div>
                 )}
 
-                {/* Event Details */}
                 <div className="p-5">
                   {!event.image && (
                     <div className="flex items-center gap-2 mb-3">
@@ -341,7 +336,6 @@ export default function EventsPage() {
           </div>
         )}
 
-        {/* Load More */}
         {!loading && filteredEvents.length > 0 && (
           <div className="text-center py-8">
             <button className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition">
@@ -350,7 +344,6 @@ export default function EventsPage() {
           </div>
         )}
 
-        {/* Create Event Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-[#1a1f26] border border-gray-800 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
