@@ -551,11 +551,11 @@
 
 /* ===== Post (core) ===== */
 .post {
-  padding: 19px;
+  padding: 16px 18px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   animation: rise .45s var(--ease) both;
 }
 
@@ -643,30 +643,32 @@
 }
 
 .post-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr) auto auto auto;
-  gap: 4px;
+  display: flex;
   align-items: center;
-  margin-top: 16px;
-  padding-top: 12px;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
+  gap: 4px;
 }
 
 .action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 8px;
+  gap: 5px;
+  flex: 1;
+  min-height: 32px;
+  padding: 0 6px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   color: var(--text3);
   background: transparent;
   font-size: .72rem;
   font-weight: 700;
   cursor: pointer;
   transition: color .18s var(--ease), background .18s var(--ease);
+  white-space: nowrap;
 }
 
 .action:hover,
@@ -828,15 +830,14 @@
   .composer-action { font-size: .65rem; min-height: 32px; }
 
   .post {
-    padding: 14px 0;
+    padding: 14px;
   }
 
   .post-actions {
-    grid-template-columns: repeat(3, 1fr) auto;
     gap: 2px;
   }
 
-  .action { padding: 0 4px; font-size: .65rem; min-height: 32px; }
+  .action { padding: 0 4px; font-size: .65rem; min-height: 30px; }
   .action span { display: none; }
   .action:first-child span { display: inline; }
 
@@ -1786,22 +1787,27 @@ main, .page {
   flex-direction: column;
   gap: 10px;
 }
+.composer-expanded input,
 .composer-expanded textarea {
   width: 100%;
-  min-height: 100px;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--bg);
   color: var(--text);
   font-size: .85rem;
   font-family: inherit;
-  resize: vertical;
-  line-height: 1.5;
 }
+.composer-expanded input:focus,
 .composer-expanded textarea:focus {
   outline: none;
   border-color: var(--green);
+  box-shadow: 0 0 0 2px oklch(31% .1 158 / .12);
+}
+.composer-expanded textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.5;
 }
 .composer-type-row {
   display: flex;

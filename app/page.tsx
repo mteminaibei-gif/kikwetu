@@ -262,13 +262,6 @@ function PostComposer({ user, showToast, onPost }: {
           </div>
         )}
       </div>
-      {!expanded && (
-        <div className="composer-actions">
-          <button className="composer-action" onClick={() => setExpanded(true)}><ImageIcon className="icon" /> Photo</button>
-          <button className="composer-action" onClick={() => setExpanded(true)}><Video className="icon" /> Video</button>
-          <button className="composer-action" onClick={() => { setExpanded(true); setType('audio'); }}><Mic className="icon" /> Audio</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -349,7 +342,14 @@ function CommentSection({ threadId, user, showToast }: { threadId: string; user:
     const channel = supabase.channel(`home-replies-${threadId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'replies', filter: `thread_id=eq.${threadId}` }, (p) => {
         setReplies(prev => { const r = p.new as Reply; return prev.some(x => x.id === r.id) ? prev : [...prev, r]; });
-      }).subscribe();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'replies', filter: `thread_id=eq.${threadId}` }, (p) => {
+        setReplies(prev => prev.map(r => r.id === (p.new as Reply).id ? { ...r, ...(p.new as Reply) } : r));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'replies', filter: `thread_id=eq.${threadId}` }, (p) => {
+        setReplies(prev => prev.filter(r => r.id !== p.old.id));
+      })
+      .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [open, threadId]);
 
@@ -582,6 +582,12 @@ export default function Home() {
     const channel = supabase.channel('home-feed')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, (p) => {
         setPosts(prev => [p.new as FeedPost, ...prev].slice(0, 30));
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'threads' }, (p) => {
+        setPosts(prev => prev.map(post => post.id === p.new.id ? { ...post, ...(p.new as FeedPost) } : post));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'threads' }, (p) => {
+        setPosts(prev => prev.filter(post => post.id !== p.old.id));
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };

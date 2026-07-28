@@ -622,19 +622,20 @@ input::placeholder, textarea::placeholder {
 }
 .poll-count { color: var(--text3); font-size: .59rem; font-weight: 800; }
 .post-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr) auto auto;
-  gap: 4px;
+  display: flex;
   align-items: center;
-  margin-top: 16px;
-  padding-top: 12px;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 .action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
+  flex: 1;
   min-height: 34px;
   padding: 0 8px;
   border: 0;
@@ -1073,7 +1074,7 @@ body, .topbar, .sidebar, .nav-item, button, input, select, textarea, section { t
   .story { flex-basis: 82px; height: 116px; }
   .composer { padding: 13px; }
   .composer-action { font-size: .66rem; }
-  .post-actions { grid-template-columns: repeat(3, 1fr) auto auto; }
+  .post-actions { gap: 2px; }
   .action { padding: 0 4px; font-size: .66rem; }
   .action span { display: none; }
   .action:first-child span { display: inline; }
