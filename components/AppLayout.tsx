@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
+import React, { useState, createContext, useContext, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -9,9 +9,10 @@ import {
   Compass, Search, Layers3, GraduationCap, BadgeCheck,
   MessagesSquare, WalletCards, Store, ShieldCheck, Radio, Brain,
   UserRound, Bookmark, Settings, LogOut, Bell, Moon, Sun, Plus,
-  TrendingUp, MoreHorizontal, Volume2, X, Camera,
+  TrendingUp, MoreHorizontal, Volume2, X, Camera, Zap, Users,
   MessageCircle, ThumbsUp, AtSign, UserPlus, Award, Calendar,
-  AlertTriangle, CheckCheck, HelpCircle, FileText, BarChart3, Mic, Menu
+  AlertTriangle, CheckCheck, HelpCircle, FileText, BarChart3, Mic, Menu,
+  Clock, Newspaper, Eye, Home
 } from 'lucide-react';
 
 interface Profile {
@@ -80,6 +81,7 @@ const navSections = (isAdmin: boolean) => [
     title: 'Main',
     color: 'var(--green)',
     items: [
+      { icon: Home, label: 'Home', href: '/' },
       { icon: Compass, label: 'Baraza Feed', href: '/baraza', badge: 'New' },
       { icon: Search, label: 'Explore', href: '/explore' },
       { icon: Layers3, label: 'Spaces', href: '/spaces' },
@@ -128,32 +130,20 @@ function Avatar({ src, initials, size = 'sm', className = '', isOnline = false }
   const px = sizeMap[size];
 
   return (
-    <span style={{ position: 'relative', display: 'inline-flex' }}>
+    <span className="avatar-wrap">
       {src ? (
         <img
           src={src}
           alt={initials}
           className={`avatar ${size} avatar-img ${className}`}
-          style={{ width: px, height: px, objectFit: 'cover', borderRadius: '50%' }}
+          style={{ width: px, height: px, objectFit: 'cover' }}
         />
       ) : (
-        <span className={`avatar ${size} ${className}`} style={{ width: px, height: px, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+        <span className={`avatar ${size} ${className}`} style={{ width: px, height: px }}>
           {initials}
         </span>
       )}
-      {isOnline && (
-        <span style={{
-          position: 'absolute',
-          bottom: size === 'xs' ? 0 : 1,
-          right: size === 'xs' ? 0 : 1,
-          width: size === 'xs' ? 6 : 8,
-          height: size === 'xs' ? 6 : 8,
-          borderRadius: '50%',
-          background: 'var(--green)',
-          border: '2px solid var(--surface)',
-          zIndex: 1,
-        }} />
-      )}
+      {isOnline && <span className={`online-dot ${size}`} />}
     </span>
   );
 }
@@ -185,10 +175,10 @@ function timeAgo(dateStr: string): string {
   const then = new Date(dateStr).getTime();
   const diff = Math.floor((now - then) / 1000);
   if (diff < 60) return 'Just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   if (diff < 172800) return 'Yesterday';
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
   return new Date(dateStr).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
 }
 
@@ -210,6 +200,23 @@ interface Notification {
   target_type: string | null;
   target_id: string | null;
   is_read: boolean;
+  created_at: string;
+}
+
+interface OnlineUser {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string | null;
+  last_seen: string;
+}
+
+interface RecentFeed {
+  id: string;
+  title: string;
+  type: string;
+  author_name: string;
+  author_avatar: string | null;
   created_at: string;
 }
 
@@ -255,60 +262,21 @@ function NotificationDropdown({
   };
 
   return (
-    <div
-      className="notification-dropdown"
-      style={{
-        position: 'absolute',
-        top: 'calc(100% + 8px)',
-        right: 0,
-        width: 380,
-        maxHeight: 480,
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 16,
-        boxShadow: 'var(--shadow2)',
-        zIndex: 1000,
-        opacity: open ? 1 : 0,
-        transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
-        pointerEvents: open ? 'auto' : 'none',
-        transition: 'all .2s var(--ease)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        backdropFilter: 'blur(20px)',
-      }}
-    >
-      <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <strong style={{ fontSize: '.88rem' }}>Notifications</strong>
+    <div className={`notification-dropdown ${open ? 'open' : ''}`}>
+      <div className="notif-header">
+        <strong>Notifications</strong>
         {notifications.some(n => !n.is_read) && (
-          <button
-            type="button"
-            onClick={onMarkAllRead}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--green)',
-              fontSize: '.72rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 8px',
-              borderRadius: 8,
-            }}
-          >
+          <button type="button" onClick={onMarkAllRead} className="notif-mark-all">
             <CheckCheck className="icon-sm" />
-            Mark all as read
+            Mark all read
           </button>
         )}
       </div>
-
-      <div style={{ overflowY: 'auto', flex: 1 }}>
+      <div className="notif-body">
         {notifications.length === 0 ? (
-          <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: '.82rem' }}>
-            <Bell className="icon-lg" style={{ margin: '0 auto 10px', opacity: .35 }} />
-            <div>No notifications yet</div>
+          <div className="notif-empty">
+            <Bell className="icon-lg" />
+            <span>No notifications yet</span>
           </div>
         ) : (
           (['today', 'yesterday', 'earlier'] as const).map(group => {
@@ -316,65 +284,22 @@ function NotificationDropdown({
             if (!items || items.length === 0) return null;
             return (
               <div key={group}>
-                <div style={{ padding: '8px 16px 4px', fontSize: '.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--text3)' }}>
+                <div className="notif-group-label">
                   {group === 'today' ? 'Today' : group === 'yesterday' ? 'Yesterday' : 'Earlier'}
                 </div>
                 {items.map(n => {
                   const IconComp = NOTIFICATION_ICONS[n.type] || Bell;
                   const color = NOTIFICATION_COLORS[n.type] || 'var(--text3)';
                   return (
-                    <button
-                      type="button"
-                      key={n.id}
-                      onClick={() => handleClick(n)}
-                      style={{
-                        display: 'flex',
-                        gap: 12,
-                        padding: '10px 16px',
-                        width: '100%',
-                        textAlign: 'left',
-                        border: 'none',
-                        background: n.is_read ? 'transparent' : 'var(--surface2)',
-                        cursor: 'pointer',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div style={{ position: 'relative', flexShrink: 0, marginTop: 2 }}>
-                        <div style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: '50%',
-                          background: `${color}18`,
-                          display: 'grid',
-                          placeItems: 'center',
-                        }}>
-                          <IconComp style={{ width: 16, height: 16, color }} />
-                        </div>
-                        {!n.is_read && (
-                          <span style={{
-                            position: 'absolute',
-                            top: 0,
-                            right: -2,
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: 'var(--green)',
-                            border: '2px solid var(--surface)',
-                          }} />
-                        )}
+                    <button type="button" key={n.id} onClick={() => handleClick(n)} className={`notif-item ${!n.is_read ? 'unread' : ''}`}>
+                      <div className="notif-icon" style={{ color, background: `${color}18` }}>
+                        <IconComp className="icon-sm" />
+                        {!n.is_read && <span className="notif-dot" />}
                       </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: '.78rem', lineHeight: 1.35, color: 'var(--text)' }}>
-                          <strong style={{ fontWeight: 700 }}>{n.title}</strong>
-                        </div>
-                        {n.body && (
-                          <div style={{ fontSize: '.72rem', color: 'var(--text3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {n.body}
-                          </div>
-                        )}
-                        <div style={{ fontSize: '.64rem', color: 'var(--text3)', marginTop: 3, opacity: .75 }}>
-                          {timeAgo(n.created_at)}
-                        </div>
+                      <div className="notif-copy">
+                        <div className="notif-title">{n.title}</div>
+                        {n.body && <div className="notif-body-text">{n.body}</div>}
+                        <div className="notif-time">{timeAgo(n.created_at)}</div>
                       </div>
                     </button>
                   );
@@ -428,17 +353,6 @@ const Topbar = React.memo(function Topbar() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      router.push('/landing');
-      showToast('Signed out');
-    }
-  };
-
   useEffect(() => {
     if (!notifOpen || !user) return;
     void (async () => {
@@ -477,9 +391,9 @@ const Topbar = React.memo(function Topbar() {
           <Menu className="icon" />
         </button>
         <Link href="/baraza" className="wordmark">
-        <span className="mark">k</span>
-        <strong>kikwetu<span>.</span></strong>
-      </Link>
+          <span className="mark">k</span>
+          <strong>kikwetu<span>.</span></strong>
+        </Link>
       </div>
 
       <label className={`search ${searchFocused ? 'focused' : ''}`}>
@@ -495,17 +409,24 @@ const Topbar = React.memo(function Topbar() {
         <button type="button" className="icon-btn" onClick={toggleTheme} aria-label="Toggle dark mode">
           {theme === 'dark' ? <Sun className="icon" /> : <Moon className="icon" />}
         </button>
-        <div className="icon-btn" style={{ position: 'relative' }}>
+        <button type="button" className="icon-btn lang-btn" onClick={toggleLang}>
+          {lang}
+        </button>
+        <div className="icon-btn notif-trigger" ref={notifRef} onClick={() => setNotifOpen(!notifOpen)}>
           <Bell className="icon" />
-          {unreadCount > 0 && <span className="dot" style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: '50%', background: 'var(--red)' }} />}
+          {unreadCount > 0 && <span className="dot" />}
+          <NotificationDropdown
+            open={notifOpen}
+            onClose={() => setNotifOpen(false)}
+            notifications={notifications}
+            onMarkRead={handleMarkRead}
+            onMarkAllRead={handleMarkAllRead}
+            navigate={(path) => router.push(path)}
+          />
         </div>
-        <Link href="/profile" className="profile-pill" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: '.78rem', fontWeight: 600 }}>{user?.full_name || 'Member'}</span>
-          <span
-            className="avatar-wrapper"
-            style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer' }}
-            onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}
-          >
+        <Link href="/profile" className="profile-pill">
+          <span className="profile-name">{user?.full_name || 'Member'}</span>
+          <span className="avatar-wrap" onClick={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}>
             <Avatar src={avatarSrc} initials={initials} size="sm" isOnline={user?.is_online} />
           </span>
         </Link>
@@ -516,11 +437,15 @@ const Topbar = React.memo(function Topbar() {
 });
 
 const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRoute: string }) {
-  const { user, signOut, showToast } = useApp();
+  const { user, showToast } = useApp();
   const router = useRouter();
   const heshima = user?.heshima || 740;
   const level = Math.floor(heshima / 100);
   const toNext = 100 - (heshima % 100);
+
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [recentFeeds, setRecentFeeds] = useState<RecentFeed[]>([]);
+  const [loadingFeeds, setLoadingFeeds] = useState(true);
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -537,6 +462,94 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
     }
   };
 
+  useEffect(() => {
+    const fetchRecentFeeds = async () => {
+      setLoadingFeeds(true);
+      const { data } = await supabase
+        .from('threads')
+        .select('id, title, type, created_at, profiles:author_id(full_name, avatar_url)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (data) {
+        setRecentFeeds(data.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          type: t.type || 'post',
+          author_name: t.profiles?.full_name || 'Unknown',
+          author_avatar: t.profiles?.avatar_url || null,
+          created_at: t.created_at,
+        })));
+      }
+      setLoadingFeeds(false);
+    };
+    fetchRecentFeeds();
+
+    const channel = supabase.channel('sidebar-feeds').on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'threads',
+    }, (payload) => {
+      const t = payload.new as any;
+      setRecentFeeds(prev => [{
+        id: t.id,
+        title: t.title,
+        type: t.type || 'post',
+        author_name: 'New post',
+        author_avatar: null,
+        created_at: t.created_at,
+      }, ...prev].slice(0, 5));
+    }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase.channel('online-users', {
+      config: { presence: { key: user.user_id } },
+    });
+
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const users: OnlineUser[] = [];
+      Object.values(state).forEach((presences: any) => {
+        presences.forEach((p: any) => {
+          if (p.user_id !== user.user_id) {
+            users.push({
+              user_id: p.user_id,
+              username: p.username || '',
+              full_name: p.full_name || '',
+              avatar_url: p.avatar_url || null,
+              last_seen: new Date().toISOString(),
+            });
+          }
+        });
+      });
+      setOnlineUsers(users);
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({
+          user_id: user.user_id,
+          username: user.username,
+          full_name: user.full_name,
+          avatar_url: user.avatar_url,
+          online_at: new Date().toISOString(),
+        });
+      }
+    });
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.user_id]);
+
+  const spacesList = useMemo(() => [
+    { name: 'KilimoSmart', emoji: '🌾', members: 2800, color: 'var(--greenSoft)' },
+    { name: 'NairobiTech', emoji: '💻', members: 1500, color: 'var(--blueSoft)' },
+    { name: 'Health Warriors', emoji: '🏥', members: 980, color: 'var(--redSoft)' },
+    { name: 'Sheng Lounge', emoji: '🎭', members: 620, color: 'var(--goldSoft)' },
+  ], []);
+
   return (
     <aside className="sidebar left-sidebar">
       {navSections(user?.role === 'admin').map((section) => (
@@ -546,13 +559,8 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
             const Icon = item.icon;
             const isActive = activeRoute === item.href;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`nav-item ${isActive ? 'active' : ''}`}
-                style={isActive ? { color: section.color } : undefined}
-              >
-                <Icon className="icon" style={!isActive ? { color: section.color, opacity: 0.7 } : undefined} />
+              <Link key={item.href} href={item.href} className={`nav-item ${isActive ? 'active' : ''}`}>
+                <Icon className="icon" style={{ color: isActive ? section.color : undefined }} />
                 <span>{item.label}</span>
                 {item.badge && <span className="nav-badge">{item.badge}</span>}
               </Link>
@@ -569,26 +577,92 @@ const LeftSidebar = React.memo(function LeftSidebar({ activeRoute }: { activeRou
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <Link href="/profile" className="profile-pill">
+      <div className="sidebar-section">
+        <div className="sidebar-section-head">
+          <Newspaper className="icon-sm" style={{ color: 'var(--green)' }} />
+          <h4>Recent Feeds</h4>
+        </div>
+        <div className="sidebar-feed-list">
+          {loadingFeeds ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="sidebar-feed-item skeleton-shimmer" style={{ height: 48 }} />
+            ))
+          ) : recentFeeds.length === 0 ? (
+            <div className="sidebar-empty">No recent feeds</div>
+          ) : recentFeeds.map(feed => (
+            <Link key={feed.id} href="/baraza" className="sidebar-feed-item">
+              <div className="feed-dot" />
+              <div className="sidebar-feed-copy">
+                <strong>{feed.title}</strong>
+                <span>{feed.author_name} · {timeAgo(feed.created_at)}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-head">
+          <Layers3 className="icon-sm" style={{ color: 'var(--blue)' }} />
+          <h4>Your Spaces</h4>
+        </div>
+        <div className="sidebar-spaces">
+          {spacesList.map(space => (
+            <Link key={space.name} href="/spaces" className="sidebar-space-item">
+              <span className="sidebar-space-emoji" style={{ background: space.color }}>{space.emoji}</span>
+              <div className="sidebar-feed-copy">
+                <strong>{space.name}</strong>
+                <span>{space.members.toLocaleString()} members</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-head">
+          <Users className="icon-sm" style={{ color: 'var(--earth)' }} />
+          <h4>Online Now</h4>
+          <span className="online-count">{onlineUsers.length + 1}</span>
+        </div>
+        <div className="sidebar-online-list">
+          {onlineUsers.length === 0 ? (
+            <div className="sidebar-empty">No one else online</div>
+          ) : (
+            onlineUsers.slice(0, 8).map(u => (
+              <Link key={u.user_id} href={`/profile?id=${u.user_id}`} className="sidebar-online-item">
+                <Avatar src={u.avatar_url} initials={u.full_name ? u.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??'} size="xs" isOnline />
+                <span>{u.full_name?.split(' ')[0] || 'User'}</span>
+              </Link>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-ad-card">
+          <span className="sidebar-ad-badge">Ad</span>
+          <div className="sidebar-ad-content">
+            <strong>Grow with Kikwetu</strong>
+            <span>Join KilimoSmart and learn from 2.8k farmers across Kenya</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="profile-pill sidebar-profile">
+        <Link href="/profile" style={{ display: 'contents' }}>
           <Avatar src={user?.avatar_url} initials={initials} size="md" isOnline={user?.is_online} />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Member'}</strong>
-            <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'user'}</span>
+          <div className="sidebar-profile-copy">
+            <strong>{user?.full_name || 'Member'}</strong>
+            <span>@{user?.username || 'user'}</span>
           </div>
           <Settings className="icon-sm" style={{ color: 'var(--text3)' }} />
         </Link>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => void handleLogout()}
-          style={{ width: '100%', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', fontSize: '.78rem', color: 'var(--text3)' }}
-          aria-label="Sign out"
-        >
-          <LogOut className="icon-sm" />
-          <span>Sign out</span>
-        </button>
       </div>
+      <button type="button" className="icon-btn sidebar-signout" onClick={() => void handleLogout()}>
+        <LogOut className="icon-sm" />
+        <span>Sign out</span>
+      </button>
     </aside>
   );
 });
@@ -620,11 +694,11 @@ const SUGGESTED_SPACES = [
 ];
 
 const SUGGESTED_PEOPLE = [
-  { name: 'Amina Hassan', initials: 'AH', bio: 'Agronomist • KilimoSmart', color: 'var(--greenSoft)', textColor: 'var(--green)' },
-  { name: 'Brian Kiprop', initials: 'BK', bio: 'Software Engineer • NairobiTech', color: 'var(--blueSoft)', textColor: 'var(--blue)' },
-  { name: 'Wanjiku Mwangi', initials: 'WM', bio: 'Nurse • Health Warriors', color: 'var(--redSoft)', textColor: 'var(--red)' },
-  { name: 'Otieno Ouma', initials: 'OO', bio: 'Environmentalist • Green Kenya', color: 'var(--greenSoft)', textColor: 'var(--green)' },
-  { name: 'Fatuma Osman', initials: 'FO', bio: 'Content Creator • Sheng Lounge', color: 'var(--goldSoft)', textColor: 'var(--earth)' },
+  { name: 'Amina Hassan', initials: 'AH', bio: 'Agronomist · KilimoSmart', color: 'var(--greenSoft)', textColor: 'var(--green)' },
+  { name: 'Brian Kiprop', initials: 'BK', bio: 'Software Engineer · NairobiTech', color: 'var(--blueSoft)', textColor: 'var(--blue)' },
+  { name: 'Wanjiku Mwangi', initials: 'WM', bio: 'Nurse · Health Warriors', color: 'var(--redSoft)', textColor: 'var(--red)' },
+  { name: 'Otieno Ouma', initials: 'OO', bio: 'Environmentalist · Green Kenya', color: 'var(--greenSoft)', textColor: 'var(--green)' },
+  { name: 'Fatuma Osman', initials: 'FO', bio: 'Content Creator · Sheng Lounge', color: 'var(--goldSoft)', textColor: 'var(--earth)' },
 ];
 
 interface RightSidebarProps {
@@ -649,21 +723,20 @@ const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebar
 
   return (
     <aside className="right-sidebar">
-      {/* Trending Topics - Home, Baraza, Explore, Profile */}
       {(isHome || isBaraza || isExplore || isProfile) && (
         <div className="right-block">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="right-block-head">
+            <div className="right-block-title">
               <TrendingUp className="icon" style={{ color: 'var(--gold)' }} />
               <h3>Trending in Kenya</h3>
             </div>
-            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('View all trending')}>
+            <button className="icon-btn sm" onClick={() => showToast('View all trending')}>
               <MoreHorizontal className="icon-sm" />
             </button>
           </div>
           <div className="right-list">
-            {TRENDING_TOPICS.map((topic, i) => (
-              <div key={topic.tag} className="right-item" style={{ cursor: 'pointer' }} onClick={() => showToast(`Viewing ${topic.tag}`)}>
+            {TRENDING_TOPICS.map((topic) => (
+              <div key={topic.tag} className="right-item" onClick={() => showToast(`Viewing ${topic.tag}`)}>
                 <div className="right-copy">
                   <strong style={{ color: topic.color }}>{topic.tag}</strong>
                   <span>{topic.posts} posts</span>
@@ -674,52 +747,46 @@ const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebar
         </div>
       )}
 
-      {/* Live Audio Baraza - Home, Baraza, Radio */}
       {(isHome || isBaraza || isRadio) && (
         <div className="right-block">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', animation: 'pulse 1.5s infinite' }} />
+          <div className="right-block-head">
+            <div className="right-block-title">
+              <div className="live-dot" />
               <h3>Live Audio Baraza</h3>
             </div>
-            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('View all live audio')}>
+            <button className="icon-btn sm" onClick={() => showToast('View all live audio')}>
               <MoreHorizontal className="icon-sm" />
             </button>
           </div>
           <div className="right-list">
             {LIVE_AUDIO.map((audio, i) => (
-              <div key={i} className="right-item" style={{ cursor: 'pointer', padding: '10px', borderRadius: 10 }} onClick={() => showToast(`Joining ${audio.title}`)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div className="avatar" style={{ background: i === 0 ? 'var(--greenSoft)' : i === 1 ? 'var(--blueSoft)' : 'var(--goldSoft)', color: i === 0 ? 'var(--green)' : i === 1 ? 'var(--blue)' : 'var(--earth)', fontSize: '.9rem' }}>
-                    <Volume2 className="icon-sm" />
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <strong style={{ fontSize: '.78rem', display: 'block' }}>{audio.title}</strong>
-                    <span style={{ fontSize: '.65rem', color: 'var(--text3)' }}>{audio.host} · {audio.listeners} listening</span>
-                  </div>
-                  {audio.live && (
-                    <span style={{ fontSize: '.55rem', fontWeight: 800, padding: '2px 6px', borderRadius: 99, background: 'var(--red)', color: 'var(--surface)', animation: 'pulse 1.5s infinite' }}>LIVE</span>
-                  )}
+              <div key={i} className="right-item audio-item" onClick={() => showToast(`Joining ${audio.title}`)}>
+                <div className="avatar sm" style={{ background: i === 0 ? 'var(--greenSoft)' : i === 1 ? 'var(--blueSoft)' : 'var(--goldSoft)', color: i === 0 ? 'var(--green)' : i === 1 ? 'var(--blue)' : 'var(--earth)' }}>
+                  <Volume2 className="icon-sm" />
                 </div>
+                <div className="right-copy">
+                  <strong>{audio.title}</strong>
+                  <span>{audio.host} · {audio.listeners} listening</span>
+                </div>
+                {audio.live && <span className="live-badge">LIVE</span>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Suggested Spaces - Home, Explore, Spaces */}
       {(isHome || isExplore || isSpaces) && (
         <div className="right-block">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div className="right-block-head">
             <h3>Suggested spaces</h3>
-            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('Browse all spaces')}>
+            <button className="icon-btn sm" onClick={() => showToast('Browse all spaces')}>
               <MoreHorizontal className="icon-sm" />
             </button>
           </div>
           <div className="right-list">
-            {SUGGESTED_SPACES.map((space, i) => (
+            {SUGGESTED_SPACES.map((space) => (
               <div key={space.name} className="right-item">
-                <div className="avatar" style={{ background: space.color, color: space.textColor, fontSize: '1rem' }}>
+                <div className="avatar sm" style={{ background: space.color, color: space.textColor, fontSize: '1rem' }}>
                   {space.emoji}
                 </div>
                 <div className="right-copy">
@@ -733,92 +800,85 @@ const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebar
         </div>
       )}
 
-      {/* Ad Banner - All pages (rotating) */}
       <AdBanner variant="sidebar" index={0} />
 
-      {/* Suggested People - Explore, Profile, Students, Professionals */}
       {(isExplore || isProfile || isStudents || isProfessionals) && (
         <div className="right-block">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div className="right-block-head">
             <h3>People you may know</h3>
-            <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => showToast('Find more people')}>
+            <button className="icon-btn sm" onClick={() => showToast('Find more people')}>
               <MoreHorizontal className="icon-sm" />
             </button>
           </div>
           <div className="right-list">
-            {SUGGESTED_PEOPLE.map((person, i) => (
+            {SUGGESTED_PEOPLE.map((person) => (
               <div key={person.name} className="right-item">
-                <div className="avatar" style={{ background: person.color, color: person.textColor, fontSize: '.7rem' }}>
+                <div className="avatar sm" style={{ background: person.color, color: person.textColor, fontSize: '.7rem' }}>
                   {person.initials}
                 </div>
                 <div className="right-copy">
-                  <strong style={{ fontSize: '.78rem' }}>{person.name}</strong>
-                  <span style={{ fontSize: '.62rem' }}>{person.bio}</span>
+                  <strong>{person.name}</strong>
+                  <span>{person.bio}</span>
                 </div>
-                <button type="button" className="follow" style={{ fontSize: '.6rem', padding: '4px 8px' }} onClick={() => showToast(`Following ${person.name}`)}>Follow</button>
+                <button type="button" className="follow sm" onClick={() => showToast(`Following ${person.name}`)}>Follow</button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Quiz-specific: Subject Heshima & Daily Challenge */}
       {isQuizzes && (
         <div className="right-block">
           <h3>Your Subject Heshima</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+          <div className="subject-list">
             {['Agriculture', 'Culture', 'Rights & Law', 'Health', 'Tech', 'Environment'].map((subject) => (
-              <div key={subject} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                <span style={{ fontSize: '.72rem', color: 'var(--text2)' }}>{subject}</span>
-                <span style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--gold)' }}>0</span>
+              <div key={subject} className="subject-row">
+                <span>{subject}</span>
+                <strong>0</strong>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Mtaa-specific: Featured Listings */}
       {isMtaa && (
         <div className="right-block">
           <h3>Featured listings</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+          <div className="right-list">
             {[
               { title: 'Fresh Sukuma Wiki', price: 'KES 150', location: 'Ruiru', emoji: '🥬' },
               { title: 'Solar Cleaning', price: 'KES 2,000', location: 'Nakuru', emoji: '☀️' },
               { title: 'Handwoven Baskets', price: 'KES 800', location: 'Kisumu', emoji: '🧺' },
             ].map((item, i) => (
-              <div key={i} style={{ padding: '10px', borderRadius: 10, background: 'var(--bg)', cursor: 'pointer' }} onClick={() => showToast(`Viewing ${item.title}`)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '1.2rem' }}>{item.emoji}</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <strong style={{ fontSize: '.76rem' }}>{item.title}</strong>
-                    <span style={{ fontSize: '.62rem', color: 'var(--text3)' }}>{item.location}</span>
-                  </div>
-                  <span style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--green)' }}>{item.price}</span>
+              <div key={i} className="right-item listing-item" onClick={() => showToast(`Viewing ${item.title}`)}>
+                <span className="listing-emoji">{item.emoji}</span>
+                <div className="right-copy">
+                  <strong>{item.title}</strong>
+                  <span>{item.location}</span>
                 </div>
+                <span className="listing-price">{item.price}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Nyumba Kumi-specific: Emergency Contacts */}
       {isNyumbaKumi && (
         <div className="right-block">
           <h3>Emergency contacts</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+          <div className="right-list">
             {[
-              { name: 'Police', number: '999', icon: '🚓' },
-              { name: 'Ambulance', number: '1199', icon: '🚑' },
-              { name: 'Fire', number: '112', icon: '🚒' },
-              { name: 'Childline', number: '116', icon: '📞' },
-              { name: 'Red Cross', number: '0800 721 111', icon: '➕' },
+              { name: 'Police', number: '999', emoji: '🚓' },
+              { name: 'Ambulance', number: '1199', emoji: '🚑' },
+              { name: 'Fire', number: '112', emoji: '🚒' },
+              { name: 'Childline', number: '116', emoji: '📞' },
+              { name: 'Red Cross', number: '0800 721 111', emoji: '➕' },
             ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 10, background: 'var(--bg)' }}>
-                <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <strong style={{ fontSize: '.74rem' }}>{item.name}</strong>
-                  <span style={{ fontSize: '.7rem', fontFamily: 'monospace', color: 'var(--text2)' }}>{item.number}</span>
+              <div key={i} className="right-item emergency-item">
+                <span className="listing-emoji">{item.emoji}</span>
+                <div className="right-copy">
+                  <strong>{item.name}</strong>
+                  <span className="mono">{item.number}</span>
                 </div>
               </div>
             ))}
@@ -826,30 +886,28 @@ const RightSidebar = React.memo(function RightSidebar({ pathname }: RightSidebar
         </div>
       )}
 
-      {/* Radio-specific: Schedule */}
       {isRadio && (
         <div className="right-block">
           <h3>Upcoming shows</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+          <div className="right-list">
             {[
               { time: '6:00 AM', show: 'Jambo Kenya', station: 'Citizen Radio' },
               { time: '10:00 AM', show: 'The Drive Show', station: 'NRG Radio' },
               { time: '2:00 PM', show: 'Afternoon Vibe', station: 'Kiss FM' },
               { time: '6:00 PM', show: 'Evening Talk', station: 'Spice FM' },
             ].map((item, i) => (
-              <div key={i} style={{ padding: '8px', borderRadius: 10, background: 'var(--bg)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.7rem' }}>
-                  <span style={{ color: 'var(--text3)' }}>{item.time}</span>
-                  <span style={{ color: 'var(--green)', fontWeight: 700 }}>{item.show}</span>
+              <div key={i} className="right-item schedule-item">
+                <div className="right-copy">
+                  <span className="schedule-time">{item.time}</span>
+                  <strong>{item.show}</strong>
+                  <span>{item.station}</span>
                 </div>
-                <div style={{ fontSize: '.62rem', color: 'var(--text3)' }}>{item.station}</div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Ad Banner - second ad on longer pages */}
       <AdBanner variant="sidebar" index={1} />
     </aside>
   );
@@ -934,25 +992,16 @@ function CreatePanel() {
 
   return (
     <div className="create-panel open">
-      <div style={{ padding: 20 }}>
-        <h3>Create a new post</h3>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+      <div className="create-panel-inner">
+        <div className="create-panel-head">
+          <h3>Create a new post</h3>
+          <button type="button" className="icon-btn sm" onClick={() => setCreateOpen(false)}>
+            <X className="icon-sm" />
+          </button>
+        </div>
+        <div className="create-type-row">
           {['post', 'question', 'poll', 'audio'].map(t => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: `1px solid ${type === t ? 'var(--green)' : 'var(--line)'}`,
-                background: type === t ? 'var(--greenSoft)' : 'transparent',
-                color: type === t ? 'var(--green)' : 'var(--text3)',
-                fontSize: '.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-              }}
-            >
+            <button key={t} onClick={() => setType(t)} className={`create-type-btn ${type === t ? 'active' : ''}`}>
               {t}
             </button>
           ))}
@@ -961,22 +1010,19 @@ function CreatePanel() {
           placeholder="Title"
           value={title}
           onChange={e => setTitle(e.target.value)}
-          style={{ marginBottom: 10 }}
         />
         <textarea
           placeholder="What's on your mind?"
           value={body}
           onChange={e => setBody(e.target.value)}
           rows={4}
-          style={{ marginBottom: 10 }}
         />
         <input
           placeholder="Tags (comma separated)"
           value={tagsInput}
           onChange={e => setTagsInput(e.target.value)}
-          style={{ marginBottom: 14 }}
         />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <div className="create-panel-actions">
           <button className="secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
           <button className="primary" onClick={() => void handleSubmit()} disabled={submitting || !title.trim()}>
             {submitting ? 'Posting...' : 'Post'}
@@ -1018,7 +1064,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     const saved = localStorage.getItem('kikwetu-theme') as 'light' | 'dark' | null;
     if (saved) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(saved);
       document.documentElement.dataset.theme = saved;
     }
@@ -1047,33 +1092,33 @@ export default function AppLayout({ children }: AppLayoutProps) {
           return;
         }
         const authUser = session.user;
-          const meta = authUser.user_metadata || {};
-let { data: profile } = await supabase.from('profiles').select('*').eq('user_id', authUser.id).single();
-          if (!profile) {
-            const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
-            const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
-            const avatarUrl = meta.avatar_url || null;
-            const { data: newProfile, error } = await supabase.from('profiles').insert({
-              user_id: authUser.id,
-              username,
-              full_name: fullName,
-              avatar_url: avatarUrl,
-              language: meta.language || 'en',
-              role: 'member',
-            }).select().single();
-            if (!error && newProfile) profile = newProfile;
+        const meta = authUser.user_metadata || {};
+        let { data: profile } = await supabase.from('profiles').select('*').eq('user_id', authUser.id).single();
+        if (!profile) {
+          const fullName = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Member';
+          const username = meta.username || authUser.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || `user_${authUser.id.slice(0, 8)}`;
+          const avatarUrl = meta.avatar_url || null;
+          const { data: newProfile, error } = await supabase.from('profiles').insert({
+            user_id: authUser.id,
+            username,
+            full_name: fullName,
+            avatar_url: avatarUrl,
+            language: meta.language || 'en',
+            role: 'member',
+          }).select().single();
+          if (!error && newProfile) profile = newProfile;
+        }
+        if (profile) {
+          const updates: Record<string, string> = {};
+          if (!profile.full_name && meta.full_name) updates.full_name = meta.full_name;
+          if (!profile.username && meta.username) updates.username = meta.username;
+          if (Object.keys(updates).length > 0) {
+            await supabase.from('profiles').update(updates).eq('id', profile.id);
+            profile = { ...profile, ...updates };
           }
-          if (profile) {
-            const updates: Record<string, string> = {};
-            if (!profile.full_name && meta.full_name) updates.full_name = meta.full_name;
-            if (!profile.username && meta.username) updates.username = meta.username;
-            if (Object.keys(updates).length > 0) {
-              await supabase.from('profiles').update(updates).eq('id', profile.id);
-              profile = { ...profile, ...updates };
-            }
-          }
-          setUser(profile);
-        } catch (err) {
+        }
+        setUser(profile);
+      } catch (err) {
         console.log('Auth check skipped:', err);
       } finally {
         setLoading(false);
@@ -1155,11 +1200,12 @@ let { data: profile } = await supabase.from('profiles').select('*').eq('user_id'
       <div className="layout">
         <LeftSidebar activeRoute={pathname} />
         <main className="page">{children}</main>
+        <RightSidebar pathname={pathname} />
       </div>
       {sidebarOpen && (
         <>
           <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
-          <aside className={`sidebar left-sidebar sidebar-overlay${sidebarOpen ? ' open' : ''}`}>
+          <aside className="sidebar left-sidebar sidebar-overlay open">
             {navSections(user?.role === 'admin').map((section) => (
               <div key={section.title} className="nav-section">
                 <div className="nav-title">{section.title}</div>
@@ -1171,10 +1217,9 @@ let { data: profile } = await supabase.from('profiles').select('*').eq('user_id'
                       key={item.href}
                       href={item.href}
                       className={`nav-item ${isActive ? 'active' : ''}`}
-                      style={isActive ? { color: section.color } : undefined}
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <Icon className="icon" style={!isActive ? { color: section.color, opacity: 0.7 } : undefined} />
+                      <Icon className="icon" style={isActive ? { color: section.color } : undefined} />
                       <span>{item.label}</span>
                       {item.badge && <span className="nav-badge">{item.badge}</span>}
                     </Link>
@@ -1186,22 +1231,23 @@ let { data: profile } = await supabase.from('profiles').select('*').eq('user_id'
               <div className="ring">{user?.heshima || 740}</div>
               <div>
                 <strong>Heshima rating</strong>
-                <span>Level {Math.floor((user?.heshima || 740) / 100)} &middot; {100 - ((user?.heshima || 740) % 100)} to next level</span>
+                <span>Level {Math.floor((user?.heshima || 740) / 100)} · {100 - ((user?.heshima || 740) % 100)} to next</span>
               </div>
             </div>
-            <div style={{ marginTop: 16 }}>
-              <Link href="/profile" className="profile-pill" onClick={() => setSidebarOpen(false)}>
+            <div className="sidebar-profile">
+              <Link href="/profile" onClick={() => setSidebarOpen(false)}>
                 <Avatar src={user?.avatar_url} initials={overlayInitials} size="md" isOnline={user?.is_online} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <strong style={{ display: 'block', fontSize: '.82rem' }}>{user?.full_name || 'Member'}</strong>
-                  <span style={{ display: 'block', color: 'var(--text3)', fontSize: '.68rem' }}>@{user?.username || 'user'}</span>
+                <div className="sidebar-profile-copy">
+                  <strong>{user?.full_name || 'Member'}</strong>
+                  <span>@{user?.username || 'user'}</span>
                 </div>
                 <Settings className="icon-sm" style={{ color: 'var(--text3)' }} />
               </Link>
-              <button type="button" className="icon-btn" onClick={() => { void signOut(); setSidebarOpen(false); }} aria-label="Sign out">
-                <LogOut className="icon" />
-              </button>
             </div>
+            <button type="button" className="icon-btn sidebar-signout" onClick={() => { void signOut(); setSidebarOpen(false); }}>
+              <LogOut className="icon" />
+              <span>Sign out</span>
+            </button>
           </aside>
         </>
       )}

@@ -450,3 +450,118 @@ export async function uploadStoryMedia(file: File, userId: string, onProgress?: 
   const { data } = supabase.storage.from('stories').getPublicUrl(path);
   return { url: data?.publicUrl || null, error: null };
 }
+
+// ===== Post Media Upload =====
+export async function uploadPostMedia(file: File, userId: string): Promise<{ url: string | null; error: string | null }> {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('post-media').upload(path, file, { cacheControl: '3600', upsert: false });
+  if (error) return { url: null, error: error.message };
+  const { data } = supabase.storage.from('post-media').getPublicUrl(path);
+  return { url: data?.publicUrl || null, error: null };
+}
+
+// ===== Create Thread with Media =====
+export async function createThreadWithMedia(
+  authorId: string, title: string, body: string,
+  type: string = 'post', tags: string[] = [],
+  mediaUrls: string[] = [], spaceId?: string
+) {
+  const { data, error } = await supabase
+    .from('threads')
+    .insert({
+      author_id: authorId, title, body, type, tags,
+      media_urls: mediaUrls.length > 0 ? mediaUrls : null,
+      space_id: spaceId || null,
+    })
+    .select('id, author_id, title, body, type, tags, media_urls, likes_count, comments_count, created_at')
+    .single();
+  return { data, error };
+}
+
+// ===== Edit Thread =====
+export async function editThread(threadId: string, userId: string, updates: { title?: string; body?: string; tags?: string[] }) {
+  const { data: thread } = await supabase.from('threads').select('author_id').eq('id', threadId).single();
+  if (!thread || thread.author_id !== userId) return { data: null, error: { message: 'Not authorized' } as any };
+  const { data, error } = await supabase
+    .from('threads').update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', threadId)
+    .select('id, title, body, tags, updated_at').single();
+  return { data, error };
+}
+
+// ===== Delete Thread =====
+export async function deleteThread(threadId: string, userId: string) {
+  const { data: thread } = await supabase.from('threads').select('author_id').eq('id', threadId).single();
+  if (!thread || thread.author_id !== userId) return { error: { message: 'Not authorized' } as any };
+  const { error } = await supabase.from('threads').delete().eq('id', threadId);
+  return { error };
+}
+
+// ===== Hide / Unhide Thread =====
+export async function hideThread(threadId: string, userId: string) {
+  const { error } = await supabase.from('threads').update({ is_hidden: true, hidden_by: userId }).eq('id', threadId);
+  return { error };
+}
+export async function unhideThread(threadId: string) {
+  const { error } = await supabase.from('threads').update({ is_hidden: false, hidden_by: null }).eq('id', threadId);
+  return { error };
+}
+
+// ===== Edit Reply =====
+export async function editReply(replyId: string, userId: string, body: string) {
+  const { data: reply } = await supabase.from('replies').select('author_id').eq('id', replyId).single();
+  if (!reply || reply.author_id !== userId) return { data: null, error: { message: 'Not authorized' } as any };
+  const { data, error } = await supabase.from('replies').update({ body, updated_at: new Date().toISOString() }).eq('id', replyId).select('id, body, updated_at').single();
+  return { data, error };
+}
+
+// ===== Delete Reply =====
+export async function deleteReply(replyId: string, userId: string) {
+  const { data: reply } = await supabase.from('replies').select('author_id').eq('id', replyId).single();
+  if (!reply || reply.author_id !== userId) return { error: { message: 'Not authorized' } as any };
+  const { error } = await supabase.from('replies').delete().eq('id', replyId);
+  return { error };
+}
+
+// ===== Student Document Upload =====
+export async function uploadStudentDoc(studentId: string, professionalId: string | null, title: string, description: string, file: File) {
+  const ext = file.name.split('.').pop() || 'pdf';
+  const path = `${studentId}/${Date.now()}.${ext}`;
+  const { error: uploadError } = await supabase.storage.from('student-docs').upload(path, file, { upsert: false });
+  if (uploadError) return { data: null, error: uploadError.message };
+  const { data: urlData } = supabase.storage.from('student-docs').getPublicUrl(path);
+  const { data, error } = await supabase
+    .from('student_documents')
+    .insert({
+      student_id: studentId, ...(professionalId ? { professional_id: professionalId } : {}),
+      title, description, file_url: urlData.publicUrl,
+      file_type: ext, file_name: file.name, status: 'pending',
+    })
+    .select('id, title, description, file_url, file_type, file_name, status, created_at').single();
+  return { data, error };
+}
+
+export async function fetchStudentDocs(studentId: string) {
+  const { data, error } = await supabase
+    .from('student_documents')
+    .select('id, title, description, file_url, file_type, file_name, status, professional:professional_id(full_name, username), created_at')
+    .eq('student_id', studentId).order('created_at', { ascending: false });
+  return { data, error };
+}
+
+export async function fetchDocsForProfessional(professionalId: string) {
+  const { data, error } = await supabase
+    .from('student_documents')
+    .select('id, title, description, file_url, file_type, file_name, status, student:student_id(full_name, username, avatar_url), created_at')
+    .eq('professional_id', professionalId).order('created_at', { ascending: false });
+  return { data, error };
+}
+
+export async function updateDocStatus(docId: string, status: 'reviewed' | 'approved' | 'returned', notes?: string) {
+  const { data, error } = await supabase
+    .from('student_documents')
+    .update({ status, reviewed_at: new Date().toISOString(), review_notes: notes || null })
+    .eq('id', docId).select('id, status, reviewed_at').single();
+  return { data, error };
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useApp } from '@/components/AppLayout';
 import { StoriesRow } from '@/components/Stories';
@@ -8,42 +8,43 @@ import { supabase } from '@/lib/supabase';
 import { analytics } from '@/lib/analytics';
 import {
   toggleVote, checkVote, toggleSave, checkSaved,
-  createThread, createReply, fetchReplies,
+  createReply, fetchReplies,
+  editThread, deleteThread, hideThread,
+  editReply, deleteReply,
 } from '@/lib/supabase-helpers';
 import {
-  Plus, ThumbsUp, ThumbsDown, MessageCircleQuestion, Video,
-  MessageCircle, Send, Bookmark, MoreHorizontal, Sprout,
-  CircleHelp, BadgeDollarSign, Ellipsis, Filter, ChevronDown,
+  ThumbsUp, MessageCircle, Send, Bookmark,
+  Sprout, CircleHelp, Ellipsis,
+  Image as ImageIcon, X, Pencil, Trash2,
+  EyeOff, Copy, Flag, ChevronDown, Mic, Link as LinkIcon,
+  Sparkles, TrendingUp, Users, Compass,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
-interface Thread {
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+  return new Date(dateStr).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
+}
+
+interface FeedPost {
   id: string;
   author_id: string;
   title: string;
   body: string | null;
   type: string;
-  bounty_amount: number | null;
   tags: string[] | null;
+  media_urls: string[] | null;
   likes_count: number;
   comments_count: number;
+  is_hidden: boolean | null;
   created_at: string;
-  profiles?: {
-    full_name: string;
-    username: string;
-    avatar_url: string | null;
-    county: string | null;
-    is_verified: boolean;
-  };
-}
-
-interface User {
-  id: string;
-  full_name: string;
-  username: string;
-  avatar_url: string | null;
-  county: string | null;
-  is_verified: boolean;
+  profiles?: { full_name: string; username: string; avatar_url: string | null; county: string | null; is_verified: boolean; };
+  _voteDelta?: number;
 }
 
 interface Reply {
@@ -52,264 +53,169 @@ interface Reply {
   author_id: string;
   body: string;
   created_at: string;
-  profiles?: {
-    full_name: string;
-    username: string;
-    avatar_url: string | null;
-    county: string | null;
-    is_verified: boolean;
-  };
+  profiles?: { full_name: string; username: string; avatar_url: string | null; is_verified: boolean; };
 }
 
-function getTimeAgo(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays < 7) return `${diffDays}d`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function ComposerModal({
-  onClose,
-  onSubmit,
-  initialType = 'post',
-}: {
-  onClose: () => void;
-  onSubmit: (title: string, body: string, type: string, tags: string[]) => Promise<void>;
-  initialType?: string;
+/* ========== POST MENU (Edit/Delete/Hide) ========== */
+function PostMenu({ post, user, showToast, onDelete, onHide }: {
+  post: FeedPost; user: any; showToast: (m: string) => void;
+  onDelete: (id: string) => void; onHide: (id: string) => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [type, setType] = useState(initialType);
-  const [tagsInput, setTagsInput] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const isOwner = user?.user_id === post.author_id;
+  const ref = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async () => {
-    if (!title.trim()) return;
-    setSubmitting(true);
-    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-    try {
-      await onSubmit(title.trim(), body.trim(), type, tags);
-      analytics.createPost(type);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
-    }} onClick={onClose}>
-      <div style={{
-        background: 'var(--bg)', borderRadius: 16, padding: 24, width: '90%', maxWidth: 520,
-        maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <h2 className="serif" style={{ margin: 0, fontSize: '1.2rem' }}>New thread</h2>
-          <button onClick={onClose} className="icon-btn" style={{ fontSize: 18 }}>✕</button>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          {['post', 'question', 'poll', 'audio'].map(t => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: `1px solid ${type === t ? 'var(--green)' : 'var(--line)'}`,
-                background: type === t ? 'var(--greenSoft)' : 'transparent',
-                color: type === t ? 'var(--green)' : 'var(--text3)',
-                fontSize: '.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-                transition: 'all .2s',
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        <input
-          placeholder="Title"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          style={{
-            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)',
-            background: 'var(--surface2)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 10,
-            boxSizing: 'border-box',
-          }}
-        />
-        <textarea
-          placeholder="What's on your mind?"
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          rows={4}
-          style={{
-            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)',
-            background: 'var(--surface2)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 10,
-            resize: 'vertical', boxSizing: 'border-box',
-          }}
-        />
-        <input
-          placeholder="Tags (comma separated)"
-          value={tagsInput}
-          onChange={e => setTagsInput(e.target.value)}
-          style={{
-            width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)',
-            background: 'var(--surface2)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 16,
-            boxSizing: 'border-box',
-          }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button className="secondary" onClick={onClose}>Cancel</button>
-          <button className="primary" onClick={handleSubmit} disabled={submitting || !title.trim()}>
-            {submitting ? 'Posting...' : 'Post'}
+    <div className="post-menu-wrap" ref={ref}>
+      <button className="icon-btn post-menu" onClick={() => setOpen(!open)}><Ellipsis className="icon-sm" /></button>
+      {open && (
+        <div className="post-dropdown">
+          <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/baraza?thread=${post.id}`); showToast('Link copied'); setOpen(false); }}>
+            <Copy className="icon-sm" /> Copy link
           </button>
+          {isOwner && (
+            <button onClick={() => { showToast('Edit coming soon'); setOpen(false); }}>
+              <Pencil className="icon-sm" /> Edit post
+            </button>
+          )}
+          {isOwner && (
+            <button className="danger-text" onClick={async () => {
+              if (!confirm('Delete this post?')) return;
+              const { error } = await deleteThread(post.id, user.user_id);
+              if (!error) { onDelete(post.id); showToast('Post deleted'); }
+              setOpen(false);
+            }}>
+              <Trash2 className="icon-sm" /> Delete
+            </button>
+          )}
+          {isOwner ? (
+            <button onClick={async () => { await hideThread(post.id, user.user_id); onHide(post.id); showToast('Post hidden'); setOpen(false); }}>
+              <EyeOff className="icon-sm" /> Hide
+            </button>
+          ) : (
+            <button onClick={() => { showToast('Reported'); setOpen(false); }}>
+              <Flag className="icon-sm" /> Report
+            </button>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function ReplySection({
-  threadId,
-  user,
-  replyCount,
-  onReplyAdded,
-}: {
-  threadId: string;
-  user: User | null;
-  replyCount: number;
-  onReplyAdded: (threadId: string) => void;
-}) {
+/* ========== COMMENT SECTION ========== */
+function CommentSection({ threadId, user, showToast }: { threadId: string; user: any; showToast: (m: string) => void }) {
+  const [open, setOpen] = useState(false);
   const [replies, setReplies] = useState<Reply[]>([]);
-  const [showReplies, setShowReplies] = useState(false);
-  const [replyBody, setReplyBody] = useState('');
+  const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { showToast } = useApp();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState('');
+  const bodyRef = useRef<HTMLDivElement>(null);
 
-  const loadReplies = async () => {
+  const loadReplies = useCallback(async () => {
     const { data } = await fetchReplies(threadId);
     if (data) setReplies(data as unknown as Reply[]);
-  };
-
-  useEffect(() => {
-    if (showReplies) loadReplies();
-  }, [showReplies, threadId]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`replies-${threadId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'replies',
-        filter: `thread_id=eq.${threadId}`,
-      }, (payload) => {
-        const newReply = payload.new as Reply;
-        setReplies(prev => {
-          if (prev.some(r => r.id === newReply.id)) return prev;
-          return [...prev, newReply];
-        });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [threadId]);
 
-  const handleSubmitReply = async () => {
-    if (!user) {
-      showToast('Please sign in to reply');
-      return;
-    }
-    if (!replyBody.trim()) return;
+  useEffect(() => { if (open) void loadReplies(); }, [open, loadReplies]);
+
+  useEffect(() => {
+    if (!open) return;
+    const channel = supabase.channel(`baraza-replies-${threadId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'replies', filter: `thread_id=eq.${threadId}` }, (p) => {
+        setReplies(prev => { const r = p.new as Reply; return prev.some(x => x.id === r.id) ? prev : [...prev, r]; });
+      }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [open, threadId]);
+
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [replies.length]);
+
+  const handleSubmit = async () => {
+    if (!user) return showToast('Sign in to comment');
+    if (!input.trim()) return;
     setSubmitting(true);
-    try {
-      const { data, error } = await createReply(threadId, user.id, replyBody.trim());
-      if (error || !data) {
-        showToast('Failed to post reply');
-        console.error(error);
-        return;
-      }
-      const { data: fullReply } = await supabase
-        .from('replies')
-        .select(`*, profiles:author_id (full_name, username, avatar_url, county, is_verified)`)
-        .eq('id', data.id)
-        .single();
-      if (fullReply) {
-        setReplies(prev => {
-          if (prev.some(r => r.id === fullReply.id)) return prev;
-          return [...prev, fullReply];
-        });
-      }
-      setReplyBody('');
-      showToast('Reply posted!');
-      analytics.reply();
-    } catch {
-      showToast('Failed to post reply');
-    } finally {
-      setSubmitting(false);
+    const { data, error } = await createReply(threadId, user.user_id, input.trim());
+    if (data && !error) {
+      const { data: full } = await supabase.from('replies').select('*, profiles:author_id(full_name, username, avatar_url, is_verified)').eq('id', data.id).single();
+      if (full) setReplies(prev => prev.some(r => r.id === full.id) ? prev : [...prev, full]);
+      setInput('');
     }
+    setSubmitting(false);
+  };
+
+  const handleEdit = async (replyId: string) => {
+    const { error } = await editReply(replyId, user.user_id, editBody);
+    if (!error) { setReplies(prev => prev.map(r => r.id === replyId ? { ...r, body: editBody } : r)); showToast('Reply edited'); }
+    setEditId(null);
+  };
+
+  const handleDelete = async (replyId: string) => {
+    if (!confirm('Delete this reply?')) return;
+    const { error } = await deleteReply(replyId, user.user_id);
+    if (!error) { setReplies(prev => prev.filter(r => r.id !== replyId)); showToast('Reply deleted'); }
   };
 
   return (
-    <div style={{ borderTop: '1px solid var(--line)', padding: '10px 16px' }}>
-      <button
-        className="action"
-        onClick={() => setShowReplies(!showReplies)}
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}
-      >
+    <div className="comment-section">
+      <button className="action comment-toggle" onClick={() => setOpen(!open)}>
         <MessageCircle className="icon-sm" />
-        <span>{replyCount} {replyCount === 1 ? 'reply' : 'replies'}</span>
+        <span>{replies.length > 0 ? replies.length : ''} Comments</span>
+        <ChevronDown className="icon-sm" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .2s' }} />
       </button>
-
-      {showReplies && (
-        <div style={{ marginTop: 8 }}>
-          {replies.map(r => {
-            const rp = r.profiles;
-            const rInitials = rp?.full_name
-              ? rp.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-              : '??';
-            return (
-              <div key={r.id} style={{
-                padding: '8px 0', borderTop: '1px solid var(--line)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className="avatar earth" style={{ width: 24, height: 24, fontSize: '.5rem' }}>{rInitials}</div>
-                  <strong style={{ fontSize: '.75rem' }}>{rp?.full_name || 'Unknown'}</strong>
-                  <span style={{ fontSize: '.65rem', color: 'var(--text3)' }}>{getTimeAgo(r.created_at)}</span>
+      {open && (
+        <div className="comment-panel">
+          <div className="comment-list" ref={bodyRef}>
+            {replies.length === 0 ? (
+              <div className="comment-empty">No comments yet. Be the first!</div>
+            ) : replies.map(r => {
+              const ri = r.profiles?.full_name ? r.profiles.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??';
+              const isOwner = user?.user_id === r.author_id;
+              return (
+                <div key={r.id} className="comment-item">
+                  <div className="avatar xs earth">{ri}</div>
+                  <div className="comment-body">
+                    <div className="comment-head">
+                      <strong>{r.profiles?.full_name || 'Unknown'}</strong>
+                      <span>{timeAgo(r.created_at)}</span>
+                      {isOwner && (
+                        <div className="comment-actions-inline">
+                          <button onClick={() => { setEditId(r.id); setEditBody(r.body); }}><Pencil className="icon-sm" /></button>
+                          <button onClick={() => void handleDelete(r.id)}><Trash2 className="icon-sm" /></button>
+                        </div>
+                      )}
+                    </div>
+                    {editId === r.id ? (
+                      <div className="comment-edit">
+                        <input value={editBody} onChange={e => setEditBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleEdit(r.id); if (e.key === 'Escape') setEditId(null); }} autoFocus />
+                        <button className="primary sm" onClick={() => void handleEdit(r.id)}>Save</button>
+                      </div>
+                    ) : (
+                      <p>{r.body}</p>
+                    )}
+                  </div>
                 </div>
-                <p style={{ margin: '4px 0 0', fontSize: '.8rem' }}>{r.body}</p>
-              </div>
-            );
-          })}
-
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              );
+            })}
+          </div>
+          <div className="comment-input-row">
+            <div className="avatar xs earth">{user?.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}</div>
             <input
-              placeholder="Write a reply..."
-              value={replyBody}
-              onChange={e => setReplyBody(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitReply(); } }}
-              style={{
-                flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)',
-                background: 'var(--surface2)', color: 'var(--text)', fontSize: '.8rem',
-              }}
+              placeholder="Write a comment..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSubmit(); } }}
             />
-            <button className="primary" onClick={handleSubmitReply} disabled={submitting || !replyBody.trim()}
-              style={{ padding: '6px 12px', fontSize: '.78rem' }}>
+            <button className="icon-btn send-btn" onClick={() => void handleSubmit()} disabled={!input.trim() || submitting}>
               <Send className="icon-sm" />
             </button>
           </div>
@@ -319,561 +225,299 @@ function ReplySection({
   );
 }
 
-function PostCard({
-  post,
-  threadId,
-  user,
-  onAction,
-  onVoteChange,
-  onSaveChange,
-  onReplyAdded,
-}: {
-  post: PostType;
-  threadId: string | null;
-  user: User | null;
-  onAction: (msg: string) => void;
-  onVoteChange: (threadId: string, delta: number, liked: boolean) => void;
-  onSaveChange: (threadId: string, saved: boolean) => void;
-  onReplyAdded: (threadId: string) => void;
+/* ========== THUMBS UP BTN ========== */
+function ThumbsUpBtn({ postId, userId, count, showToast, onVoteChange }: {
+  postId: string; userId?: string; count: number; showToast: (m: string) => void;
+  onVoteChange: (id: string, delta: number) => void;
 }) {
-  const [upvoted, setUpvoted] = useState(false);
-  const [downvoted, setDownvoted] = useState(false);
+  const [voted, setVoted] = useState(false);
+  useEffect(() => { if (userId) checkVote(userId, 'thread', postId).then(v => setVoted(!!v && v.value === 1)); }, [userId, postId]);
+
+  const handle = async () => {
+    if (!userId) return showToast('Sign in to vote');
+    const prev = voted;
+    setVoted(!voted);
+    onVoteChange(postId, voted ? -1 : 1);
+    try { await toggleVote(userId, 'thread', postId, 1); } catch { setVoted(prev); onVoteChange(postId, voted ? 1 : -1); }
+  };
+
+  return <button className={`action ${voted ? 'active' : ''}`} onClick={() => void handle()}><ThumbsUp className="icon-sm" /><span>{count + (voted ? 1 : 0)}</span></button>;
+}
+
+/* ========== SAVE BTN ========== */
+function SaveBtn({ postId, userId, showToast }: { postId: string; userId?: string; showToast: (m: string) => void }) {
   const [saved, setSaved] = useState(false);
-  const [votedPoll, setVotedPoll] = useState<number | null>(null);
-  const [voteDelta, setVoteDelta] = useState(0);
+  useEffect(() => { if (userId) checkSaved(userId, 'thread', postId).then(s => setSaved(s)); }, [userId, postId]);
 
-  useEffect(() => {
-    if (!user || !threadId) return;
-    checkVote(user.id, 'thread', threadId).then(v => {
-      if (v) {
-        if (v.value === 1) { setUpvoted(true); setDownvoted(false); setVoteDelta(0); }
-        else { setUpvoted(false); setDownvoted(true); setVoteDelta(0); }
-      } else { setUpvoted(false); setDownvoted(false); setVoteDelta(0); }
-    });
-    checkSaved(user.id, 'thread', threadId).then(s => setSaved(s));
-  }, [user, threadId]);
-
-  const handlePollVote = async (optionIndex: number) => {
-    if (!user || votedPoll !== null || !threadId) return;
-    try {
-      await toggleVote(user.id, 'thread', threadId, 1);
-      setVotedPoll(optionIndex);
-      onAction('Vote recorded');
-    } catch {
-      onAction('Failed to record vote');
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      onAction('Link copied to clipboard');
-    } catch {
-      onAction('Could not copy link');
-    }
-  };
-
-  const handleUpVote = async () => {
-    if (!user || !threadId) { onAction('Please sign in to vote'); return; }
-    if (upvoted) return;
-    const delta = downvoted ? 2 : 1;
-    const prevUp = upvoted;
-    const prevDown = downvoted;
-    setUpvoted(true);
-    setDownvoted(false);
-    setVoteDelta(d => d + delta);
-    onVoteChange(threadId, delta, true);
-    try {
-      if (downvoted) await toggleVote(user.id, 'thread', threadId, 1);
-      await toggleVote(user.id, 'thread', threadId, 1);
-      analytics.vote('thread', 1);
-    } catch {
-      setUpvoted(prevUp); setDownvoted(prevDown); setVoteDelta(d => d - delta);
-      onVoteChange(threadId, -delta, prevUp);
-      onAction('Failed to update vote');
-    }
-  };
-
-  const handleDownVote = async () => {
-    if (!user || !threadId) { onAction('Please sign in to vote'); return; }
-    if (downvoted) return;
-    const delta = upvoted ? -2 : -1;
-    const prevUp = upvoted;
-    const prevDown = downvoted;
-    setUpvoted(false);
-    setDownvoted(true);
-    setVoteDelta(d => d + delta);
-    onVoteChange(threadId, delta, false);
-    try {
-      if (upvoted) await toggleVote(user.id, 'thread', threadId, -1);
-      await toggleVote(user.id, 'thread', threadId, -1);
-      analytics.vote('thread', -1);
-    } catch {
-      setUpvoted(prevUp); setDownvoted(prevDown); setVoteDelta(d => d - delta);
-      onVoteChange(threadId, -delta, prevDown);
-      onAction('Failed to update vote');
-    }
-  };
-
-  const handleSave = async () => {
-    if (!user || !threadId) {
-      onAction('Please sign in to save');
-      return;
-    }
+  const handle = async () => {
+    if (!userId) return showToast('Sign in to save');
     setSaved(!saved);
-    onSaveChange(threadId, !saved);
-    try {
-      await toggleSave(user.id, 'thread', threadId);
-    } catch {
-      setSaved(saved);
-      onSaveChange(threadId, saved);
-      onAction('Failed to update save');
-    }
+    await toggleSave(userId, 'thread', postId);
+    showToast(saved ? 'Removed from saved' : 'Saved');
   };
 
-  return (
-    <article className="post">
-      <div className="post-head">
-        <div className={`avatar ${post.author.color}`}>{post.author.initials}</div>
-        <div className="author">
-          <strong>
-            {post.author.name} {post.author.verified && <span className="verified">✓</span>}
-          </strong>
-          <div className="meta">
-            <span>{post.meta.handle}</span>
-            <span>·</span>
-            <span>{post.meta.time}</span>
-            <span>·</span>
-            <span>{post.meta.county}</span>
-          </div>
-        </div>
-        <button className="icon-btn post-menu"><Ellipsis className="icon" /></button>
-      </div>
-
-      <div className="post-body">
-        <div className="post-type">
-          {post.type === 'question' ? <CircleHelp className="icon-sm" /> : <Sprout className="icon-sm" />}
-          {post.content.tag}
-        </div>
-
-        <h3>{post.content.title}</h3>
-
-        {'body' in post.content && post.content.body && (
-          <p>{post.content.body}</p>
-        )}
-
-        {'translation' in post.content && post.content.translation && (
-          <div className="translation">
-            <strong>{post.content.translation.label}</strong>
-            <span> · {post.content.translation.text}</span>
-          </div>
-        )}
-
-        {'bounty' in post.content && post.content.bounty && (
-          <div className="question-box" style={{ marginTop: 12 }}>
-            <span className="bounty">
-              <BadgeDollarSign className="icon-sm" /> {post.content.bounty}
-            </span>
-          </div>
-        )}
-
-        {'options' in post.content && post.content.options && (
-          <div style={{ marginTop: 12 }}>
-            {post.content.options.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => handlePollVote(i)}
-                disabled={votedPoll !== null}
-                style={{
-                  display: 'block', width: '100%', padding: '10px 12px', marginBottom: 6,
-                  borderRadius: 10, border: votedPoll === i ? '1px solid var(--green)' : '1px solid var(--line)',
-                  background: votedPoll === i ? 'var(--greenSoft)' : 'var(--bg)', color: 'var(--text)',
-                  textAlign: 'left', position: 'relative', overflow: 'hidden', fontSize: '.78rem',
-                  fontWeight: votedPoll === i ? 700 : 400, cursor: votedPoll !== null ? 'default' : 'pointer',
-                  opacity: votedPoll !== null && votedPoll !== i ? 0.6 : 1,
-                }}
-              >
-                {votedPoll !== null && (
-                  <div style={{ position: 'absolute', inset: 0, width: `${opt.pct}%`, background: 'var(--greenSoft)', opacity: .4, transition: 'width .3s ease' }} />
-                )}
-                <span style={{ position: 'relative', zIndex: 1 }}>
-                  {opt.label}
-                  {votedPoll !== null && <span style={{ float: 'right', color: 'var(--text3)' }}>{opt.pct}%</span>}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {'audio' in post.content && post.content.audio && (
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={() => onAction('Playing audio')} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--green)', color: 'var(--surface)', display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer' }}>
-              <Video className="icon-sm" />
-            </button>
-            <div style={{ flex: 1 }}>
-              <div style={{ height: 4, borderRadius: 99, background: 'var(--line2)', overflow: 'hidden' }}>
-                <div style={{ width: `${post.content.audio.progress}%`, height: '100%', background: 'var(--green)', borderRadius: 99 }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: '.62rem', color: 'var(--text3)' }}>
-                <span>{post.content.audio.elapsed}</span>
-                <span>{post.content.audio.duration}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="tags">
-          {post.content.tags.map((tag, i) => (
-            <span key={i} className={`tag ${i % 2 === 1 ? 'gold' : ''}`}>{tag}</span>
-          ))}
-        </div>
-      </div>
-
-      <div className="post-actions">
-        <div style={{ display: 'flex', gap: 2, marginRight: 4 }}>
-          <button className={`action ${upvoted ? 'active' : ''}`} onClick={() => void handleUpVote()} title="Upvote">
-            <ThumbsUp className="icon-sm" />
-          </button>
-          <button className={`action ${downvoted ? 'active' : ''}`} onClick={() => void handleDownVote()} title="Downvote">
-            <ThumbsDown className="icon-sm" />
-          </button>
-          <span style={{ fontSize: '.72rem', fontWeight: 700, marginLeft: 4, color: 'var(--text)' }}>{post.stats.likes + voteDelta}</span>
-        </div>
-        <button className="action" onClick={() => onAction('Comments opened')}>
-          <MessageCircle className="icon-sm" />
-          <span>{'answers' in post.stats ? `${post.stats.answers} answers` : post.stats.comments}</span>
-        </button>
-        <button className="action" onClick={handleShare}>
-          <Send className="icon-sm" /> <span>Share</span>
-        </button>
-        <button className={`action ${saved ? 'saved' : ''}`} onClick={handleSave}>
-          <Bookmark className="icon-sm" />
-        </button>
-        <button className="action"><Ellipsis className="icon-sm" /></button>
-      </div>
-
-      {threadId && (
-        <ReplySection
-          threadId={threadId}
-          user={user}
-          replyCount={'answers' in post.stats ? (post.stats.answers || 0) : (post.stats.comments || 0)}
-          onReplyAdded={onReplyAdded}
-        />
-      )}
-    </article>
-  );
+  return <button className={`action ${saved ? 'saved' : ''}`} onClick={() => void handle()}><Bookmark className="icon-sm" /></button>;
 }
 
-function FeedSkeleton() {
-  return (
-    <div style={{ padding: '19px 0' }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <div className="avatar" style={{ background: 'var(--surface2)', animation: 'pulse 1.5s infinite' }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ height: 14, width: 120, background: 'var(--surface2)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
-          <div style={{ height: 10, width: 80, background: 'var(--surface2)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
-        </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <div style={{ height: 12, width: 60, background: 'var(--surface2)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
-        <div style={{ height: 18, width: '90%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />
-        <div style={{ height: 14, width: '100%', background: 'var(--surface2)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s infinite' }} />
-        <div style={{ height: 14, width: '70%', background: 'var(--surface2)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
-      </div>
-    </div>
-  );
-}
-
+/* ========== MAIN BARAZA PAGE ========== */
 function BarazaPageInner() {
   const { user, showToast } = useApp();
   const searchParams = useSearchParams();
-  const composeType = searchParams.get('compose');
   const [filter, setFilter] = useState('for-you');
   const [loading, setLoading] = useState(true);
-  const [posts, setPosts] = useState<PostType[]>(feedPosts as PostType[]);
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [composerType, setComposerType] = useState<'post' | 'question' | 'poll' | 'audio'>('post');
-  const [composeTitle, setComposeTitle] = useState('');
-  const [composeBody, setComposeBody] = useState('');
-  const [composeTags, setComposeTags] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
 
-  useEffect(() => {
-    if (composeType) {
-      setComposerOpen(true);
-      setComposerType(composeType as 'post' | 'question' | 'poll' | 'audio');
+  /* --- Build user preference profile --- */
+  const buildUserPrefs = useCallback(async () => {
+    if (!user) return { tags: [], types: [], counties: [] };
+
+    const prefTags: Record<string, number> = {};
+    const prefTypes: Record<string, number> = {};
+    const prefCounties: Record<string, number> = {};
+
+    // 1. Tags from user's own posts
+    const { data: myPosts } = await supabase
+      .from('threads')
+      .select('tags, type')
+      .eq('author_id', user.user_id)
+      .limit(20);
+    if (myPosts) {
+      myPosts.forEach(p => {
+        (p.tags || []).forEach((t: string) => { prefTags[t] = (prefTags[t] || 0) + 3; });
+        if (p.type) prefTypes[p.type] = (prefTypes[p.type] || 0) + 2;
+      });
     }
-  }, [composeType]);
 
-  const filters = [
-    { key: 'for-you', label: 'For You' },
-    { key: 'following', label: 'Following' },
-    { key: 'spaces', label: 'Spaces' },
-    { key: 'trending', label: 'Trending' },
-  ];
+    // 2. Tags from voted posts
+    const { data: voted } = await supabase
+      .from('votes')
+      .select('target_id')
+      .eq('user_id', user.user_id)
+      .eq('target_type', 'thread')
+      .eq('value', 1)
+      .limit(30);
+    if (voted && voted.length > 0) {
+      const votedIds = voted.map(v => v.target_id);
+      const { data: votedPosts } = await supabase
+        .from('threads')
+        .select('tags, type, profiles:author_id(county)')
+        .in('id', votedIds);
+      if (votedPosts) {
+        votedPosts.forEach((p: any) => {
+          (p.tags || []).forEach((t: string) => { prefTags[t] = (prefTags[t] || 0) + 2; });
+          if (p.type) prefTypes[p.type] = (prefTypes[p.type] || 0) + 1;
+          const county = Array.isArray(p.profiles) ? p.profiles[0]?.county : p.profiles?.county;
+          if (county) prefCounties[county] = (prefCounties[county] || 0) + 1;
+        });
+      }
+    }
 
+    // 3. Tags from saved posts
+    const { data: saved } = await supabase
+      .from('saves')
+      .select('target_id')
+      .eq('user_id', user.user_id)
+      .eq('target_type', 'thread')
+      .limit(20);
+    if (saved && saved.length > 0) {
+      const savedIds = saved.map(s => s.target_id);
+      const { data: savedPosts } = await supabase
+        .from('threads')
+        .select('tags, type')
+        .in('id', savedIds);
+      if (savedPosts) {
+        savedPosts.forEach(p => {
+          (p.tags || []).forEach((t: string) => { prefTags[t] = (prefTags[t] || 0) + 2; });
+          if (p.type) prefTypes[p.type] = (prefTypes[p.type] || 0) + 1;
+        });
+      }
+    }
+
+    // 4. User's county
+    if (user.county) prefCounties[user.county] = (prefCounties[user.county] || 0) + 3;
+
+    const tags = Object.entries(prefTags).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t);
+    const types = Object.entries(prefTypes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+    const counties = Object.entries(prefCounties).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => c);
+
+    return { tags, types, counties };
+  }, [user]);
+
+  /* --- Fetch recommended posts --- */
   useEffect(() => {
     analytics.pageView('baraza');
-    const fetchThreads = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('threads')
-          .select('*, profiles:author_id(full_name, username, avatar_url, county, heshima, is_verified)')
-          .order('created_at', { ascending: false })
-          .limit(20);
 
-        if (error) {
-          console.log('Using mock data:', error.message);
-          setPosts(feedPosts);
-        } else if (data && data.length > 0) {
-          setPosts(data.map(threadToPost));
-        } else {
-          setPosts(feedPosts);
-        }
-      } catch (err) {
-        console.log('Using mock data');
-        setPosts(feedPosts);
-      } finally {
-        setLoading(false);
+    const fetchRecommended = async () => {
+      const prefs = await buildUserPrefs();
+      let query = supabase
+        .from('threads')
+        .select('*, profiles:author_id(full_name, username, avatar_url, county, is_verified)')
+        .eq('is_hidden', false)
+        .order('created_at', { ascending: false });
+
+      // Apply recommendation filters
+      if (prefs.tags.length > 0) {
+        query = query.overlaps('tags', prefs.tags);
       }
+
+      const { data, error } = await query.limit(50);
+
+      if (data) {
+        // Score and rank posts by relevance
+        const scored = data.map(p => {
+          let score = 0;
+          // Tag match score
+          (p.tags || []).forEach((t: string) => {
+            const idx = prefs.tags.indexOf(t);
+            if (idx >= 0) score += (10 - idx) * 2;
+          });
+          // Type match score
+          if (prefs.types.includes(p.type)) score += 5;
+          // County match
+          const county = Array.isArray(p.profiles) ? p.profiles[0]?.county : p.profiles?.county;
+          if (prefs.counties.includes(county)) score += 3;
+          // Recency score (newer = higher)
+          const age = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
+          score += Math.max(0, 10 - age * 0.5);
+          // Engagement score
+          score += Math.min(p.likes_count * 0.3, 5);
+          return { ...p, _score: score, _voteDelta: 0 };
+        });
+
+        scored.sort((a: any, b: any) => b._score - a._score);
+        setPosts(scored);
+      }
+      setLoading(false);
     };
 
-    fetchThreads();
+    fetchRecommended();
 
-    const channel = supabase
-      .channel('baraza-feed')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'threads',
-      }, (payload) => {
-        const newPost = threadToPost(payload.new as Thread) as PostType;
-        setPosts(prev => [newPost, ...prev]);
-      })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'replies',
-      }, (payload) => {
-        const newReply = payload.new as { thread_id: string };
-        setPosts(prev => prev.map(p => {
-          if (!p._threadId) return p;
-          if (p._threadId === newReply.thread_id) {
-            const stats = { ...p.stats };
-            if ('answers' in stats) stats.answers = (stats.answers || 0) + 1;
-            else stats.comments = (stats.comments || 0) + 1;
-            return { ...p, stats };
-          }
-          return p;
-        }));
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    const channel = supabase.channel('baraza-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'threads' }, (p) => {
+        setPosts(prev => [p.new as FeedPost, ...prev].slice(0, 50));
+      }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [buildUserPrefs]);
 
   const handleVoteChange = (threadId: string, delta: number) => {
-    setPosts(prev => prev.map(p => {
-      if (p._threadId === threadId) {
-        const stats = { ...p.stats, likes: p.stats.likes + delta };
-        return { ...p, stats };
-      }
-      return p;
-    }));
+    setPosts(prev => prev.map(p => p.id === threadId ? { ...p, likes_count: p.likes_count + delta } : p));
   };
 
-  const handleSaveChange = (threadId: string, saved: boolean) => {
-    showToast(saved ? 'Saved' : 'Removed from saved');
-  };
+  const handleDelete = (id: string) => setPosts(prev => prev.filter(p => p.id !== id));
+  const handleHide = (id: string) => setPosts(prev => prev.filter(p => p.id !== id));
 
-  const handleReplyAdded = (threadId: string) => {
-    setPosts(prev => prev.map(p => {
-      if (p._threadId === threadId) {
-        const stats = { ...p.stats };
-        if ('answers' in stats) stats.answers = (stats.answers || 0) + 1;
-        else stats.comments = (stats.comments || 0) + 1;
-        return { ...p, stats };
-      }
-      return p;
-    }));
-  };
-
-  const handleCreateThread = async () => {
-    if (!user) {
-      showToast('Please sign in to post');
-      return;
-    }
-    if (!composeTitle.trim()) return;
-    setSubmitting(true);
-    const tags = composeTags.split(',').map(t => t.trim()).filter(Boolean);
-    try {
-      const { data, error } = await createThread(user.id, composeTitle.trim(), composeBody.trim(), composerType, tags);
-      if (error || !data) {
-        showToast(error?.message || 'Failed to create post');
-        console.error(error);
-      } else {
-        const { data: fullThread } = await supabase
-          .from('threads')
-          .select('*, profiles:author_id (full_name, username, avatar_url, county, heshima, is_verified)')
-          .eq('id', data.id)
-          .single();
-        if (fullThread) {
-          setPosts(prev => [threadToPost(fullThread), ...prev]);
-        }
-        setComposeTitle('');
-        setComposeBody('');
-        setComposeTags('');
-        setComposerOpen(false);
-        showToast('Posted successfully!');
-      }
-    } catch {
-      showToast('Failed to create post');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const filters = [
+    { key: 'for-you', label: 'For You', icon: Sparkles },
+    { key: 'following', label: 'Following', icon: Users },
+    { key: 'trending', label: 'Trending', icon: TrendingUp },
+  ];
 
   return (
     <AppLayout>
       <div className="page-head">
         <div>
-          <div className="eyebrow">Baraza feed</div>
-          <h1 className="serif">What Kenya is talking about.</h1>
-          <p>Questions, posts, polls, and audio from your communities and beyond.</p>
+          <div className="eyebrow" style={{ color: 'var(--green)' }}><Sparkles className="icon-sm" /> Baraza feed</div>
+          <h1 className="serif">Recommended for you.</h1>
+          <p>Posts curated from your communities, interests, and reading patterns.</p>
         </div>
+        <Link href="/" className="primary" style={{ textDecoration: 'none' }}>
+          <Pencil className="icon-sm" /> Create post
+        </Link>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflow: 'auto' }}>
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => { setFilter(f.key); showToast(`Viewing ${f.label}`); }}
-            className={`tag ${filter === f.key ? 'badge-green' : ''}`}
-            style={{ whiteSpace: 'nowrap', cursor: 'pointer' }}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
-        {[
-          { label: 'Farming', icon: '🌾', color: 'badge-green' },
-          { label: 'Tech', icon: '💻', color: 'badge-blue' },
-          { label: 'Culture', icon: '📖', color: 'badge-gold' },
-          { label: 'Education', icon: '🎓', color: 'badge-green' },
-          { label: 'Business', icon: '💼', color: 'badge-green' },
-          { label: 'Health', icon: '🏥', color: 'badge-blue' },
-        ].map((topic) => (
-          <button
-            key={topic.label}
-            onClick={() => showToast(`Viewing ${topic.label}`)}
-            className={`badge ${topic.color}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 12px',
-              borderRadius: 12,
-              border: '1px solid var(--line)',
-              cursor: 'pointer',
-              fontSize: '.75rem',
-              fontWeight: 700,
-              color: 'var(--text)',
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: '1.1rem' }}>{topic.icon}</span>
-            {topic.label}
+      <div className="filter-row">
+        {filters.map(f => (
+          <button key={f.key} onClick={() => setFilter(f.key)} className={`tag ${filter === f.key ? 'badge-green' : ''}`}>
+            <f.icon className="icon-sm" /> {f.label}
           </button>
         ))}
       </div>
 
       <StoriesRow />
 
-      <section className="composer-fb">
-        <div className="composer-fb-top">
-          <div className="avatar">GP</div>
-          <button className="composer-fb-input" onClick={() => setComposerOpen(true)}>
-            Share something useful with your county...
-          </button>
-        </div>
-        {composerOpen && user && (
-          <div className="composer-fb-actions">
-            {['post', 'question', 'poll', 'audio'].map(t => (
-              <button
-                key={t}
-                onClick={() => setComposerType(t as 'post' | 'question' | 'poll' | 'audio')}
-                className={`composer-fb-action ${composerType === t ? 'active' : ''}`}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  border: `1px solid ${composerType === t ? 'var(--green)' : 'var(--line)'}`,
-                  background: composerType === t ? 'var(--greenSoft)' : 'transparent',
-                  color: composerType === t ? 'var(--green)' : 'var(--text3)',
-                  fontSize: '.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
-        {composerOpen && user && (
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg)' }}>
-            <input
-              placeholder="Title"
-              value={composeTitle}
-              onChange={e => setComposeTitle(e.target.value)}
-              style={{ marginBottom: 8 }}
-            />
-            <textarea
-              placeholder="What's on your mind?"
-              value={composeBody}
-              onChange={e => setComposeBody(e.target.value)}
-              rows={3}
-              style={{ marginBottom: 8 }}
-            />
-            <input
-              placeholder="Tags (comma separated)"
-              value={composeTags}
-              onChange={e => setComposeTags(e.target.value)}
-              style={{ marginBottom: 10 }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button className="secondary" onClick={() => setComposerOpen(false)}>Cancel</button>
-              <button className="primary" onClick={() => void handleCreateThread()} disabled={submitting || !composeTitle.trim()}>
-                {submitting ? 'Posting...' : 'Post'}
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-
       <section style={{ marginTop: 14 }}>
         {loading ? (
-          <>
-            <FeedSkeleton />
-            <FeedSkeleton />
-            <FeedSkeleton />
-          </>
-        ) : posts.map((post, i) => (
-          <PostCard
-            key={i}
-            post={post}
-            threadId={(post as any)._threadId || null}
-            user={user}
-            onAction={showToast}
-            onVoteChange={handleVoteChange}
-            onSaveChange={handleSaveChange}
-            onReplyAdded={handleReplyAdded}
-          />
-        ))}
+          Array.from({ length: 3 }).map((_, i) => <div key={i} className="post skeleton-shimmer" style={{ height: 140, borderRadius: 12 }} />)
+        ) : posts.length === 0 ? (
+          <div className="empty">
+            <div className="empty-icon"><Compass className="icon" /></div>
+            <h3>No recommendations yet</h3>
+            <p>Interact with posts on the home page to get personalized recommendations here.</p>
+            <Link href="/" className="primary" style={{ textDecoration: 'none', marginTop: 8, display: 'inline-flex' }}>Go to Home</Link>
+          </div>
+        ) : posts.map(post => {
+          const initials = post.profiles?.full_name ? post.profiles.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??';
+          const hasAudio = post.type === 'audio' || post.media_urls?.some(u => u.endsWith('.webm') || u.endsWith('.mp3'));
+          const hasVideo = post.media_urls?.some(u => u.includes('video') || u.endsWith('.mp4'));
+          const imageUrls = post.media_urls?.filter(u => u.match(/\.(jpg|jpeg|png|gif|webp)/i) || u.includes('image')) || [];
+          const audioUrl = post.media_urls?.find(u => u.endsWith('.webm') || u.endsWith('.mp3') || u.includes('audio'));
+          const videoUrl = post.media_urls?.find(u => u.includes('video') || u.endsWith('.mp4'));
+
+          return (
+            <article key={post.id} className="post">
+              <div className="post-head">
+                <Link href={`/profile?id=${post.author_id}`} className="avatar sm earth" style={{ overflow: 'hidden' }}>
+                  {post.profiles?.avatar_url ? (
+                    <img src={post.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : initials}
+                </Link>
+                <div className="author">
+                  <Link href={`/profile?id=${post.author_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <strong>{post.profiles?.full_name || 'Unknown'} {post.profiles?.is_verified && <span className="verified">✓</span>}</strong>
+                  </Link>
+                  <div className="meta">
+                    <span>@{post.profiles?.username}</span>
+                    <span>·</span>
+                    <span>{timeAgo(post.created_at)}</span>
+                    {post.profiles?.county && <><span>·</span><span>{post.profiles.county}</span></>}
+                  </div>
+                </div>
+                <PostMenu post={post} user={user} showToast={showToast} onDelete={handleDelete} onHide={handleHide} />
+              </div>
+
+              <div className="post-body">
+                <div className="post-type">
+                  {post.type === 'question' ? <CircleHelp className="icon-sm" /> : post.type === 'audio' ? <Mic className="icon-sm" /> : <Sprout className="icon-sm" />}
+                  {post.type === 'question' ? 'Deep-dive inquiry' : post.type === 'poll' ? 'Community poll' : post.type === 'audio' ? 'Audio post' : 'Baraza post'}
+                </div>
+                <h3>{post.title}</h3>
+                {post.body && <p>{post.body}</p>}
+
+                {imageUrls.length > 0 && (
+                  <div className={`post-media-grid ${imageUrls.length === 1 ? 'single' : imageUrls.length === 2 ? 'double' : imageUrls.length === 3 ? 'triple' : 'quad'}`}>
+                    {imageUrls.map((url, i) => <img key={i} src={url} alt="" className="post-media-item" />)}
+                  </div>
+                )}
+
+                {videoUrl && (
+                  <div style={{ marginTop: 12, borderRadius: 12, overflow: 'hidden' }}>
+                    <video src={videoUrl} controls style={{ width: '100%', maxHeight: 400, background: '#000' }} />
+                  </div>
+                )}
+
+                {audioUrl && (
+                  <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Mic size={18} style={{ color: 'var(--green)', flexShrink: 0 }} />
+                    <audio src={audioUrl} controls style={{ flex: 1, height: 32 }} />
+                  </div>
+                )}
+
+                {post.tags && post.tags.length > 0 && (
+                  <div className="tags">{post.tags.map((t, i) => <span key={i} className={`tag ${i % 2 === 1 ? 'gold' : ''}`}>{t}</span>)}</div>
+                )}
+              </div>
+
+              <div className="post-actions">
+                <ThumbsUpBtn postId={post.id} userId={user?.user_id} count={post.likes_count} showToast={showToast} onVoteChange={handleVoteChange} />
+                <CommentSection threadId={post.id} user={user} showToast={showToast} />
+                <button className="action" onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Link copied'); }}>
+                  <Send className="icon-sm" /><span>Share</span>
+                </button>
+                <SaveBtn postId={post.id} userId={user?.user_id} showToast={showToast} />
+              </div>
+            </article>
+          );
+        })}
       </section>
     </AppLayout>
   );
@@ -885,189 +529,4 @@ export default function BarazaFeed() {
       <BarazaPageInner />
     </Suspense>
   );
-}
-
-type PostContent = {
-  tag: string;
-  title: string;
-  body?: string;
-  translation?: { label: string; text: string };
-  bounty?: string;
-  audio?: { duration: string; elapsed: string; progress: number };
-  options?: { label: string; pct: number }[];
-  tags: string[];
-};
-
-type PostAuthor = {
-  name: string;
-  initials: string;
-  color: string;
-  verified: boolean;
-};
-
-type PostMeta = {
-  handle: string;
-  time: string;
-  county: string;
-};
-
-type PostStats = {
-  likes: number;
-  comments?: number;
-  answers?: number;
-};
-
-type PostType = {
-  type: string;
-  author: PostAuthor;
-  meta: PostMeta;
-  content: PostContent;
-  stats: PostStats;
-  _threadId?: string;
-};
-
-const feedPosts: PostType[] = [
-  {
-    type: 'post',
-    author: { name: 'Amina Muthoni', initials: 'AM', color: 'earth', verified: true },
-    meta: { handle: '@aminam', time: '38m', county: 'Kiambu' },
-    content: {
-      tag: 'Baraza post',
-      title: 'What are you planting before the short rains?',
-      body: 'I am trialling sukuma wiki in grow bags this season. The first batch is holding up nicely on a small balcony in Ruiru.',
-      translation: { label: 'Read in Kiswahili', text: '"Unapanda nini kabla ya mvua fupi?"' },
-      tags: ['#KilimoSmart', '#Kiambu'],
-    },
-    stats: { likes: 48, comments: 12 },
-  },
-  {
-    type: 'question',
-    author: { name: 'Anonymous', initials: 'GP', color: 'default', verified: false },
-    meta: { handle: '@anonymous', time: '1h', county: 'Nairobi' },
-    content: {
-      tag: 'Deep-dive inquiry',
-      title: 'What should a small business check before going solar?',
-      body: 'Looking for practical advice from someone who has sized a system for a shop or workshop in Nakuru.',
-      bounty: '120 tokens bounty',
-      tags: ['#NakuruTech', '#Biashara'],
-    },
-    stats: { likes: 31, answers: 8 },
-  },
-  {
-    type: 'poll',
-    author: { name: 'Njeri Wambui', initials: 'NW', color: 'green', verified: true },
-    meta: { handle: '@njeri_w', time: '1h', county: 'Nairobi' },
-    content: {
-      tag: 'Community poll',
-      title: 'Should we organize a community seed swap before the rains?',
-      options: [
-        { label: 'Yes, definitely', pct: 62 },
-        { label: 'Maybe, need more info', pct: 24 },
-        { label: 'No, not relevant', pct: 14 },
-      ],
-      tags: ['#KilimoSmart', '#Nairobi'],
-    },
-    stats: { likes: 24, comments: 8 },
-  },
-  {
-    type: 'audio',
-    author: { name: 'James Otieno', initials: 'JO', color: 'blue', verified: true },
-    meta: { handle: '@james_o', time: '2h', county: 'Kisumu' },
-    content: {
-      tag: 'Audio note',
-      title: 'Quick tip: how to clean your solar panels during the dry season',
-      audio: { duration: '3:58', elapsed: '1:24', progress: 35 },
-      tags: ['#KilimoSmart', '#SolarKE'],
-    },
-    stats: { likes: 56, comments: 14 },
-  },
-];
-
-function threadToPost(thread: Thread) {
-  const profile = thread.profiles;
-  const initials = profile?.full_name
-    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-    : '??';
-  const type = thread.type || 'post';
-
-  const base = {
-    type,
-    _threadId: thread.id,
-    author: {
-      name: profile?.full_name || 'Unknown',
-      initials,
-      color: 'earth' as const,
-      verified: profile?.is_verified || false,
-    },
-    meta: {
-      handle: profile?.username ? `@${profile.username}` : '@unknown',
-      time: getTimeAgo(thread.created_at),
-      county: profile?.county || 'Kenya',
-    },
-    stats: { likes: thread.likes_count, comments: thread.comments_count },
-  };
-
-  if (type === 'question') {
-    return {
-      ...base,
-      stats: { likes: thread.likes_count, answers: thread.comments_count },
-      content: {
-        tag: 'Deep-dive inquiry',
-        title: thread.title,
-        body: thread.body || '',
-        bounty: thread.bounty_amount ? `${thread.bounty_amount} tokens bounty` : '',
-        tags: (thread.tags || []).map(t => `#${t}`),
-      },
-    };
-  }
-
-  if (type === 'poll') {
-    let options: { label: string; pct: number }[] = [];
-    try {
-      if (thread.body) {
-        const parsed = JSON.parse(thread.body);
-        if (Array.isArray(parsed)) {
-          options = parsed.map((o: { label?: string; text?: string; pct?: number }) => ({
-            label: o.label || o.text || 'Option',
-            pct: o.pct || 0,
-          }));
-        }
-      }
-    } catch { /* not JSON, use as plain text */ }
-    if (options.length === 0) {
-      options = thread.body ? thread.body.split('\n').filter(Boolean).map(l => ({ label: l.trim(), pct: 0 })) : [{ label: 'Yes', pct: 50 }, { label: 'No', pct: 50 }];
-    }
-    return {
-      ...base,
-      content: {
-        tag: 'Community poll',
-        title: thread.title,
-        options,
-        tags: (thread.tags || []).map(t => `#${t}`),
-      },
-    };
-  }
-
-  if (type === 'audio') {
-    return {
-      ...base,
-      content: {
-        tag: 'Audio note',
-        title: thread.title,
-        body: thread.body || '',
-        audio: { duration: '0:00', elapsed: '0:00', progress: 0 },
-        tags: (thread.tags || []).map(t => `#${t}`),
-      },
-    };
-  }
-
-  return {
-    ...base,
-    content: {
-      tag: 'Baraza post',
-      title: thread.title,
-      body: thread.body || '',
-      tags: (thread.tags || []).map(t => `#${t}`),
-    },
-  };
 }

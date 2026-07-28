@@ -1,0 +1,24 @@
+/* Design Tokens for KikwetuConnect UI Overhaul */
+
+:root {
+  /* Extended color palette (keep existing OKLCH values) */
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-blur: blur(12px);
+
+  /* Additional gradient definitions */
+  --gradient-primary: linear-gradient(135deg, var(--green), var(--gold));
+  --gradient-dark: linear-gradient(135deg, var(--greenSoft), var(--goldSoft));
+
+  /* Shadow for glass cards */
+  --shadow-glass: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  /* Transition utilities */
+  --transition-fast: all 0.15s var(--ease);
+  --transition-medium: all 0.25s var(--ease);
+}
+
+/* Micro‑animation keyframes */
+@keyframes pulse-glass {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}

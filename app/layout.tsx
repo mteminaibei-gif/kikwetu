@@ -118,7 +118,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
-        {children}
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <main id="main-content">{children}</main>
       </body>
     </html>
   );
