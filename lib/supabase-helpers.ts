@@ -11,6 +11,7 @@ export async function getCurrentUser() {
   return profile;
 }
 
+/** userId must be profiles.id (not auth.users.id) */
 export async function toggleVote(userId: string, targetType: 'thread' | 'reply', targetId: string, value: 1 | -1) {
   const { data: existing } = await supabase
     .from('votes')
@@ -18,7 +19,7 @@ export async function toggleVote(userId: string, targetType: 'thread' | 'reply',
     .eq('user_id', userId)
     .eq('target_type', targetType)
     .eq('target_id', targetId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     if (existing.value === value) {
@@ -29,11 +30,13 @@ export async function toggleVote(userId: string, targetType: 'thread' | 'reply',
       return { voted: true, delta: value * 2 };
     }
   } else {
-    await supabase.from('votes').insert({ user_id: userId, target_type: targetType, target_id: targetId, value });
+    const { error } = await supabase.from('votes').insert({ user_id: userId, target_type: targetType, target_id: targetId, value });
+    if (error) throw error;
     return { voted: true, delta: value };
   }
 }
 
+/** userId must be profiles.id */
 export async function checkVote(userId: string, targetType: 'thread' | 'reply', targetId: string) {
   const { data } = await supabase
     .from('votes')
@@ -41,10 +44,11 @@ export async function checkVote(userId: string, targetType: 'thread' | 'reply', 
     .eq('user_id', userId)
     .eq('target_type', targetType)
     .eq('target_id', targetId)
-    .single();
+    .maybeSingle();
   return data;
 }
 
+/** userId must be profiles.id */
 export async function toggleSave(userId: string, targetType: 'thread' | 'reply' | 'listing', targetId: string) {
   const { data: existing } = await supabase
     .from('saved_items')
@@ -52,7 +56,7 @@ export async function toggleSave(userId: string, targetType: 'thread' | 'reply' 
     .eq('user_id', userId)
     .eq('target_type', targetType)
     .eq('target_id', targetId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     await supabase.from('saved_items').delete().eq('id', existing.id);
@@ -70,7 +74,7 @@ export async function checkSaved(userId: string, targetType: 'thread' | 'reply' 
     .eq('user_id', userId)
     .eq('target_type', targetType)
     .eq('target_id', targetId)
-    .single();
+    .maybeSingle();
   return !!data;
 }
 
@@ -80,7 +84,7 @@ export async function toggleFollow(followerId: string, followingId: string) {
     .select('id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     await supabase.from('follows').delete().eq('id', existing.id);
@@ -97,10 +101,11 @@ export async function checkFollowing(followerId: string, followingId: string) {
     .select('id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
-    .single();
+    .maybeSingle();
   return !!data;
 }
 
+/** authorId must be profiles.id */
 export async function createThread(authorId: string, title: string, body: string, type: string = 'post', tags: string[] = [], bountyAmount?: number, spaceId?: string) {
   const { data, error } = await supabase
     .from('threads')
@@ -118,6 +123,7 @@ export async function createThread(authorId: string, title: string, body: string
   return { data, error };
 }
 
+/** authorId must be profiles.id */
 export async function createReply(threadId: string, authorId: string, body: string) {
   const { data, error } = await supabase
     .from('replies')
@@ -185,7 +191,7 @@ export async function joinSpace(spaceId: string, userId: string) {
     .select('id')
     .eq('space_id', spaceId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     await supabase.from('space_members').delete().eq('id', existing.id);
@@ -202,7 +208,7 @@ export async function checkSpaceMember(spaceId: string, userId: string) {
     .select('id')
     .eq('space_id', spaceId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
   return !!data;
 }
 
@@ -348,7 +354,7 @@ export async function toggleReaction(userId: string, targetType: 'thread' | 'rep
     .eq('target_type', targetType)
     .eq('target_id', targetId)
     .eq('emoji', emoji)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     await supabase.from('reactions').delete().eq('id', existing.id);
