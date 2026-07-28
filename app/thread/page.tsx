@@ -171,8 +171,8 @@ function ThreadPageInner() {
   }, [replies.length]);
 
   const handleVote = async () => {
-    if (!currentUser?.user_id) return;
-    const result = await toggleVote(currentUser.user_id, 'thread', threadId, 1);
+    if (!currentUser?.id) return;
+    const result = await toggleVote(currentUser.id, 'thread', threadId, 1);
     if (result.voted) {
       setLiked(true);
       setVoteCount((prev) => prev + result.delta);
@@ -185,17 +185,17 @@ function ThreadPageInner() {
   };
 
   const handleSave = async () => {
-    if (!currentUser?.user_id) return;
-    const isSaved = await toggleSave(currentUser.user_id, 'thread', threadId);
+    if (!currentUser?.id) return;
+    const isSaved = await toggleSave(currentUser.id, 'thread', threadId);
     setSaved(isSaved);
     showToast(isSaved ? 'Answer saved' : 'Answer unsaved');
   };
 
   const handleReply = async () => {
-    if (!replyText.trim() || !currentUser?.user_id || submitting) return;
+    if (!replyText.trim() || !currentUser?.id || submitting) return;
 
     setSubmitting(true);
-    const { data, error } = await createReply(threadId, currentUser.user_id, replyText.trim());
+    const { data, error } = await createReply(threadId, currentUser.id, replyText.trim());
     setSubmitting(false);
 
     if (error) {
@@ -420,7 +420,7 @@ function ThreadPageInner() {
                 <button className="action" onClick={handleSave}>
                   <Bookmark className="icon-sm" />
                 </button>
-                {currentUser?.user_id === reply.author_id && !reply.is_accepted && (
+                {currentUser?.id === reply.author_id && !reply.is_accepted && (
                   <button
                     className="action"
                     onClick={() => handleAcceptAnswer(reply.id)}

@@ -62,7 +62,7 @@ function PostMenu({ post, user, showToast, onDelete, onHide }: {
   onDelete: (id: string) => void; onHide: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const isOwner = user?.user_id === post.author_id;
+  const isOwner = user?.id === post.author_id;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,7 +88,7 @@ function PostMenu({ post, user, showToast, onDelete, onHide }: {
           {isOwner && (
             <button className="danger-text" onClick={async () => {
               if (!confirm('Delete this post?')) return;
-              const { error } = await deleteThread(post.id, user.user_id);
+              const { error } = await deleteThread(post.id, user.id);
               if (!error) { onDelete(post.id); showToast('Post deleted'); }
               setOpen(false);
             }}>
@@ -96,7 +96,7 @@ function PostMenu({ post, user, showToast, onDelete, onHide }: {
             </button>
           )}
           {isOwner ? (
-            <button onClick={async () => { await hideThread(post.id, user.user_id); onHide(post.id); showToast('Post hidden'); setOpen(false); }}>
+            <button onClick={async () => { await hideThread(post.id, user.id); onHide(post.id); showToast('Post hidden'); setOpen(false); }}>
               <EyeOff className="icon-sm" /> Hide
             </button>
           ) : (
@@ -151,7 +151,7 @@ function CommentSection({ threadId, user, showToast }: { threadId: string; user:
     if (!user) return showToast('Sign in to comment');
     if (!input.trim()) return;
     setSubmitting(true);
-    const { data, error } = await createReply(threadId, user.user_id, input.trim());
+    const { data, error } = await createReply(threadId, user.id, input.trim());
     if (data && !error) {
       const { data: full } = await supabase.from('replies').select('*, profiles:author_id(full_name, username, avatar_url, is_verified)').eq('id', data.id).single();
       if (full) setReplies(prev => prev.some(r => r.id === full.id) ? prev : [...prev, full]);
@@ -161,14 +161,14 @@ function CommentSection({ threadId, user, showToast }: { threadId: string; user:
   };
 
   const handleEdit = async (replyId: string) => {
-    const { error } = await editReply(replyId, user.user_id, editBody);
+    const { error } = await editReply(replyId, user.id, editBody);
     if (!error) { setReplies(prev => prev.map(r => r.id === replyId ? { ...r, body: editBody } : r)); showToast('Reply edited'); }
     setEditId(null);
   };
 
   const handleDelete = async (replyId: string) => {
     if (!confirm('Delete this reply?')) return;
-    const { error } = await deleteReply(replyId, user.user_id);
+    const { error } = await deleteReply(replyId, user.id);
     if (!error) { setReplies(prev => prev.filter(r => r.id !== replyId)); showToast('Reply deleted'); }
   };
 
@@ -186,7 +186,7 @@ function CommentSection({ threadId, user, showToast }: { threadId: string; user:
               <div className="comment-empty">No comments yet. Be the first!</div>
             ) : replies.map(r => {
               const ri = r.profiles?.full_name ? r.profiles.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??';
-              const isOwner = user?.user_id === r.author_id;
+              const isOwner = user?.id === r.author_id;
               return (
                 <div key={r.id} className="comment-item">
                   <div className="avatar xs earth">{ri}</div>
@@ -286,7 +286,7 @@ function BarazaPageInner() {
     const { data: myPosts } = await supabase
       .from('threads')
       .select('tags, type')
-      .eq('author_id', user.user_id)
+      .eq('author_id', user.id)
       .limit(20);
     if (myPosts) {
       myPosts.forEach(p => {
@@ -299,7 +299,7 @@ function BarazaPageInner() {
     const { data: voted } = await supabase
       .from('votes')
       .select('target_id')
-      .eq('user_id', user.user_id)
+      .eq('user_id', user.id)
       .eq('target_type', 'thread')
       .eq('value', 1)
       .limit(30);
@@ -321,9 +321,9 @@ function BarazaPageInner() {
 
     // 3. Tags from saved posts
     const { data: saved } = await supabase
-      .from('saves')
+      .from('saved_items')
       .select('target_id')
-      .eq('user_id', user.user_id)
+      .eq('user_id', user.id)
       .eq('target_type', 'thread')
       .limit(20);
     if (saved && saved.length > 0) {
@@ -522,12 +522,12 @@ function BarazaPageInner() {
               </div>
 
               <div className="post-actions">
-                <ThumbsUpBtn postId={post.id} userId={user?.user_id} count={post.likes_count} showToast={showToast} onVoteChange={handleVoteChange} />
+                <ThumbsUpBtn postId={post.id} userId={user?.id} count={post.likes_count} showToast={showToast} onVoteChange={handleVoteChange} />
                 <CommentSection threadId={post.id} user={user} showToast={showToast} />
                 <button className="action" onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Link copied'); }}>
                   <Send className="icon-sm" /><span>Share</span>
                 </button>
-                <SaveBtn postId={post.id} userId={user?.user_id} showToast={showToast} />
+                <SaveBtn postId={post.id} userId={user?.id} showToast={showToast} />
               </div>
             </article>
           );
