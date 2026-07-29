@@ -1,0 +1,373 @@
+/* ===== KikwetuConnect Mobile Enhancements ===== */
+/* Complements layout-styles.css — keeps theme, tightens phone UX */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Touch-friendly targets */
+@media (max-width: 720px) {
+  button,
+  .action,
+  .nav-item,
+  .icon-btn,
+  a.follow {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Topbar polish */
+  .topbar {
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .wordmark strong {
+    font-size: 1rem;
+  }
+
+  .mark {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+  }
+
+  .lang-btn {
+    font-size: .7rem;
+  }
+
+  /* Main content spacing above bottom nav */
+  .layout {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .page-head h1 {
+    font-size: clamp(1.45rem, 6vw, 1.85rem);
+    line-height: 1.15;
+  }
+
+  .page-head p {
+    font-size: .8rem;
+  }
+
+  .page-head .primary,
+  .page-head .secondary,
+  .page-head .select-pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Grids collapse */
+  .grid2,
+  .stats,
+  .audit-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .profile-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .create-options {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Posts & media */
+  .post {
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+
+  .post h3 {
+    font-size: .95rem;
+  }
+
+  .post p {
+    font-size: .84rem;
+  }
+
+  .post-media-grid.double,
+  .post-media-grid.triple,
+  .post-media-grid.quad {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .post-media-item {
+    aspect-ratio: 4/3;
+  }
+
+  /* Keep action labels readable where possible */
+  .post-actions .action span {
+    display: none;
+  }
+
+  .post-actions .action:first-child span {
+    display: inline;
+  }
+
+  /* Composer */
+  .composer-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .composer-attachments {
+    gap: 8px;
+  }
+
+  .composer-attach-btn {
+    flex: 1 1 auto;
+    min-height: 40px;
+    justify-content: center;
+  }
+
+  .composer-submit-row {
+    flex-direction: column-reverse;
+  }
+
+  .composer-submit-row .primary,
+  .composer-submit-row .secondary {
+    width: 100%;
+  }
+
+  /* Cards & lists */
+  .pro-card {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .pro-actions {
+    width: 100%;
+    padding-left: 0;
+  }
+
+  .pro-actions .follow {
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .section-head > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Chat full-width on phone */
+  .chat {
+    grid-template-columns: 1fr !important;
+    min-height: calc(100vh - 140px);
+    border-radius: 14px;
+  }
+
+  .chat-list {
+    display: none;
+  }
+
+  .message {
+    max-width: 90%;
+  }
+
+  /* Forms */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important; /* prevents iOS zoom on focus */
+  }
+
+  /* Thread */
+  .thread-head {
+    padding: 14px;
+  }
+
+  .thread-head h1 {
+    font-size: clamp(1.35rem, 5.5vw, 1.9rem);
+  }
+
+  /* Stories */
+  .stories {
+    gap: 8px;
+    padding-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .story {
+    flex: 0 0 76px;
+    height: 108px;
+    border-radius: 14px;
+  }
+
+  /* Sidebar overlay safe area */
+  .sidebar-overlay {
+    width: min(300px, 88vw);
+    padding-top: max(16px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Bottom nav: full width, safe area */
+  .mobile-nav {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-radius: 0;
+    transform: none;
+  }
+
+  .mobile-nav > a,
+  .mobile-nav > button:not(.create-main) {
+    min-height: 48px;
+  }
+
+  /* Create panel fullscreen sheet */
+  .create-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .create-panel-inner {
+    padding: 16px;
+    max-width: 100%;
+  }
+
+  .toast {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 24px);
+    text-align: center;
+  }
+
+  /* Notifications sheet-ish on small screens */
+  .notification-dropdown {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-height: min(75vh, 520px) !important;
+    border-radius: 16px 16px 0 0 !important;
+    transform: translateY(12px) !important;
+  }
+
+  .notification-dropdown.open {
+    transform: translateY(0) !important;
+  }
+
+  /* Tables / audit */
+  .audit-row {
+    grid-template-columns: 1fr auto !important;
+    font-size: .68rem;
+  }
+
+  .audit-row span:nth-child(3) {
+    display: none;
+  }
+
+  /* Filter chips scroll horizontally */
+  .filter-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-row .tag {
+    flex-shrink: 0;
+  }
+
+  /* Money / tips */
+  .tip-choices {
+    gap: 8px;
+  }
+
+  .tip-choice {
+    min-height: 40px;
+  }
+
+  /* Hide hover lifts that feel laggy on touch */
+  .card:hover,
+  .post:hover,
+  .pro-card:hover,
+  .right-block:hover {
+    transform: none;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .page-head h1 {
+    font-size: 1.35rem;
+  }
+
+  .composer-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .story {
+    flex: 0 0 68px;
+    height: 96px;
+  }
+
+  .action {
+    font-size: .6rem;
+  }
+}
+
+/* Landscape phones: less bottom padding, keep nav usable */
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+  .layout {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-nav {
+    min-height: 48px;
+  }
+
+  .mobile-nav .create-main {
+    width: 40px;
+    height: 40px;
+    margin-top: -8px;
+  }
+}
