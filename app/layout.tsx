@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import "./layout-styles.css";
+import "./mobile.css";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -94,6 +95,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#2d6a1e" },
     { media: "(prefers-color-scheme: dark)", color: "#1a261e" },
@@ -117,6 +119,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#2d6a1e" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-dm-sans), system-ui, sans-serif" }}>
         <main id="main-content">{children}</main>
